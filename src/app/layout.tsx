@@ -18,10 +18,17 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.agora-schools.com'),
   title: {
-    default: 'Agora | Global Student Identity Ledger & School Management System',
-    template: '%s | Agora'
+    default: 'School Bud | Global Student Identity Ledger & School Management System',
+    template: '%s | School Bud'
   },
-  description: 'Agora creates a borderless academic identity for every student, turning static paper trails into a living, portable digital profile secured by a global student ledger.',
+  description: 'School Bud creates a borderless academic identity for every student, turning static paper trails into a living, portable digital profile secured by a global student ledger.',
+  applicationName: 'School Bud',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'School Bud',
+  },
   keywords: [
     'Digital Student Identity',
     'Global Student Ledger',
@@ -32,11 +39,12 @@ export const metadata: Metadata = {
     'EdTech Africa',
     'Student Data Portability',
     'Immutable Academic Records',
-    'Blockchain Education Registry'
+    'Blockchain Education Registry',
+    'School Bud',
   ],
-  authors: [{ name: 'Agora Team' }],
-  creator: 'Agora',
-  publisher: 'Agora',
+  authors: [{ name: 'School Bud Team' }],
+  creator: 'School Bud',
+  publisher: 'School Bud',
   alternates: {
     canonical: '/',
   },
@@ -44,21 +52,21 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://www.agora-schools.com',
-    siteName: 'Agora',
-    title: 'Agora - The Digital Chain-of-Trust for Education',
+    siteName: 'School Bud',
+    title: 'School Bud - The Digital Chain-of-Trust for Education',
     description: 'A borderless academic identity for every student. Secured, portable, and immutable records on a global ledger.',
     images: [
       {
         url: '/assets/logos/agora_main.png',
         width: 1200,
         height: 630,
-        alt: 'Agora - Digital Education Identity',
+        alt: 'School Bud - Digital Education Identity',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Agora - Digital Education Identity',
+    title: 'School Bud - Digital Education Identity',
     description: 'Transforming traditional transcripts into a lifelong asset. Verified, immutable, and instantly accessible student data.',
     images: ['/assets/logos/agora_main.png'],
   },
@@ -71,6 +79,10 @@ export const metadata: Metadata = {
     apple: [
       { url: '/assets/apple-touch-icon.png' },
     ],
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'theme-color': '#2490FD',
   },
 };
 
@@ -110,10 +122,10 @@ export default function RootLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Organization',
-              name: 'Agora',
+              name: 'School Bud',
               url: 'https://www.agora-schools.com',
               logo: 'https://www.agora-schools.com/assets/logos/agora_main.png',
-              description: 'Agora creates a borderless academic identity for every student, anchoring educational history in a global student ledger.',
+              description: 'School Bud creates a borderless academic identity for every student, anchoring educational history in a global student ledger.',
               sameAs: [
                 'https://twitter.com/agora_edu',
                 'https://linkedin.com/company/agora-edu'
@@ -128,10 +140,10 @@ export default function RootLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Service',
-              name: 'Agora Student Identity Ledger',
+              name: 'School Bud Student Identity Ledger',
               provider: {
                 '@type': 'Organization',
-                name: 'Agora'
+                name: 'School Bud'
               },
               description: 'A unified management system that turns static paper trails into a living, portable digital profile for students.',
               areaServed: 'Global',

@@ -151,11 +151,11 @@ export function AgoraCurriculumPreviewModal({
 
             <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2">
               <div className="flex items-center gap-2 text-blue-600">
-                <Image src="/assets/logos/agora_main.png" alt="Agora Logo" width={14} height={14} className="h-3.5 w-3.5 object-contain" />
+                <Image src="/assets/logos/agora_main.png" alt="Bud library" width={14} height={14} className="h-3.5 w-3.5 object-contain" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Master Library</span>
               </div>
               <p className="text-[10px] font-bold text-amber-600/80 leading-tight">
-                This is an Agora Standard template. Using this ensures maximum alignment with NERDC guidelines.
+                This is a Bud library template. Using this ensures maximum alignment with NERDC guidelines.
               </p>
             </div>
           </div>

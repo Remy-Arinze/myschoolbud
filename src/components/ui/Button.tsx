@@ -1,6 +1,13 @@
 'use client';
 
-import { ButtonHTMLAttributes, forwardRef } from 'react';
+import {
+  ButtonHTMLAttributes,
+  Children,
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  ReactElement,
+} from 'react';
 import { cn } from '@/lib/utils';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -11,6 +18,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   bgColor?: string; // Optional custom background color (hex or tailwind class)
   textColor?: string; // Optional custom text color
   isFlat?: boolean; // If true, removes the 3D effect (shadows, translate on active, border-t)
+  asChild?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -27,6 +35,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       textColor,
       isFlat = true,
       style,
+      asChild = false,
+      type = 'button',
       ...props
     },
     ref
@@ -92,23 +102,64 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const tailwindBg = bgColor && !bgColor.startsWith('#') && !bgColor.startsWith('rgb') ? bgColor : '';
     const tailwindText = textColor && !textColor.startsWith('#') && !textColor.startsWith('rgb') ? textColor : '';
 
+    const buttonClassName = cn(
+      baseStyles,
+      !bgColor && variants[variant],
+      sizes[size],
+      fullWidth && 'w-full',
+      tailwindBg,
+      tailwindText,
+      (variant === 'primary' || variant === 'accent' || variant === 'white' || variant === 'danger') &&
+        !bgColor &&
+        !isFlat &&
+        'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/20 before:to-transparent before:rounded-lg before:pointer-events-none disabled:before:hidden',
+      className
+    );
+
+    const isDisabled = disabled || isLoading;
+
+    if (asChild) {
+      const child = Children.only(children);
+      if (!isValidElement(child)) {
+        throw new Error('Button with asChild expects a single valid React element child.');
+      }
+
+      const childElement = child as ReactElement<{
+        className?: string;
+        style?: React.CSSProperties;
+        onClick?: (event: React.MouseEvent) => void;
+        tabIndex?: number;
+      }>;
+
+      return cloneElement(childElement, {
+        ...props,
+        ref,
+        className: cn(
+          buttonClassName,
+          childElement.props.className,
+          isDisabled && 'pointer-events-none opacity-60'
+        ),
+        style: { ...customStyles, ...childElement.props.style },
+        'aria-disabled': isDisabled || undefined,
+        tabIndex: isDisabled ? -1 : childElement.props.tabIndex,
+        onClick: (event: React.MouseEvent) => {
+          if (isDisabled) {
+            event.preventDefault();
+            return;
+          }
+          props.onClick?.(event as React.MouseEvent<HTMLButtonElement>);
+          childElement.props.onClick?.(event);
+        },
+      });
+    }
+
     return (
       <button
         ref={ref}
-        className={cn(
-          baseStyles,
-          !bgColor && variants[variant],
-          sizes[size],
-          fullWidth && 'w-full',
-          tailwindBg,
-          tailwindText,
-          // Add inner highlight for 3D effect on primary, accent, white, and danger variants (only when not disabled and not flat)
-          (variant === 'primary' || variant === 'accent' || variant === 'white' || variant === 'danger') && !bgColor && !isFlat &&
-          'before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/20 before:to-transparent before:rounded-lg before:pointer-events-none disabled:before:hidden',
-          className
-        )}
+        type={type}
+        className={buttonClassName}
         style={customStyles}
-        disabled={disabled || isLoading}
+        disabled={isDisabled}
         {...props}
       >
         <span className="relative z-10 flex items-center justify-center gap-2 whitespace-nowrap">

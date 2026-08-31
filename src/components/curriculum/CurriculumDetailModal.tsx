@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen,
-  Calendar,
   Check,
   Clock,
-  Edit2,
   Loader2,
   Play,
   Send,
@@ -21,9 +19,14 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { CurriculumStatusBadge } from './CurriculumStatusBadge';
 import { CurriculumProgressBar } from './CurriculumProgressBar';
-import { useGetCurriculumByIdQuery, useGetSchemeOfWorkByIdQuery } from '@/lib/store/api/schoolAdminApi';
+import {
+  useGetCurriculumByIdQuery,
+  useGetSchemeOfWorkByIdQuery,
+  useGetActiveSessionQuery,
+  type WeekStatus,
+} from '@/lib/store/api/schoolAdminApi';
 import { useCurriculum } from '@/hooks/useCurriculum';
-import type { WeekStatus, CurriculumItem } from '@/lib/store/api/schoolAdminApi';
+import { cn } from '@/lib/utils';
 
 interface CurriculumDetailModalProps {
   isOpen: boolean;
@@ -33,6 +36,7 @@ interface CurriculumDetailModalProps {
   classId?: string;
   canEdit?: boolean;
   isScheme?: boolean;
+  schoolType?: string;
   onUpdate?: () => void;
   onDelete?: (curriculumId: string) => void;
 }
@@ -45,27 +49,78 @@ export function CurriculumDetailModal({
   classId,
   canEdit = false,
   isScheme = false,
+  schoolType,
   onUpdate,
   onDelete,
 }: CurriculumDetailModalProps) {
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const [markingWeek, setMarkingWeek] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
+  const currentWeekRef = useRef<HTMLDivElement | null>(null);
+  const didScrollToCurrent = useRef(false);
 
-  // Choose the appropriate query hook based on whether it's a curriculum or a scheme
-  const { data: curriculumData, isLoading: isLoadingCurriculum, refetch: refetchCurriculum } = useGetCurriculumByIdQuery(
-    { schoolId, curriculumId },
-    { skip: !curriculumId || isScheme }
-  );
+  const {
+    handleMarkWeekComplete,
+    handleMarkWeekInProgress,
+    handleSubmit,
+    isMutating,
+  } = useCurriculum({ schoolId });
 
-  const { data: schemeData, isLoading: isLoadingScheme, refetch: refetchScheme } = useGetSchemeOfWorkByIdQuery(
-    { schoolId, schemeId: curriculumId },
-    { skip: !curriculumId || !isScheme }
+  const { data: curriculumData, isLoading: isLoadingCurriculum, refetch: refetchCurriculum } =
+    useGetCurriculumByIdQuery(
+      { schoolId, curriculumId },
+      { skip: !curriculumId || isScheme || !isOpen },
+    );
+
+  const { data: schemeData, isLoading: isLoadingScheme, refetch: refetchScheme } =
+    useGetSchemeOfWorkByIdQuery(
+      { schoolId, schemeId: curriculumId },
+      { skip: !curriculumId || !isScheme || !isOpen },
+    );
+
+  const { data: activeSessionResponse } = useGetActiveSessionQuery(
+    { schoolId, schoolType: schoolType || undefined },
+    { skip: !schoolId || !isOpen },
   );
 
   const isLoading = isScheme ? isLoadingScheme : isLoadingCurriculum;
   const curriculum = isScheme ? schemeData : curriculumData?.data;
   const refetch = isScheme ? refetchScheme : refetchCurriculum;
+
+  const sortedItems = useMemo(() => {
+    if (!curriculum?.items) return [];
+    return [...curriculum.items].sort(
+      (a, b) => (a.weekNumber || a.week || 0) - (b.weekNumber || b.week || 0),
+    );
+  }, [curriculum?.items]);
+
+  const currentSchoolWeek = useMemo(() => {
+    const raw = activeSessionResponse?.data?.term?.currentWeek;
+    if (typeof raw !== 'number' || raw < 1) return null;
+    const maxWeek = sortedItems.length
+      ? Math.max(...sortedItems.map((i) => i.weekNumber || i.week || 0))
+      : curriculum?.totalWeeks || 12;
+    return Math.min(raw, maxWeek || raw);
+  }, [activeSessionResponse?.data?.term?.currentWeek, sortedItems, curriculum?.totalWeeks]);
+
+  // Expand + scroll to the active school week when preview opens
+  useEffect(() => {
+    if (!isOpen || !currentSchoolWeek || !sortedItems.length) return;
+    const hasWeek = sortedItems.some(
+      (item) => (item.weekNumber || item.week || 0) === currentSchoolWeek,
+    );
+    if (!hasWeek) return;
+
+    setExpandedWeek(currentSchoolWeek);
+    didScrollToCurrent.current = false;
+    const t = window.setTimeout(() => {
+      if (!didScrollToCurrent.current && currentWeekRef.current) {
+        currentWeekRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        didScrollToCurrent.current = true;
+      }
+    }, 150);
+    return () => window.clearTimeout(t);
+  }, [isOpen, currentSchoolWeek, curriculumId, sortedItems]);
 
   const handleMarkComplete = async (weekNumber: number) => {
     setMarkingWeek(weekNumber);
@@ -103,7 +158,10 @@ export function CurriculumDetailModal({
     }
   };
 
-  const getWeekStatusColor = (status: WeekStatus) => {
+  const getWeekStatusColor = (status: WeekStatus, isCurrentWeek: boolean) => {
+    if (isCurrentWeek) {
+      return 'border-agora-blue bg-blue-50 dark:bg-blue-950/40 ring-1 ring-agora-blue/30';
+    }
     switch (status) {
       case 'COMPLETED':
         return 'border-green-500 bg-green-50 dark:bg-green-900/20';
@@ -149,20 +207,26 @@ export function CurriculumDetailModal({
           <div>
             <span className="text-xs text-light-text-muted dark:text-dark-text-muted">Teacher</span>
             <p className="font-medium text-light-text-primary dark:text-dark-text-primary">
-              {curriculum.teacherName || 'Unknown'}
+              {curriculum.teacherName || 'Unassigned'}
             </p>
           </div>
           <div>
             <span className="text-xs text-light-text-muted dark:text-dark-text-muted">Term</span>
             <p className="font-medium text-light-text-primary dark:text-dark-text-primary">
-              {curriculum.termName || curriculum.academicYear}
+              {curriculum.termName || curriculum.academicYear || '—'}
             </p>
           </div>
-          {curriculum.isAgoraBased && (
-            <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-sm">Agora Based</span>
+          {typeof currentSchoolWeek === 'number' && currentSchoolWeek > 0 && (
+            <div>
+              <span className="text-xs text-light-text-muted dark:text-dark-text-muted">School week</span>
+              <p className="font-medium text-agora-blue">Week {currentSchoolWeek}</p>
             </div>
+          )}
+          {curriculum.isAgoraBased && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide text-purple-600/80 dark:text-purple-400/80 bg-purple-500/5 border border-purple-500/10">
+              <Sparkles className="h-2.5 w-2.5 opacity-70" />
+              Bud library
+            </span>
           )}
           <div className="ml-auto">
             <CurriculumProgressBar
@@ -175,198 +239,211 @@ export function CurriculumDetailModal({
 
         {/* Week List */}
         <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-          {[...curriculum.items]
-            .sort((a, b) => (a.weekNumber || a.week || 0) - (b.weekNumber || b.week || 0))
-            .map((item) => {
-              const weekNumber = item.weekNumber || item.week || 0;
-              const isExpanded = expandedWeek === weekNumber;
-              const isMarking = markingWeek === weekNumber;
+          {sortedItems.map((item) => {
+            const weekNumber = item.weekNumber || item.week || 0;
+            const isExpanded = expandedWeek === weekNumber;
+            const isMarking = markingWeek === weekNumber;
+            const isCurrentWeek =
+              typeof currentSchoolWeek === 'number' &&
+              currentSchoolWeek > 0 &&
+              weekNumber === currentSchoolWeek;
 
-              return (
-                <div
-                  key={item.id}
-                  className={`border-l-4 rounded-lg overflow-hidden transition-all ${getWeekStatusColor(
-                    item.status
-                  )}`}
+            return (
+              <div
+                key={item.id}
+                ref={isCurrentWeek ? currentWeekRef : undefined}
+                className={cn(
+                  'border-l-4 rounded-lg overflow-hidden transition-all',
+                  getWeekStatusColor(item.status, isCurrentWeek),
+                )}
+              >
+                <button
+                  onClick={() => setExpandedWeek(isExpanded ? null : weekNumber)}
+                  className="w-full flex items-center gap-4 p-4 text-left hover:bg-white/50 dark:hover:bg-gray-800/30 transition-colors"
                 >
-                  {/* Week Header */}
-                  <button
-                    onClick={() => setExpandedWeek(isExpanded ? null : weekNumber)}
-                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+                  <div
+                    className={cn(
+                      'flex-shrink-0 w-12 h-12 rounded-lg border flex items-center justify-center shadow-sm',
+                      isCurrentWeek
+                        ? 'bg-agora-blue text-white border-agora-blue'
+                        : 'bg-[var(--light-card)] dark:bg-[var(--dark-surface)] border-light-border dark:border-dark-border',
+                    )}
                   >
-                    <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-[var(--light-card)] dark:bg-[var(--dark-surface)] border border-light-border dark:border-dark-border flex items-center justify-center shadow-sm">
-                      <span className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary">
-                        W{weekNumber}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
+                    <span
+                      className={cn(
+                        'text-sm font-bold',
+                        isCurrentWeek
+                          ? 'text-white'
+                          : 'text-light-text-primary dark:text-dark-text-primary',
+                      )}
+                    >
+                      W{weekNumber}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="font-medium text-light-text-primary dark:text-dark-text-primary truncate">
                         {item.topic}
                       </h4>
-                      <p className="text-xs text-light-text-muted dark:text-dark-text-muted">
-                        {item.objectives?.length || 0} objectives • {item.activities?.length || 0} activities
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getWeekStatusIcon(item.status)}
-                      {isExpanded ? (
-                        <ChevronUp className="h-5 w-5 text-light-text-muted" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-light-text-muted" />
+                      {isCurrentWeek && (
+                        <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-agora-blue text-white">
+                          This week
+                        </span>
                       )}
                     </div>
-                  </button>
+                    <p className="text-xs text-light-text-muted dark:text-dark-text-muted">
+                      {item.objectives?.length || 0} objectives • {item.activities?.length || 0}{' '}
+                      activities
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getWeekStatusIcon(item.status)}
+                    {isExpanded ? (
+                      <ChevronUp className="h-5 w-5 text-light-text-muted" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-light-text-muted" />
+                    )}
+                  </div>
+                </button>
 
-                  {/* Week Details */}
-                  {isExpanded && (
-                    <div className="px-4 pb-4 pt-2 space-y-4 bg-[var(--light-surface)] dark:bg-[var(--dark-bg)]">
-                      {/* Sub-topics */}
-                      {item.subTopics && item.subTopics.length > 0 && (
-                        <div>
-                          <h5 className="text-xs font-semibold text-light-text-muted dark:text-dark-text-muted uppercase tracking-wider mb-2">
-                            Sub-topics
-                          </h5>
-                          <div className="flex flex-wrap gap-2">
-                            {item.subTopics.map((topic, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-1 bg-gray-100 dark:bg-[var(--dark-surface)] rounded text-xs text-light-text-secondary dark:text-dark-text-secondary"
-                              >
-                                {topic}
-                              </span>
-                            ))}
-                          </div>
+                {isExpanded && (
+                  <div className="px-4 pb-4 pt-2 space-y-4 bg-[var(--light-surface)] dark:bg-[var(--dark-bg)]">
+                    {item.subTopics && item.subTopics.length > 0 && (
+                      <div>
+                        <h5 className="text-xs font-semibold text-light-text-muted dark:text-dark-text-muted uppercase tracking-wider mb-2">
+                          Sub-topics
+                        </h5>
+                        <div className="flex flex-wrap gap-2">
+                          {item.subTopics.map((topic, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-gray-100 dark:bg-[var(--dark-surface)] rounded text-xs text-light-text-secondary dark:text-dark-text-secondary"
+                            >
+                              {topic}
+                            </span>
+                          ))}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* Objectives */}
-                      {item.objectives && item.objectives.length > 0 && (
-                        <div>
-                          <h5 className="text-xs font-semibold text-light-text-muted dark:text-dark-text-muted uppercase tracking-wider mb-2">
-                            Objectives
-                          </h5>
-                          <ul className="space-y-1">
-                            {item.objectives.map((obj, idx) => (
-                              <li
-                                key={idx}
-                                className="flex items-start gap-2 text-sm text-light-text-secondary dark:text-dark-text-secondary"
-                              >
-                                <span className="text-green-500 mt-1">•</span>
-                                {obj}
-                              </li>
-                            ))}
-                          </ul>
+                    {item.objectives && item.objectives.length > 0 && (
+                      <div>
+                        <h5 className="text-xs font-semibold text-light-text-muted dark:text-dark-text-muted uppercase tracking-wider mb-2">
+                          Objectives
+                        </h5>
+                        <ul className="space-y-1">
+                          {item.objectives.map((obj, idx) => (
+                            <li
+                              key={idx}
+                              className="flex items-start gap-2 text-sm text-light-text-secondary dark:text-dark-text-secondary"
+                            >
+                              <span className="text-green-500 mt-1">•</span>
+                              {obj}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {item.activities && item.activities.length > 0 && (
+                      <div>
+                        <h5 className="text-xs font-semibold text-light-text-muted dark:text-dark-text-muted uppercase tracking-wider mb-2">
+                          Activities
+                        </h5>
+                        <ul className="space-y-1">
+                          {item.activities.map((activity, idx) => (
+                            <li
+                              key={idx}
+                              className="flex items-start gap-2 text-sm text-light-text-secondary dark:text-dark-text-secondary"
+                            >
+                              <span className="text-blue-500 mt-1">→</span>
+                              {activity}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {item.resources && item.resources.length > 0 && (
+                      <div>
+                        <h5 className="text-xs font-semibold text-light-text-muted dark:text-dark-text-muted uppercase tracking-wider mb-2">
+                          Resources
+                        </h5>
+                        <div className="flex flex-wrap gap-2">
+                          {item.resources.map((resource, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded text-xs text-purple-700 dark:text-purple-300"
+                            >
+                              {resource}
+                            </span>
+                          ))}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* Activities */}
-                      {item.activities && item.activities.length > 0 && (
-                        <div>
-                          <h5 className="text-xs font-semibold text-light-text-muted dark:text-dark-text-muted uppercase tracking-wider mb-2">
-                            Activities
-                          </h5>
-                          <ul className="space-y-1">
-                            {item.activities.map((activity, idx) => (
-                              <li
-                                key={idx}
-                                className="flex items-start gap-2 text-sm text-light-text-secondary dark:text-dark-text-secondary"
-                              >
-                                <span className="text-blue-500 mt-1">→</span>
-                                {activity}
-                              </li>
-                            ))}
-                          </ul>
+                    {item.teacherNotes && (
+                      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-1">
+                          <MessageSquare className="h-4 w-4" />
+                          <span className="text-xs font-semibold">Teacher Notes</span>
                         </div>
-                      )}
+                        <p className="text-sm text-amber-800 dark:text-amber-300">{item.teacherNotes}</p>
+                      </div>
+                    )}
 
-                      {/* Resources */}
-                      {item.resources && item.resources.length > 0 && (
-                        <div>
-                          <h5 className="text-xs font-semibold text-light-text-muted dark:text-dark-text-muted uppercase tracking-wider mb-2">
-                            Resources
-                          </h5>
-                          <div className="flex flex-wrap gap-2">
-                            {item.resources.map((resource, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded text-xs text-purple-700 dark:text-purple-300"
-                              >
-                                {resource}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Teacher Notes (if any) */}
-                      {item.teacherNotes && (
-                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-1">
-                            <MessageSquare className="h-4 w-4" />
-                            <span className="text-xs font-semibold">Teacher Notes</span>
-                          </div>
-                          <p className="text-sm text-amber-800 dark:text-amber-300">{item.teacherNotes}</p>
-                        </div>
-                      )}
-
-                      {/* Progress Actions */}
-                      {canEdit && item.status !== 'COMPLETED' && item.status !== 'SKIPPED' && (
-                        <div className="flex items-center gap-3 pt-2 border-t border-light-border dark:border-dark-border">
-                          {item.status === 'PENDING' && (
+                    {canEdit && item.status !== 'COMPLETED' && item.status !== 'SKIPPED' && (
+                      <div className="flex items-center gap-3 pt-2 border-t border-light-border dark:border-dark-border">
+                        {item.status === 'PENDING' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleStartWeek(weekNumber)}
+                            disabled={isMarking}
+                          >
+                            <Play className="h-4 w-4 mr-1.5" />
+                            Start Teaching
+                          </Button>
+                        )}
+                        {item.status === 'IN_PROGRESS' && (
+                          <div className="flex-1 flex items-center gap-2">
+                            <input
+                              type="text"
+                              placeholder="Add notes (optional)"
+                              value={notes}
+                              onChange={(e) => setNotes(e.target.value)}
+                              className="flex-1 px-3 py-1.5 text-sm border border-light-border dark:border-dark-border rounded-lg bg-[var(--light-input)] dark:bg-[var(--dark-input)]"
+                            />
                             <Button
-                              variant="outline"
+                              variant="primary"
                               size="sm"
-                              onClick={() => handleStartWeek(weekNumber)}
+                              onClick={() => handleMarkComplete(weekNumber)}
                               disabled={isMarking}
                             >
-                              <Play className="h-4 w-4 mr-1.5" />
-                              Start Teaching
+                              {isMarking ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Check className="h-4 w-4 mr-1.5" />
+                                  Mark Complete
+                                </>
+                              )}
                             </Button>
-                          )}
-                          {item.status === 'IN_PROGRESS' && (
-                            <div className="flex-1 flex items-center gap-2">
-                              <input
-                                type="text"
-                                placeholder="Add notes (optional)"
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                className="flex-1 px-3 py-1.5 text-sm border border-light-border dark:border-dark-border rounded-lg bg-[var(--light-input)] dark:bg-[var(--dark-input)]"
-                              />
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => handleMarkComplete(weekNumber)}
-                                disabled={isMarking}
-                              >
-                                {isMarking ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Check className="h-4 w-4 mr-1.5" />
-                                    Mark Complete
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {/* Footer Actions */}
         <div className="flex items-center justify-between pt-4 border-t border-light-border dark:border-dark-border">
           <div className="flex items-center gap-3">
             {curriculum.status === 'DRAFT' && canEdit && (
-              <Button
-                variant="primary"
-                onClick={handleSubmitForApproval}
-                disabled={isMutating}
-              >
+              <Button variant="primary" onClick={handleSubmitForApproval} disabled={isMutating}>
                 <Send className="h-4 w-4 mr-2" />
                 Submit for Approval
               </Button>
@@ -398,4 +475,3 @@ export function CurriculumDetailModal({
     </Modal>
   );
 }
-

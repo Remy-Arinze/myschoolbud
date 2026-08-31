@@ -3,13 +3,18 @@
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Info, BookOpen, Calendar, Users, GraduationCap } from 'lucide-react';
+import type { SchoolType } from '@/lib/store/api/schoolAdminApi';
+import { getPromotionExamples } from '@/lib/utils/terminology';
 
 interface SessionWizardInfoModalProps {
   isOpen: boolean;
   onClose: () => void;
+  schoolType?: SchoolType | null;
 }
 
-export function SessionWizardInfoModal({ isOpen, onClose }: SessionWizardInfoModalProps) {
+export function SessionWizardInfoModal({ isOpen, onClose, schoolType = null }: SessionWizardInfoModalProps) {
+  const promotionExamples = getPromotionExamples(schoolType);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -43,8 +48,11 @@ export function SessionWizardInfoModal({ isOpen, onClose }: SessionWizardInfoMod
                 New Session (September)
               </h4>
               <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                Start a new academic year. This will <strong>promote students</strong> to the next level 
-                (e.g., JSS1 → JSS2). SS3 students will be marked as ALUMNI. A session must span at least 10 months.
+                Start a new academic year. This will <strong>promote students</strong> to the next level
+                (e.g., {promotionExamples.levelTransition}). {promotionExamples.finalYearLabel === 'final-year'
+                  ? 'Final year students will be marked as ALUMNI.'
+                  : `${promotionExamples.finalYearLabel} students will be marked as ALUMNI.`}{' '}
+                A session must span at least 10 months.
               </p>
             </div>
           </div>

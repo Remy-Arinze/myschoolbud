@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Calendar as RBCalendar, View, SlotInfo, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay, addDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
@@ -29,9 +29,15 @@ import {
   type AcademicSession,
   type Term,
 } from '@/lib/store/api/schoolAdminApi';
+import {
+  DEFAULT_WORKING_DAYS,
+  buildHalfTermRange,
+  holidayRangesFromEvents,
+  isInstructionalDay,
+} from '@/lib/calendar/instructionalDays';
 import { useSchoolType } from '@/hooks/useSchoolType';
 import toast from 'react-hot-toast';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Create date-fns localizer
@@ -153,50 +159,19 @@ export default function TeacherCalendarPage() {
   const isLoading = isLoadingSchool || isLoadingTeacher || isLoadingActiveSession || isLoadingEvents;
   const error = !!(schoolError || teacherError || activeSessionError || eventsError);
 
-  if (isLoading) {
-    return (
-      <ProtectedRoute roles={['TEACHER']}>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 text-light-text-muted dark:text-dark-text-muted mx-auto mb-4 animate-spin" />
-            <p className="text-light-text-secondary dark:text-dark-text-secondary">
-              Loading calendar...
-            </p>
-          </div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
-
-  if (error) {
-    return (
-      <ProtectedRoute roles={['TEACHER']}>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <p className="text-light-text-secondary dark:text-dark-text-secondary mb-2">
-              Failed to load calendar data. Please try again.
-            </p>
-          </div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
-
+  // IMPORTANT: all hooks must run unconditionally (no early returns above).
+  // School-admin calendar follows the same pattern — keep teacher page aligned.
   const events = eventsResponse?.data || [];
-  // Upcoming events only includes real events (not timetable periods or milestones)
-  // Timetable periods are generated on the frontend and shown in the calendar view only
   const upcomingEvents = upcomingEventsResponse?.data || [];
   const rooms = roomsResponse?.data || [];
 
-  // Get teacher's timetable for the active term
   const { data: timetableResponse } = useGetTimetableForTeacherQuery(
     {
       schoolId: schoolId!,
       teacherId: teacherId!,
       termId: activeSession?.term?.id || '',
     },
-    { skip: !schoolId || !teacherId || !activeSession?.term?.id }
+    { skip: !schoolId || !teacherId || !activeSession?.term?.id },
   );
   const timetable = timetableResponse?.data || [];
 
@@ -301,17 +276,62 @@ export default function TeacherCalendarPage() {
             allDay: true,
           });
         }
+
+        if (term.midtermStart && term.midtermEnd) {
+          combined.push({
+            id: `midterm-${term.id}`,
+            title: `Midterm tests: ${term.name}`,
+            startDate: new Date(term.midtermStart).toISOString(),
+            endDate: new Date(term.midtermEnd).toISOString(),
+            type: 'HALF_TERM' as const,
+            schoolId: schoolId!,
+            isAllDay: true,
+            createdAt: term.createdAt,
+            updatedAt: term.createdAt,
+            start: new Date(term.midtermStart),
+            end: new Date(term.midtermEnd),
+            allDay: true,
+          });
+        }
+
+        if (term.examStart && term.examEnd) {
+          combined.push({
+            id: `exam-period-${term.id}`,
+            title: `Exams: ${term.name}`,
+            startDate: new Date(term.examStart).toISOString(),
+            endDate: new Date(term.examEnd).toISOString(),
+            type: 'EXAM' as const,
+            schoolId: schoolId!,
+            isAllDay: true,
+            createdAt: term.createdAt,
+            updatedAt: term.createdAt,
+            start: new Date(term.examStart),
+            end: new Date(term.examEnd),
+            allDay: true,
+          });
+        }
       });
     });
 
-    // Add recurring timetable periods (for current week/month)
+    const holidayRanges = holidayRangesFromEvents(events);
+    const halfTermRanges = allSessions.flatMap((session: AcademicSession) =>
+      session.terms
+        .map((term: Term) => buildHalfTermRange(term.halfTermStart, term.halfTermEnd))
+        .filter(Boolean),
+    );
+    const nonInstructionalRanges = [...holidayRanges, ...halfTermRanges];
+
+    // Add recurring timetable periods — instructional days only
     if (activeSession?.term && timetable.length > 0) {
+      const termRange = {
+        start: new Date(activeSession.term.startDate),
+        end: new Date(activeSession.term.endDate),
+      };
+
       timetable.forEach((period) => {
-        // Convert dayOfWeek and time to actual dates for the current view range
         const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
         const dayIndex = dayNames.indexOf(period.dayOfWeek);
 
-        // Get all dates for this day in the current view range
         const dates: Date[] = [];
         let current = new Date(dateRange.start);
         while (current <= dateRange.end) {
@@ -322,6 +342,16 @@ export default function TeacherCalendarPage() {
         }
 
         dates.forEach((date) => {
+          if (
+            !isInstructionalDay(date, {
+              workingDays: DEFAULT_WORKING_DAYS,
+              termRange,
+              nonInstructionalRanges,
+            })
+          ) {
+            return;
+          }
+
           const [startHour, startMin] = period.startTime.split(':').map(Number);
           const [endHour, endMin] = period.endTime.split(':').map(Number);
 
@@ -331,14 +361,14 @@ export default function TeacherCalendarPage() {
           const end = new Date(date);
           end.setHours(endHour, endMin, 0, 0);
 
-          // Create title based on school type
           let title = '';
           if (currentType === 'PRIMARY') {
             title = period.classArmName || 'Timetable Period';
           } else if (currentType === 'SECONDARY') {
-            title = period.subjectName && period.classArmName
-              ? `${period.subjectName} - ${period.classArmName}`
-              : period.subjectName || period.classArmName || 'Timetable Period';
+            title =
+              period.subjectName && period.classArmName
+                ? `${period.subjectName} - ${period.classArmName}`
+                : period.subjectName || period.classArmName || 'Timetable Period';
           } else if (currentType === 'TERTIARY') {
             title = period.courseName || 'Timetable Period';
           } else {
@@ -355,8 +385,12 @@ export default function TeacherCalendarPage() {
             roomName: period.roomName,
             schoolId: schoolId!,
             isAllDay: false,
-            createdAt: period.createdAt ? new Date(period.createdAt).toISOString() : new Date().toISOString(),
-            updatedAt: period.createdAt ? new Date(period.createdAt).toISOString() : new Date().toISOString(),
+            createdAt: period.createdAt
+              ? new Date(period.createdAt).toISOString()
+              : new Date().toISOString(),
+            updatedAt: period.createdAt
+              ? new Date(period.createdAt).toISOString()
+              : new Date().toISOString(),
             start,
             end,
           });
@@ -376,60 +410,58 @@ export default function TeacherCalendarPage() {
     const endOfDay = new Date(selectedDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return calendarEvents.filter((event) => {
-      const eventStart = new Date(event.start);
-      const eventEnd = new Date(event.end);
+    return calendarEvents
+      .filter((event) => {
+        const eventStart = new Date(event.start);
+        const eventEnd = new Date(event.end);
 
-      // Check if event overlaps with the selected day
-      return (
-        (eventStart >= startOfDay && eventStart <= endOfDay) ||
-        (eventEnd >= startOfDay && eventEnd <= endOfDay) ||
-        (eventStart <= startOfDay && eventEnd >= endOfDay)
-      );
-    }).map((event) => ({
-      id: event.id,
-      title: event.title,
-      startDate: new Date(event.start),
-      endDate: new Date(event.end),
-      type: event.type,
-      location: event.location,
-      roomName: event.roomName,
-      isAllDay: event.isAllDay || false,
-      description: event.description,
-    }));
+        return (
+          (eventStart >= startOfDay && eventStart <= endOfDay) ||
+          (eventEnd >= startOfDay && eventEnd <= endOfDay) ||
+          (eventStart <= startOfDay && eventEnd >= endOfDay)
+        );
+      })
+      .map((event) => ({
+        id: event.id,
+        title: event.title,
+        startDate: new Date(event.start),
+        endDate: new Date(event.end),
+        type: event.type,
+        location: event.location,
+        roomName: event.roomName,
+        isAllDay: event.isAllDay || false,
+        description: event.description,
+      }));
   }, [calendarEvents, selectedDate]);
 
-  const handleSelectSlot = useCallback((slotInfo: SlotInfo) => {
-    // Check if this is a full day click (in month view) or a time slot click
-    // In month view, clicking on a date cell typically selects the entire day
-    const isFullDayClick =
-      view === 'month' ||
-      (slotInfo.start.getHours() === 0 &&
-        slotInfo.start.getMinutes() === 0 &&
-        slotInfo.end.getHours() === 23 &&
-        slotInfo.end.getMinutes() === 59);
+  const handleSelectSlot = useCallback(
+    (slotInfo: SlotInfo) => {
+      const isFullDayClick =
+        view === 'month' ||
+        (slotInfo.start.getHours() === 0 &&
+          slotInfo.start.getMinutes() === 0 &&
+          slotInfo.end.getHours() === 23 &&
+          slotInfo.end.getMinutes() === 59);
 
-    // Calculate if the slot spans close to a full day (within 1 hour of full day)
-    const slotDuration = slotInfo.end.getTime() - slotInfo.start.getTime();
-    const fullDayDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-    const isNearFullDay = slotDuration >= fullDayDuration * 0.95; // 95% of a day
+      const slotDuration = slotInfo.end.getTime() - slotInfo.start.getTime();
+      const fullDayDuration = 24 * 60 * 60 * 1000;
+      const isNearFullDay = slotDuration >= fullDayDuration * 0.95;
 
-    if ((isFullDayClick || isNearFullDay) && view === 'month') {
-      // Show day events modal for month view date cell clicks
-      const clickedDate = new Date(slotInfo.start);
-      clickedDate.setHours(0, 0, 0, 0); // Normalize to start of day
-      setSelectedDate(clickedDate);
-      setShowDayEventsModal(true);
-    } else {
-      // Show create event modal for time slot clicks (week/day views or specific time slots)
-      setSelectedSlot({ start: slotInfo.start, end: slotInfo.end });
-      setShowCreateEventModal(true);
-    }
-  }, [view]);
+      if ((isFullDayClick || isNearFullDay) && view === 'month') {
+        const clickedDate = new Date(slotInfo.start);
+        clickedDate.setHours(0, 0, 0, 0);
+        setSelectedDate(clickedDate);
+        setShowDayEventsModal(true);
+      } else {
+        setSelectedSlot({ start: slotInfo.start, end: slotInfo.end });
+        setShowCreateEventModal(true);
+      }
+    },
+    [view],
+  );
 
   const handleAddEventFromDayModal = useCallback(() => {
     if (selectedDate) {
-      // Set the slot to the selected date (full day)
       const startOfDay = new Date(selectedDate);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(selectedDate);
@@ -438,6 +470,36 @@ export default function TeacherCalendarPage() {
       setShowCreateEventModal(true);
     }
   }, [selectedDate]);
+
+  if (isLoading) {
+    return (
+      <ProtectedRoute roles={['TEACHER']}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 text-light-text-muted dark:text-dark-text-muted mx-auto mb-4 animate-spin" />
+            <p className="text-light-text-secondary dark:text-dark-text-secondary">
+              Loading calendar...
+            </p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  if (error) {
+    return (
+      <ProtectedRoute roles={['TEACHER']}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <CalendarIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-light-text-secondary dark:text-dark-text-secondary mb-2">
+              Failed to load calendar data. Please try again.
+            </p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   const handleCreateEvent = async (data: {
     title: string;

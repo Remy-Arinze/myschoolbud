@@ -265,11 +265,12 @@ export default function ClassDetailPage() {
     }
   };
 
-  // Get curriculum for class
+  // Get curriculum for class (falls back to published SchemeOfWork on the backend)
   const { data: curriculumResponse, isLoading: isLoadingCurriculum, refetch: refetchCurriculum } = useGetCurriculumForClassQuery(
     {
       schoolId: schoolId!,
       classId,
+      // Prefer an explicit subject when present; otherwise backend picks a published scheme for the level
       subject: classResponse?.data?.teachers?.[0]?.subject || undefined,
       academicYear: classResponse?.data?.academicYear || activeSession?.session?.name,
       termId: activeSession?.term?.id || undefined,
@@ -431,8 +432,9 @@ export default function ClassDetailPage() {
     { id: 'assessments', label: 'Assessments', icon: <FileCheck className="h-4 w-4" />, available: true },
     { id: 'roll-call', label: 'Roll Call', icon: <CheckSquare className="h-4 w-4" />, available: true },
     { id: 'scheme-of-work', label: 'Scheme of Work', icon: <ListChecks className="h-4 w-4" />, available: true },
+    // Curriculum tab hidden — Scheme of Work is the teacher-facing source of truth
+    // { id: 'curriculum', label: 'Curriculum', icon: <BookMarked className="h-4 w-4" />, available: true },
     { id: 'resources', label: 'Resources', icon: <FileText className="h-4 w-4" />, available: true },
-    { id: 'curriculum', label: 'Curriculum', icon: <BookMarked className="h-4 w-4" />, available: true },
   ];
 
   if (isLoading) {
@@ -454,10 +456,10 @@ export default function ClassDetailPage() {
     return (
       <ProtectedRoute roles={['TEACHER']}>
         <div className="w-full">
-          <Link href="/dashboard/teacher/classes">
+          <Link href={classType === 'PRIMARY' ? '/dashboard/teacher/overview' : '/dashboard/teacher/classes'}>
             <Button variant="ghost" size="sm" className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to {terminology.courses}
+              {classType === 'PRIMARY' ? 'Back to Overview' : `Back to ${terminology.courses}`}
             </Button>
           </Link>
           <div className="text-center py-12">
@@ -476,10 +478,10 @@ export default function ClassDetailPage() {
       <div className="w-full">
         {/* Header */}
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-8">
-          <Link href="/dashboard/teacher/classes">
+          <Link href={classType === 'PRIMARY' ? '/dashboard/teacher/overview' : '/dashboard/teacher/classes'}>
             <Button variant="ghost" size="sm" className="mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Classes
+              {classType === 'PRIMARY' ? 'Back to Overview' : `Back to ${terminology.courses}`}
             </Button>
           </Link>
           <div className="flex items-center justify-between">
@@ -1090,15 +1092,46 @@ export default function ClassDetailPage() {
                                                 {grade.percentage}%
                                               </p>
                                             </div>
-                                            {grade.isPublished ? (
-                                              <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
-                                                Published
-                                              </span>
-                                            ) : (
-                                              <span className="px-2 py-1 text-xs font-medium rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">
-                                                Draft
-                                              </span>
-                                            )}
+                                            <div className="flex flex-col items-end gap-1">
+                                              {grade.isPublished ? (
+                                                <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
+                                                  Published
+                                                </span>
+                                              ) : (
+                                                <>
+                                                  <span className="px-2 py-1 text-xs font-medium rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">
+                                                    Draft
+                                                  </span>
+                                                  {!isReadOnly && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handlePublishGrade(grade.id);
+                                                      }}
+                                                      disabled={isPublishing}
+                                                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium disabled:opacity-50"
+                                                    >
+                                                      {isPublishing ? 'Publishing...' : 'Publish'}
+                                                    </button>
+                                                  )}
+                                                </>
+                                              )}
+                                              {!isReadOnly && (
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedGrade(grade);
+                                                    setShowDeleteModal(true);
+                                                  }}
+                                                  className="p-1 rounded text-light-text-muted hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                  aria-label="Delete grade"
+                                                >
+                                                  <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
                                       ))}
@@ -1396,16 +1429,31 @@ export default function ClassDetailPage() {
               role="TEACHER"
               terminology={terminology}
               isReadOnly={isReadOnly}
+              schoolType={
+                classData?.type === 'PRIMARY' ||
+                classData?.type === 'SECONDARY' ||
+                classData?.type === 'TERTIARY'
+                  ? classData.type
+                  : null
+              }
             />
           )}
 
-          {/* Curriculum Tab */}
-          {(activeTab as TabType) === 'curriculum' && (
+          {/* Curriculum Tab — commented out; Scheme of Work covers weekly delivery */}
+          {/* {(activeTab as TabType) === 'curriculum' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">
-                  Curriculum {terminology.courses}
-                </h2>
+                <div>
+                  <h2 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">
+                    Curriculum {terminology.courses}
+                  </h2>
+                  {curriculumResponse?.data?.subject && (
+                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mt-1">
+                      {curriculumResponse.data.subject}
+                      {curriculumResponse.data.termName ? ` · ${curriculumResponse.data.termName}` : ''}
+                    </p>
+                  )}
+                </div>
                 {!isReadOnly && (
                   <Button variant="outline" size="sm" onClick={() => refetchCurriculum()}>
                     <Sparkles className="h-4 w-4 mr-2 text-blue-500" />
@@ -1471,7 +1519,7 @@ export default function ClassDetailPage() {
                 </div>
               )}
             </div>
-          )}
+          )} */}
 
           </div>
         </FadeInUp>

@@ -20,7 +20,7 @@ export default function StudentTimetablePage() {
     school,
     schoolType,
     activeTerm,
-    timetable: dashboardTimetable,
+    liveTimetable,
     isLoading: isDashboardLoading,
     hasError,
     errorMessage,
@@ -49,10 +49,14 @@ export default function StudentTimetablePage() {
     { skip: !needsSeparateFetch || !selectedTermId }
   );
 
-  // Use selected term's timetable if fetched, otherwise use dashboard's timetable
+  // Use selected term's timetable if fetched, otherwise live timetable for active term
   const timetable = needsSeparateFetch 
     ? selectedTermTimetableResponse?.data
-    : dashboardTimetable;
+    : liveTimetable;
+
+  const termEnded =
+    !needsSeparateFetch && activeTerm != null && !activeTerm.isOperationallyActive;
+  const termOverdue = termEnded && activeTerm?.isPastEndDate === true;
 
   const isLoading = isDashboardLoading || (needsSeparateFetch && isLoadingSelectedTerm) || timetable === undefined;
 
@@ -137,6 +141,30 @@ export default function StudentTimetablePage() {
             View your weekly class schedule
           </p>
         </FadeInUp>
+
+        {termEnded && activeTerm && (
+          <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.4} className="mb-6">
+            <Card className="border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-900 dark:text-amber-100">
+                      {termOverdue
+                        ? `${activeTerm.name} ended on ${new Date(activeTerm.endDate).toLocaleDateString()}`
+                        : `${activeTerm.name} has not started yet`}
+                    </p>
+                    <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
+                      {termOverdue
+                        ? 'Your live timetable is hidden until the next term begins. Select a past term from the dropdown to review its schedule.'
+                        : 'Your timetable will appear when this term begins.'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </FadeInUp>
+        )}
 
         <Card>
           <CardHeader>

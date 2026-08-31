@@ -117,6 +117,11 @@ const RESOURCE_INFO: Record<PermissionResource, { label: string; description: st
     description: 'Configure third-party integrations.',
     icon: '🔗',
   },
+  SETTINGS: {
+    label: 'School Settings',
+    description: 'Configure school policies and platform settings.',
+    icon: '⚙️',
+  },
 };
 
 // Permission type information with user-friendly descriptions

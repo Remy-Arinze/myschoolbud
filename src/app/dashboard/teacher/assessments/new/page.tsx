@@ -39,6 +39,10 @@ export default function CreateAssessmentPage() {
     duration: 30,
     hasIntegrity: false,
     autoSubmitOnTimeout: true,
+    allowLateSubmissionAfterDue: false,
+    allowLateSubmissionAfterTimer: false,
+    lateDuePenaltyPoints: 0,
+    lateTimerPenaltyPoints: 0,
     violationThreshold: 3,
     pointsPerViolation: 1,
   });
@@ -445,6 +449,37 @@ export default function CreateAssessmentPage() {
                       onChange={val => setFormData({ ...formData, dueDate: val })}
                       min={new Date().toISOString().split('T')[0]}
                     />
+                    <div className="flex items-center justify-between mt-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 block">Allow late after due date</span>
+                        <p className="text-[9px] text-slate-500 mt-0.5">Students can submit after the deadline (flagged for grading)</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, allowLateSubmissionAfterDue: !prev.allowLateSubmissionAfterDue }))}
+                        className={cn(
+                          "relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 transition-colors",
+                          formData.allowLateSubmissionAfterDue ? "bg-emerald-500 border-emerald-400" : "bg-slate-200 border-slate-300 dark:bg-slate-700 dark:border-slate-500"
+                        )}
+                      >
+                        <span className={cn(
+                          "pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow transition",
+                          formData.allowLateSubmissionAfterDue ? "translate-x-3" : "translate-x-0"
+                        )} />
+                      </button>
+                    </div>
+                    {formData.allowLateSubmissionAfterDue && (
+                      <div className="mt-2">
+                        <label className="block text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">Late due penalty (points)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={formData.lateDuePenaltyPoints}
+                          onChange={e => setFormData({ ...formData, lateDuePenaltyPoints: Math.max(0, Number(e.target.value) || 0) })}
+                          className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-sm font-bold"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Maximum Score</label>
@@ -824,6 +859,43 @@ export default function CreateAssessmentPage() {
                           )} />
                         </button>
                       </div>
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <div className="flex-1">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-100 block mb-1">Allow late after timer</span>
+                          <p className="text-[9px] text-indigo-200/60 leading-tight">
+                            Let students submit after time expires (useful for manual mark deductions)
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, allowLateSubmissionAfterTimer: !prev.allowLateSubmissionAfterTimer }))}
+                          className={cn(
+                            "relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none",
+                            formData.allowLateSubmissionAfterTimer
+                              ? "bg-emerald-500 border-emerald-400"
+                              : "bg-white/10 border-white/20 dark:bg-slate-700/50 dark:border-slate-500/50"
+                          )}
+                        >
+                          <span className={cn(
+                            "pointer-events-none inline-block h-3 w-3 transform rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                            formData.allowLateSubmissionAfterTimer
+                              ? "translate-x-3 bg-white"
+                              : "translate-x-0 bg-white dark:bg-slate-200"
+                          )} />
+                        </button>
+                      </div>
+                      {formData.allowLateSubmissionAfterTimer && (
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-indigo-200">Late timer penalty (points)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={formData.lateTimerPenaltyPoints}
+                            onChange={e => setFormData({ ...formData, lateTimerPenaltyPoints: Math.max(0, Number(e.target.value) || 0) })}
+                            className="w-full bg-white/10 p-2 rounded-lg font-bold outline-none border border-white/20 text-white text-sm"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 

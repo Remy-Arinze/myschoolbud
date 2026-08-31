@@ -1,15 +1,11 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode } from 'react';
+import { useDashboardBodyClass } from '@/hooks/useDashboardBodyClass';
+import { DASHBOARD_BODY_CLASSES } from '@/lib/constants/dashboard-theme';
 
 export default function StudentDashboardLayout({ children }: { children: ReactNode }) {
-    useEffect(() => {
-        // Apply a specific class to the body for targeting CSS variables for glassmorphism
-        document.body.classList.add('student-dashboard-active');
-        return () => {
-            document.body.classList.remove('student-dashboard-active');
-        };
-    }, []);
+    useDashboardBodyClass(DASHBOARD_BODY_CLASSES.student);
 
     return (
         <div className="relative min-h-[calc(100vh-80px)] w-full">
@@ -20,7 +16,6 @@ export default function StudentDashboardLayout({ children }: { children: ReactNo
                 <div className="absolute top-[40%] right-[20%] w-[40%] h-[40%] rounded-full bg-sky-500/10 dark:bg-sky-600/20 blur-[120px]" />
             </div>
 
-            {/* Content wrapper */}
             <div className="relative z-10 w-full h-full student-glass-content">
                 {children}
             </div>

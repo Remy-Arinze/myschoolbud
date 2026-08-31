@@ -61,6 +61,15 @@ export default function StudentTransfersPage() {
 
   // Group transfers by status for stats
   const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      ALL: 0,
+      PENDING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      CANCELLED: 0,
+      COMPLETED: 0,
+    };
+
     transfers?.forEach((transfer: any) => {
       if (counts[transfer.status] !== undefined) {
         counts[transfer.status]++;

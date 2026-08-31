@@ -1,14 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
-import { SessionWizardInfoModal, EditTermDatesModal } from '@/components/modals';
+import { SessionWizardInfoModal } from '@/components/modals';
+import { SchoolSettingsTabs } from '@/components/settings/SchoolSettingsTabs';
+import { SessionTermDatesPanel } from '@/components/settings/SessionTermDatesPanel';
+import { parseTermEditFocus } from '@/components/settings/termsSessionHelpers';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import {
   Calendar,
@@ -18,11 +21,7 @@ import {
   AlertCircle,
   XCircle,
   GraduationCap,
-  AlertTriangle,
   Info,
-  Pencil,
-  Clock,
-  Lock,
 } from 'lucide-react';
 import {
   useGetMySchoolQuery,
@@ -36,97 +35,16 @@ import {
   type TermDateInput,
 } from '@/lib/store/api/schoolAdminApi';
 import { useSchoolType } from '@/hooks/useSchoolType';
-import { useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
-
-// ─── Confirmation Modal ────────────────────────────────────────────────────────
-
-interface ConfirmationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  message: string;
-  confirmText: string;
-  confirmVariant?: 'danger' | 'warning';
-  isLoading?: boolean;
-}
-
-function ConfirmationModal({
-  isOpen,
-  onClose,
-  onConfirm,
-  title,
-  message,
-  confirmText,
-  confirmVariant = 'danger',
-  isLoading = false,
-}: ConfirmationModalProps) {
-  if (!isOpen) return null;
-
-  return (
-    <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        <FadeInUp
-          from={{ opacity: 0, scale: 0.95, y: 20 }}
-          to={{ opacity: 1, scale: 1, y: 0 }}
-          duration={0.2}
-          className="relative z-10 w-full max-w-md mx-4 bg-white dark:bg-dark-surface rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700"
-        >
-          <div className="p-6">
-            <div
-              className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${confirmVariant === 'danger'
-                ? 'bg-red-100 dark:bg-red-900/30'
-                : 'bg-orange-100 dark:bg-orange-900/30'
-                }`}
-            >
-              <AlertTriangle
-                className={`h-6 w-6 ${confirmVariant === 'danger'
-                  ? 'text-red-600 dark:text-red-400'
-                  : 'text-orange-600 dark:text-orange-400'
-                  }`}
-              />
-            </div>
-            <h3 className="text-lg font-semibold text-center text-light-text-primary dark:text-dark-text-primary mb-2">
-              {title}
-            </h3>
-            <p className="text-sm text-center text-light-text-secondary dark:text-dark-text-secondary mb-6 whitespace-pre-line">
-              {message}
-            </p>
-            <div className="flex gap-3">
-              <Button variant="ghost" onClick={onClose} disabled={isLoading} className="flex-1">
-                Cancel
-              </Button>
-              <Button
-                onClick={onConfirm}
-                disabled={isLoading}
-                className={`flex-1 ${confirmVariant === 'danger'
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'bg-orange-600 hover:bg-orange-700 text-white'
-                  }`}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  confirmText
-                )}
-              </Button>
-            </div>
-          </div>
-        </FadeInUp>
-      </div>
-    </>
-  );
-}
+import { ConfirmModal } from '@/components/ui/Modal';
+import {
+  suggestSessionEndDate,
+  suggestSessionName,
+  validateSessionDateRange,
+} from '@/lib/academic/termSession';
+import { getPromotionExamples } from '@/lib/utils/terminology';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -159,15 +77,18 @@ const getOrdinal = (n: number) => (n === 1 ? '1st' : n === 2 ? '2nd' : '3rd');
 
 export default function SessionWizardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [sessionType, setSessionType] = useState<SessionType>('NEW_TERM');
   const currentYear = new Date().getFullYear();
   const [sessionName, setSessionName] = useState(`${currentYear}/`);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [endDateManuallySet, setEndDateManuallySet] = useState(false);
   const [carryOver, setCarryOver] = useState<boolean>(false);
   const [selectedTermId, setSelectedTermId] = useState<string>('');
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const infoDismissedRef = useRef(false);
 
   // New: which term to start in & custom term dates
   const [startingTermNumber, setStartingTermNumber] = useState<number>(1);
@@ -180,13 +101,11 @@ export default function SessionWizardPage() {
   // Confirmation modal states
   const [showEndSessionModal, setShowEndSessionModal] = useState(false);
   const [showEndTermModal, setShowEndTermModal] = useState(false);
-  const [editingTerm, setEditingTerm] = useState<import('@/lib/store/api/schoolAdminApi').Term | null>(null);
-
   const { data: schoolResponse } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
   const { currentType, isMixed } = useSchoolType();
 
-  const { data: activeSessionResponse } = useGetActiveSessionQuery(
+  const { data: activeSessionResponse, refetch: refetchActiveSession } = useGetActiveSessionQuery(
     { schoolId: schoolId!, schoolType: currentType || undefined },
     { skip: !schoolId || !currentType }
   );
@@ -206,6 +125,13 @@ export default function SessionWizardPage() {
   const termLabel = getTermLabel(currentType);
   const termCount = getTermCount(currentType);
   const hasActiveTerm = !!activeSession?.term;
+  const isNewSession = sessionType === 'NEW_SESSION';
+  const wizardTitle = isNewSession ? 'Start New Session' : `Start New ${termLabel}`;
+  const wizardSubtitle = isNewSession
+    ? 'Set up a new academic year and promote students to the next level'
+    : `Transition your school from "Holiday" to "Active ${termLabel}"`;
+  const startActionLabel = isNewSession ? 'Session' : termLabel;
+  const promotionExamples = getPromotionExamples(currentType);
 
   // Filter available terms (DRAFT or continuable COMPLETED)
   const availableTerms = useMemo(() => {
@@ -255,14 +181,28 @@ export default function SessionWizardPage() {
     });
   }, [sessions]);
 
-  // Show info modal when page loads if no active session
+  // Show info modal once when page loads if no active session
   useEffect(() => {
     if (activeSessionResponse && !activeSessionResponse.isLoading) {
-      if (!activeSession?.session) {
+      if (!activeSession?.session && !infoDismissedRef.current) {
         setShowInfoModal(true);
       }
     }
   }, [activeSessionResponse, activeSession]);
+
+  const applySuggestedSessionDates = (start: string) => {
+    if (!start) return;
+    setEndDate(suggestSessionEndDate(start));
+    setSessionName(suggestSessionName(start));
+  };
+
+  const handleSessionTypeChange = (type: SessionType) => {
+    setEndDateManuallySet(false);
+    setSessionType(type);
+    if (type === 'NEW_SESSION' && startDate) {
+      applySuggestedSessionDates(startDate);
+    }
+  };
 
   // Initialize custom term date slots when session dates change
   useEffect(() => {
@@ -297,21 +237,21 @@ export default function SessionWizardPage() {
 
   // ─── Validation Helpers ─────────────────────────────────────────────────────
 
-  const validateSessionDates = (start: string, end: string): string | null => {
-    if (!start || !end) return null;
-    const s = new Date(start);
-    const e = new Date(end);
-    const monthsDiff =
-      (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
-    const daysDiff = Math.floor((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+  const validateSessionDates = validateSessionDateRange;
 
-    if (monthsDiff < 10 || daysDiff < 300) {
-      return 'An academic session must span at least 10 months (approximately one year).';
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    if (value && !endDateManuallySet) {
+      setEndDate(suggestSessionEndDate(value));
     }
-    if (monthsDiff > 12 || daysDiff > 370) {
-      return 'An academic session cannot exceed 12 months.';
+    if (value && sessionType === 'NEW_SESSION') {
+      setSessionName(suggestSessionName(value));
     }
-    return null;
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    setEndDateManuallySet(true);
   };
 
   const validateSessionName = (name: string): string | null => {
@@ -377,13 +317,13 @@ export default function SessionWizardPage() {
     // NEW_SESSION
     if (shouldShowMigrationStep) {
       return [
-        { step: 1, label: `Session & ${termLabel}` },
+        { step: 1, label: 'Session Setup' },
         { step: 2, label: 'Dates & Terms' },
         { step: 3, label: 'Migration' },
       ];
     }
     return [
-      { step: 1, label: `Session & ${termLabel}` },
+      { step: 1, label: 'Session Setup' },
       { step: 2, label: 'Dates & Terms' },
     ];
   };
@@ -475,6 +415,7 @@ export default function SessionWizardPage() {
     }
     try {
       await endSession({ schoolId, schoolType: currentType }).unwrap();
+      await refetchActiveSession();
       setShowEndSessionModal(false);
       toast.success(
         `Session ended successfully for ${getSchoolTypeLabel(currentType)}! You can now start a new session.`
@@ -491,6 +432,7 @@ export default function SessionWizardPage() {
     }
     try {
       await endTerm({ schoolId, schoolType: currentType }).unwrap();
+      await refetchActiveSession();
       setShowEndTermModal(false);
       toast.success(
         `${termLabel} ended successfully for ${getSchoolTypeLabel(currentType)}! You can now start a new ${termLabel.toLowerCase()}.`
@@ -534,6 +476,7 @@ export default function SessionWizardPage() {
           ...(sessionType === 'NEW_TERM' && selectedTermId && { termId: selectedTermId }),
           ...(sessionType === 'NEW_SESSION' && {
             startingTermNumber,
+            carryOver,
             ...(useCustomTermDates &&
               customTermDates.length > 0 && { termDates: customTermDates }),
           }),
@@ -541,7 +484,9 @@ export default function SessionWizardPage() {
       }).unwrap();
 
       toast.success(
-        `${termLabel} started successfully for ${getSchoolTypeLabel(currentType)}! ${result.data.migratedCount} students migrated.`
+        isNewSession
+          ? `Session started successfully for ${getSchoolTypeLabel(currentType)}! ${result.data.migratedCount} students migrated.`
+          : `${termLabel} started successfully for ${getSchoolTypeLabel(currentType)}! ${result.data.migratedCount} students migrated.`
       );
       router.push('/dashboard/school/overview');
     } catch (error: any) {
@@ -570,10 +515,16 @@ export default function SessionWizardPage() {
       {/* Info Modal */}
       <SessionWizardInfoModal
         isOpen={showInfoModal}
-        onClose={() => setShowInfoModal(false)}
+        onClose={() => {
+          infoDismissedRef.current = true;
+          setShowInfoModal(false);
+        }}
+        schoolType={currentType}
       />
 
-      <div className="w-full max-w-4xl mx-auto">
+      <div className="w-full max-w-6xl mx-auto p-6">
+        <SchoolSettingsTabs activeTab="calendar" className="mb-8" />
+
         {/* Header */}
         <FadeInUp
           from={{ opacity: 0, y: -20 }}
@@ -582,11 +533,10 @@ export default function SessionWizardPage() {
           className="mb-8"
         >
           <h1 className="text-4xl font-bold text-light-text-primary dark:text-dark-text-primary mb-2">
-            Start New {termLabel}
+            {wizardTitle}
           </h1>
           <p className="text-light-text-secondary dark:text-dark-text-secondary">
-            Transition your school from &quot;Holiday&quot; to &quot;Active{' '}
-            {termLabel}&quot;
+            {wizardSubtitle}
           </p>
         </FadeInUp>
 
@@ -628,7 +578,7 @@ export default function SessionWizardPage() {
           <Card className="overflow-visible">
             <CardHeader>
               <CardTitle>
-                Step 1: Select Session &amp; {termLabel}
+                Step 1: {isNewSession ? 'Session Setup' : `Select Session & ${termLabel}`}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -653,7 +603,7 @@ export default function SessionWizardPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <button
-                    onClick={() => setSessionType('NEW_SESSION')}
+                    onClick={() => handleSessionTypeChange('NEW_SESSION')}
                     className={`p-4 rounded-lg border-2 transition-colors ${sessionType === 'NEW_SESSION'
                       ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30'
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
@@ -665,7 +615,7 @@ export default function SessionWizardPage() {
                     </p>
                   </button>
                   <button
-                    onClick={() => setSessionType('NEW_TERM')}
+                    onClick={() => handleSessionTypeChange('NEW_TERM')}
                     className={`p-4 rounded-lg border-2 transition-colors ${sessionType === 'NEW_TERM'
                       ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30'
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
@@ -925,7 +875,7 @@ export default function SessionWizardPage() {
                     <DatePicker
                       label="Start Date"
                       value={startDate}
-                      onChange={setStartDate}
+                      onChange={handleStartDateChange}
                       placeholder="Select start date"
                     />
                   </div>
@@ -933,10 +883,15 @@ export default function SessionWizardPage() {
                     <DatePicker
                       label="End Date"
                       value={endDate}
-                      onChange={setEndDate}
+                      onChange={handleEndDateChange}
                       min={startDate || undefined}
                       placeholder="Select end date"
                     />
+                    {isNewSession && startDate && endDate && !endDateManuallySet && (
+                      <p className="text-xs text-light-text-muted dark:text-dark-text-muted mt-1.5">
+                        Suggested end date for a standard academic year (Sep–Jul). You can adjust if needed.
+                      </p>
+                    )}
                   </div>
                 </div>
                 {(validationError || sessionDateError) && (
@@ -1136,12 +1091,12 @@ export default function SessionWizardPage() {
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         {isReactivation ? 'Continuing' : 'Starting'}{' '}
-                        {termLabel}...
+                        {startActionLabel}...
                       </>
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        {isReactivation ? 'Continue' : 'Start'} {termLabel}
+                        {isReactivation ? 'Continue' : 'Start'} {startActionLabel}
                       </>
                     )}
                   </Button>
@@ -1160,34 +1115,36 @@ export default function SessionWizardPage() {
             <CardContent className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-4 text-light-text-primary dark:text-dark-text-primary">
-                  Do you want to carry over students from the last{' '}
-                  {termLabel.toLowerCase()}?
+                  What should happen to student classes for the new session?
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <button
-                    onClick={() => setCarryOver(true)}
-                    className={`p-4 rounded-lg border-2 transition-colors ${carryOver
+                    onClick={() => setCarryOver(false)}
+                    className={`p-4 rounded-lg border-2 transition-colors text-left ${!carryOver
                       ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30'
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                       }`}
                   >
-                    <h3 className="font-semibold mb-1">Yes - Carry Over</h3>
+                    <h3 className="font-semibold mb-1">
+                      Promote to next level
+                      <span className="ml-2 text-xs font-normal text-blue-600 dark:text-blue-400">
+                        Recommended
+                      </span>
+                    </h3>
                     <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                      Keep students in the same class/level
+                      Move students up ({promotionExamples.levelTransition})
                     </p>
                   </button>
                   <button
-                    onClick={() => setCarryOver(false)}
-                    className={`p-4 rounded-lg border-2 transition-colors ${!carryOver
+                    onClick={() => setCarryOver(true)}
+                    className={`p-4 rounded-lg border-2 transition-colors text-left ${carryOver
                       ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30'
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                       }`}
                   >
-                    <h3 className="font-semibold mb-1">No - Promote</h3>
+                    <h3 className="font-semibold mb-1">Keep same class/level</h3>
                     <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                      {currentType === 'TERTIARY'
-                        ? 'Move students to next level (100L → 200L)'
-                        : 'Move students to next level (JSS1 → JSS2)'}
+                      No promotion — students stay where they are
                     </p>
                   </button>
                 </div>
@@ -1201,7 +1158,7 @@ export default function SessionWizardPage() {
                     ? `Students will remain in their current class for the new ${termLabel.toLowerCase()}.`
                     : currentType === 'TERTIARY'
                       ? 'Students will be promoted to the next level. Final year students will be marked as ALUMNI.'
-                      : 'Students will be promoted to the next level. SS3 students will be marked as ALUMNI.'}
+                      : `Students will be promoted to the next level. ${promotionExamples.finalYearLabel} students will be marked as ALUMNI.`}
                 </div>
               </Alert>
 
@@ -1218,12 +1175,12 @@ export default function SessionWizardPage() {
                     {isStarting ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Starting {termLabel}...
+                        Starting {startActionLabel}...
                       </>
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4" />
-                        Start {termLabel}
+                        Start {startActionLabel}
                       </>
                     )}
                   </Button>
@@ -1234,140 +1191,34 @@ export default function SessionWizardPage() {
         )}
       </div>
 
-      {/* ═══════════════════ Manage Term Dates ═══════════════════ */}
-      {activeSession?.session && activeSession.session.terms && activeSession.session.terms.length > 0 && (
-        <FadeInUp
-          from={{ opacity: 0, y: 20 }}
-          to={{ opacity: 1, y: 0 }}
-          duration={0.4}
-          delay={0.2}
-          className="mt-8"
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                Manage {termLabel} Dates
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-4">
-                Adjust start and end dates for your {termLabel.toLowerCase()}s. Start dates can only be modified before the {termLabel.toLowerCase()} begins or within the first week.
-              </p>
-              <div className="space-y-3">
-                {[...activeSession.session.terms]
-                  .sort((a, b) => a.number - b.number)
-                  .map((term) => {
-                    const isActive = term.status === 'ACTIVE';
-                    const isDraft = term.status === 'DRAFT';
-                    const isCompleted = term.status === 'COMPLETED' || term.status === 'ARCHIVED';
-                    const termStart = new Date(term.startDate);
-                    const termEnd = new Date(term.endDate);
-                    const now = new Date();
-                    const isUpcoming = now < termStart;
-
-                    // Determine editability for visual cues
-                    let editableStatus: 'editable' | 'partial' | 'locked' = 'locked';
-                    if (isDraft || isUpcoming) {
-                      editableStatus = 'editable';
-                    } else if (isActive) {
-                      const gracePeriodEnd = new Date(termStart);
-                      gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 7);
-                      editableStatus = now <= gracePeriodEnd ? 'partial' : 'partial'; // end date still editable
-                    }
-                    if (isCompleted) editableStatus = 'locked';
-
-                    return (
-                      <div
-                        key={term.id}
-                        className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${isActive
-                            ? 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10'
-                            : isDraft
-                              ? 'border-[var(--light-border)] dark:border-gray-700 bg-[var(--light-card)] dark:bg-dark-surface'
-                              : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30'
-                          }`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-light-text-primary dark:text-dark-text-primary">
-                              {term.name}
-                            </span>
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium ${isActive
-                                  ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                                  : isDraft
-                                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                    : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
-                                }`}
-                            >
-                              {term.status}
-                            </span>
-                            {isActive && term.currentWeek && (
-                              <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                                Week {term.currentWeek}{term.totalWeeks ? ` of ${term.totalWeeks}` : ''}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                            <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                            <span>
-                              {termStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              {' — '}
-                              {termEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </span>
-                            {term.halfTermStart && term.halfTermEnd && (
-                              <span className="ml-2 text-xs text-light-text-muted dark:text-dark-text-muted">
-                                (Break: {new Date(term.halfTermStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                {' – '}
-                                {new Date(term.halfTermEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex-shrink-0 ml-4">
-                          {isCompleted ? (
-                            <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
-                              <Lock className="h-3.5 w-3.5" />
-                              Locked
-                            </div>
-                          ) : (
-                            <PermissionGate resource={PermissionResource.SESSIONS} type={PermissionType.WRITE}>
-                              <Button
-                                variant="ghost"
-                                onClick={() => setEditingTerm(term)}
-                                className="text-sm flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                                Edit Dates
-                              </Button>
-                            </PermissionGate>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </CardContent>
-          </Card>
-        </FadeInUp>
+      {activeSession?.session && schoolId && (
+        <div className="mt-8">
+          <SessionTermDatesPanel
+            schoolId={schoolId}
+            activeSession={activeSession}
+            termLabel={termLabel}
+            autoOpenActiveTerm={searchParams.get('action') === 'term-dates'}
+            autoOpenFocus={parseTermEditFocus(searchParams.get('focus'))}
+          />
+        </div>
       )}
 
       {/* ═══════════════════ Modals ═══════════════════ */}
 
       {/* End Session Confirmation */}
-      <ConfirmationModal
+      <ConfirmModal
         isOpen={showEndSessionModal}
         onClose={() => setShowEndSessionModal(false)}
         onConfirm={handleEndSession}
         title="End Current Session?"
         message={`Are you sure you want to end the session "${activeSession?.session?.name}" for ${getSchoolTypeLabel(currentType)}? This will mark all ${termLabel.toLowerCase()}s as completed and cannot be undone.`}
         confirmText="End Session"
-        confirmVariant="danger"
+        variant="danger"
         isLoading={isEndingSession}
       />
 
       {/* End Term Confirmation */}
-      <ConfirmationModal
+      <ConfirmModal
         isOpen={showEndTermModal}
         onClose={() => setShowEndTermModal(false)}
         onConfirm={handleEndTerm}
@@ -1404,7 +1255,7 @@ export default function SessionWizardPage() {
             ? `End ${termLabel} Early`
             : `End ${termLabel}`;
         })()}
-        confirmVariant={(() => {
+        variant={(() => {
           const termEndDate = activeSession?.term?.endDate;
           const isEarly = termEndDate && new Date(termEndDate) > new Date();
           return isEarly ? 'danger' : 'warning';
@@ -1412,17 +1263,6 @@ export default function SessionWizardPage() {
         isLoading={isEndingTerm}
       />
 
-      {/* Edit Term Dates Modal */}
-      {editingTerm && activeSession?.session && schoolId && (
-        <EditTermDatesModal
-          isOpen={!!editingTerm}
-          onClose={() => setEditingTerm(null)}
-          term={editingTerm}
-          session={activeSession.session}
-          schoolId={schoolId}
-          termLabel={termLabel}
-        />
-      )}
     </ProtectedRoute>
   );
 }

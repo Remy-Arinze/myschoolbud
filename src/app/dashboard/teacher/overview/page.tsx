@@ -24,6 +24,7 @@ import {
   getWeeklySchedule,
   getCurrentAndUpcomingPeriods
 } from '@/hooks/useTeacherDashboard';
+import { getExamTodaySchedule } from '@/lib/academic/termSession';
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] as const;
 const DAY_LABELS: Record<string, string> = {
@@ -57,7 +58,8 @@ export default function TeacherOverviewPage() {
     teacher,
     activeSession,
     activeTerm,
-    timetable,
+    liveTimetable,
+    examTimetable,
     classes,
     formClasses,
     schoolType,
@@ -85,13 +87,18 @@ export default function TeacherOverviewPage() {
     return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
   }, [now]);
 
-  // Derived data using helper functions
-  const todaysPeriods = useMemo(() => getTodaySchedule(timetable), [timetable]);
+  const termEnded = activeTerm != null && !activeTerm.isOperationallyActive;
+  const termOverdue = activeTerm?.isPastEndDate === true;
+  const inExamPeriod = activeTerm?.isExamScheduleActive === true;
+
+  // Derived data — lessons or exams depending on term phase
+  const todaysPeriods = useMemo(() => getTodaySchedule(liveTimetable), [liveTimetable]);
+  const todaysExams = useMemo(() => getExamTodaySchedule(examTimetable), [examTimetable]);
   const { currentPeriod, upcomingPeriods } = useMemo(
     () => getCurrentAndUpcomingPeriods(todaysPeriods, currentTime),
     [todaysPeriods, currentTime]
   );
-  const weeklyOverview = useMemo(() => getWeeklySchedule(timetable), [timetable]);
+  const weeklyOverview = useMemo(() => getWeeklySchedule(liveTimetable), [liveTimetable]);
 
   // Loading state
   if (isLoading) {
@@ -156,6 +163,93 @@ export default function TeacherOverviewPage() {
           </div>
         </FadeInUp>
 
+        {inExamPeriod && activeTerm && (
+          <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.4}>
+            <div className="rounded-lg border px-4 py-3 flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+              <div>
+                <p className="font-semibold text-red-900 dark:text-red-100" style={{ fontSize: 'var(--text-body)' }}>
+                  Exam period — regular timetable paused
+                </p>
+                <p className="text-red-800 dark:text-red-200" style={{ fontSize: 'var(--text-small)' }}>
+                  Follow your published exam timetable below. Exam assessments can be published now if scheme of work is complete.
+                </p>
+              </div>
+            </div>
+          </FadeInUp>
+        )}
+
+        {termEnded && activeTerm && !inExamPeriod && (
+          <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.4}>
+            <div
+              className={`rounded-lg border px-4 py-3 flex items-start gap-3 ${
+                termOverdue
+                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700'
+                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+              }`}
+            >
+              <AlertCircle
+                className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+                  termOverdue ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'
+                }`}
+              />
+              <div>
+                <p
+                  className={`font-semibold ${
+                    termOverdue
+                      ? 'text-amber-900 dark:text-amber-100'
+                      : 'text-blue-900 dark:text-blue-100'
+                  }`}
+                  style={{ fontSize: 'var(--text-body)' }}
+                >
+                  {termOverdue
+                    ? `${activeTerm.name} has ended — no classes are scheduled`
+                    : `${activeTerm.name} has not started yet`}
+                </p>
+                <p
+                  className={
+                    termOverdue
+                      ? 'text-amber-800 dark:text-amber-200'
+                      : 'text-blue-800 dark:text-blue-200'
+                  }
+                  style={{ fontSize: 'var(--text-small)' }}
+                >
+                  {termOverdue ? (
+                    <>
+                      Scheduled end was{' '}
+                      {new Date(activeTerm.endDate).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                      {Math.abs(activeTerm.daysRemaining) > 0 && (
+                        <>
+                          {' '}
+                          · overdue by {Math.abs(activeTerm.daysRemaining)}{' '}
+                          {Math.abs(activeTerm.daysRemaining) === 1 ? 'day' : 'days'}
+                        </>
+                      )}
+                      . Your school admin should end this term or start the next one.
+                    </>
+                  ) : (
+                    <>
+                      Classes begin{' '}
+                      {new Date(activeTerm.startDate).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                      .
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          </FadeInUp>
+        )}
+
         {/* Today's Schedule */}
         <FadeInUp from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
           <Card>
@@ -166,16 +260,41 @@ export default function TeacherOverviewPage() {
                   Today&apos;s Schedule
                 </CardTitle>
                 <span className="text-light-text-muted dark:text-dark-text-muted" style={{ fontSize: 'var(--text-small)' }}>
-                  {todaysPeriods.filter((p) => p.type === 'LESSON').length} lessons
+                  {inExamPeriod
+                    ? `${todaysExams.length} exam${todaysExams.length === 1 ? '' : 's'}`
+                    : `${todaysPeriods.filter((p) => p.type === 'LESSON').length} lessons`}
                 </span>
               </div>
             </CardHeader>
             <CardContent>
-              {todaysPeriods.length === 0 ? (
+              {inExamPeriod ? (
+                todaysExams.length > 0 ? (
+                  <div className="space-y-2">
+                    {todaysExams.map((exam) => (
+                      <div key={exam.id} className="p-3 rounded-lg border border-red-200 bg-red-50/50 dark:bg-red-900/10">
+                        <p className="font-semibold">{exam.subjectName}</p>
+                        <p className="text-sm text-light-text-secondary">{exam.startTime} – {exam.endTime}</p>
+                        {(exam.classArmName || exam.className) && (
+                          <p className="text-xs text-light-text-muted">{exam.classArmName || exam.className}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-light-text-muted mx-auto mb-3" />
+                    <p className="text-light-text-secondary">No exams scheduled for today</p>
+                  </div>
+                )
+              ) : todaysPeriods.length === 0 ? (
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-light-text-muted dark:text-dark-text-muted mx-auto mb-3" />
                   <p className="text-light-text-secondary dark:text-dark-text-secondary">
-                    No classes scheduled for today
+                    {termEnded
+                      ? termOverdue
+                        ? 'This term is over — your timetable is paused until the next term begins'
+                        : 'No classes scheduled until this term starts'
+                      : 'No classes scheduled for today'}
                   </p>
                 </div>
               ) : (

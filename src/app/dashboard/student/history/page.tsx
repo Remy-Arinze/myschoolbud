@@ -5,8 +5,9 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { FadeInUp } from '@/components/ui/FadeInUp';
-import { GraduationCap, Download, Award, School, Calendar, FileText, TrendingUp, BookOpen } from 'lucide-react';
-import { useGetMyStudentTranscriptQuery } from '@/lib/store/api/schoolAdminApi';
+import { GraduationCap, Download, Award, School, Calendar, FileText, TrendingUp, BookOpen, Loader2 } from 'lucide-react';
+import { useGetMyStudentTranscriptQuery, useLazyExportTranscriptPdfQuery } from '@/lib/store/api/schoolAdminApi';
+import { useFileDownload } from '@/hooks/useFileDownload';
 import { format } from 'date-fns';
 
 const getGradeColor = (percentage: number) => {
@@ -39,6 +40,31 @@ export default function StudentHistoryPage() {
   // Fetch transcript data (contains grades grouped by school)
   const { data: transcriptResponse, isLoading } = useGetMyStudentTranscriptQuery({});
   const transcriptData = transcriptResponse?.data;
+
+  const [triggerExportTranscript] = useLazyExportTranscriptPdfQuery();
+  const { isDownloading: isDownloadingTranscript, download: downloadTranscript } = useFileDownload();
+
+  const handleDownloadTranscript = async () => {
+    await downloadTranscript(
+      async () => {
+        const result = await triggerExportTranscript();
+        // Handle 404 — show specific message for no records
+        if (result.error) {
+          const err = result.error as any;
+          if (err?.status === 404 || err?.data?.statusCode === 404) {
+            return {
+              error: {
+                status: 404,
+                data: { message: 'No academic records found to export.' },
+              },
+            };
+          }
+        }
+        return result;
+      },
+      `transcript-${new Date().toISOString().split('T')[0]}.pdf`,
+    );
+  };
 
   const toggleSchool = (schoolId: string) => {
     setExpandedSchool(expandedSchool === schoolId ? null : schoolId);
@@ -126,8 +152,17 @@ export default function StudentHistoryPage() {
               </p>
             </div>
             {activeTab === 'transcript' && (
-              <Button variant="ghost" size="sm">
-                <Download className="h-4 w-4 mr-2" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownloadTranscript}
+                disabled={isDownloadingTranscript}
+              >
+                {isDownloadingTranscript ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
                 Download Full Transcript
               </Button>
             )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -12,6 +12,14 @@ import { useGetMyClassesQuery, useGetMyTeacherSchoolQuery, useGetMyTeacherProfil
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { getTerminology } from '@/lib/utils/terminology';
 import { cn } from '@/lib/utils';
+
+function isFormTeacherOfClass(classItem: any, teacherId?: string) {
+  if (!teacherId) return false;
+  const teachers = classItem.teachers || classItem.classTeachers || [];
+  return teachers.some(
+    (t: any) => t.teacherId === teacherId && (t.isPrimary || t.isFormTeacher),
+  );
+}
 
 export default function TeacherClassesPage() {
   const router = useRouter();
@@ -50,32 +58,16 @@ export default function TeacherClassesPage() {
 
   const isLoading = isLoadingSchool || isLoadingTeacher || isLoadingClasses;
 
-  // Debug logging (remove in production)
-  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    if (school?.id && teacher?.id) {
-      console.log('Teacher Classes Query:', {
-        schoolId: school.id,
-        teacherId: teacher.id,
-        classesCount: classesResponse?.data?.length || 0,
-        error: error,
-      });
-    }
-  }
-
   const classes = classesResponse?.data || [];
 
-  // Debug: Log teacher and school info
-  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    if (teacher && school) {
-      console.log('[Teacher Classes] Teacher Profile:', {
-        id: teacher.id,
-        teacherId: teacher.teacherId,
-        publicId: teacher.publicId,
-        schoolId: school.id,
-        classesFound: classes.length,
-      });
+  // Primary teachers use My Class in the sidebar — send them straight to their form class
+  useEffect(() => {
+    if (isLoading || currentType !== 'PRIMARY' || !teacher?.id) return;
+    const formClass = classes.find((c: any) => isFormTeacherOfClass(c, teacher.id));
+    if (formClass?.id) {
+      router.replace(`/dashboard/teacher/classes/${formClass.id}`);
     }
-  }
+  }, [isLoading, currentType, classes, teacher?.id, router]);
 
   const filteredClasses = useMemo(() => {
     if (!searchQuery) return classes;
@@ -92,7 +84,7 @@ export default function TeacherClassesPage() {
     );
   }, [classes, searchQuery]);
 
-  if (isLoading) {
+  if (isLoading || (currentType === 'PRIMARY' && classes.some((c: any) => isFormTeacherOfClass(c, teacher?.id)))) {
     return (
       <ProtectedRoute roles={['TEACHER']}>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -170,15 +162,29 @@ export default function TeacherClassesPage() {
               </p>
             </div>
           ) : (
-            filteredClasses.map((classItem, index) => (
+            filteredClasses.map((classItem, index) => {
+              const isForm = isFormTeacherOfClass(classItem, teacher?.id);
+              return (
               <FadeInUp key={classItem.id} delay={index * 0.1} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                 <Card className="h-full hover:bg-light-surface dark:hover:bg-dark-bg hover:shadow-lg transition-all cursor-pointer" onClick={() => router.push(`/dashboard/teacher/classes/${classItem.id}`)}>
                   <CardHeader>
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <CardTitle className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-card-title)' }}>
-                          {classItem.name}
-                        </CardTitle>
+                    <div className="flex items-start justify-between mb-2 gap-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CardTitle className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-card-title)' }}>
+                            {classItem.name}
+                          </CardTitle>
+                          {isForm && currentType === 'SECONDARY' && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
+                              Form
+                            </span>
+                          )}
+                          {isForm && currentType === 'PRIMARY' && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800">
+                              My Class
+                            </span>
+                          )}
+                        </div>
                         {classItem.code && (
                           <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1" style={{ fontSize: 'var(--text-body)' }}>
                             {classItem.code}
@@ -186,7 +192,7 @@ export default function TeacherClassesPage() {
                         )}
                       </div>
                       {classItem.classLevel && (
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 text-xs font-medium rounded">
+                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 text-xs font-medium rounded shrink-0">
                           {classItem.classLevel}
                         </span>
                       )}
@@ -256,7 +262,8 @@ export default function TeacherClassesPage() {
                   </CardContent>
                 </Card>
               </FadeInUp>
-            ))
+            );
+            })
           )}
         </div>
       </div>

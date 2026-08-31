@@ -18,6 +18,21 @@ coverage
 .env.development.local
 .env.test.local
 .env.production.local
+e2e/.env.e2e
+e2e/.auth/
+e2e/.otp
+e2e/.roster.json
+e2e/.*-fixture.json
+
+# Marketing / copy captures — local only
+e2e/content/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+*.webm
 
 # Vercel
 .vercel

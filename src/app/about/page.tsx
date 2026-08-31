@@ -57,7 +57,7 @@ const coreFeatures = [
 ];
 
 const milestones = [
-  { year: '2024', title: 'Founded', description: 'Agora was born from the vision of creating a unified digital identity for every African student.' },
+  { year: '2024', title: 'Founded', description: 'School Bud was born from the vision of creating a unified digital identity for every African student.' },
   { year: '2024', title: 'First Schools', description: 'Launched pilot program with select schools in Lagos, Nigeria.' },
   { year: '2025', title: 'Expansion', description: 'Growing our network across Nigeria and preparing for Pan-African expansion.' },
 ];
@@ -79,7 +79,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <FadeInUp from={{ opacity: 0, y: 30 }} to={{ opacity: 1, y: 0 }} duration={0.8} className="text-center max-w-4xl mx-auto">
             <h1 className="text-3xl md:text-5xl font-bold text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] mb-6 font-heading leading-tight tracking-tight">
-              About <span className="text-agora-blue">Agora</span>
+              About <span className="text-agora-blue">School Bud</span>
             </h1>
             <p
               className="text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] leading-relaxed max-w-2xl mx-auto"
@@ -323,7 +323,7 @@ export default function AboutPage() {
               className="text-blue-50 mb-10 leading-relaxed"
               style={{ fontSize: 'var(--text-page-subtitle)' }}
             >
-              Join the schools and institutions already building the Agora ecosystem.
+              Join the schools and institutions already building the School Bud ecosystem.
             </p>
             <Link
               href="/auth/login"
@@ -338,7 +338,7 @@ export default function AboutPage() {
       {/* Footer */}
       <footer className="bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] py-20 border-t border-[var(--light-border)] dark:border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm font-medium tracking-wide">&copy; 2026 Agora. All rights reserved.</p>
+          <p className="text-sm font-medium tracking-wide">&copy; 2026 School Bud. All rights reserved.</p>
         </div>
       </footer>
     </div>

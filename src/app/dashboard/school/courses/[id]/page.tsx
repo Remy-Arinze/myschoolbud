@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -72,6 +72,7 @@ const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export default function ClassDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const classId = params.id as string;
   const [activeTab, setActiveTab] = useState<TabType>('students');
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -125,6 +126,20 @@ export default function ClassDetailPage() {
   );
 
   const classData = classResponse?.data;
+
+  // Deep-link from setup checklist: ?tab=curriculum
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (!tab) return;
+    const allowed: TabType[] = ['students', 'teachers', 'timetable', 'resources', 'curriculum'];
+    if (allowed.includes(tab as TabType)) {
+      setActiveTab(tab as TabType);
+    }
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('tab');
+    const qs = next.toString();
+    router.replace(`/dashboard/school/courses/${classId}${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [searchParams, router, classId]);
 
   const [showStudentAssignModal, setShowStudentAssignModal] = useState(false);
   const [showStudentAdmissionModal, setShowStudentAdmissionModal] = useState(false);
@@ -285,7 +300,16 @@ export default function ClassDetailPage() {
     { schoolId: schoolId!, classId },
     { skip: !schoolId || !classId || activeTab !== 'students' }
   );
-  const students = studentsResponse?.data || [];
+  // Dedupe by student id — API may historically return one row per term enrollment
+  const students = useMemo(() => {
+    const items = studentsResponse?.data || [];
+    const seen = new Set<string>();
+    return items.filter((s) => {
+      if (!s?.id || seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
+  }, [studentsResponse?.data]);
 
   // Mutations
   const [removeTeacher, { isLoading: isRemoving }] = useRemoveTeacherFromClassMutation();
@@ -1245,7 +1269,7 @@ export default function ClassDetailPage() {
           onClose={() => setShowStudentAssignModal(false)}
           schoolId={schoolId as string}
           targetClassId={classData.id}
-          targetClassArmId={params.id as string} // current class arm
+          targetClassArmId={classData.classArmId ?? ''}
           targetClassName={classData.name}
           targetLevelName={classData.classLevel || ''}
           academicYear={classData.academicYear}
@@ -1256,7 +1280,7 @@ export default function ClassDetailPage() {
           onClose={() => setShowStudentAdmissionModal(false)}
           onRequestShareRegistrationLink={() => setShowRegistrationLinkModal(true)}
           preSelectedClassLevel={classData.classLevelId}
-          preSelectedClassArmId={params.id as string}
+          preSelectedClassArmId={classData.classArmId}
         />
 
         <ShareRegistrationLinkModal

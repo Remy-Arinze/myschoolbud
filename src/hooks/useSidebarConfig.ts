@@ -28,6 +28,7 @@ import {
   Bot,
   LucideIcon,
   Megaphone,
+  Bell,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -123,32 +124,38 @@ export function useSidebarConfig(): {
         { label: 'Calendar', href: '/dashboard/school/calendar', icon: Calendar, permission: PermissionResource.CALENDAR },
         { label: 'Applications', href: '/dashboard/school/applications', icon: ArrowRightLeft, permission: PermissionResource.ADMISSIONS }, // Transfers/Applications use same permission as admissions
         { label: 'Subscription', href: '/dashboard/school/subscription', icon: CreditCard, permission: PermissionResource.SUBSCRIPTIONS, principalOnly: true },
+        { label: 'Notifications', href: '/dashboard/school/notifications', icon: Bell, permission: PermissionResource.OVERVIEW },
         { label: 'Settings', href: '/dashboard/school/settings/profile', icon: Settings, principalOnly: true }
       );
 
       return [{ items: baseItems }];
     }
 
-    // Teacher sidebar - Overview available for all teacher types
+    // Teacher sidebar — Primary: My Class only; Secondary/Tertiary: Classes list (form flag on cards)
     if (role === 'TEACHER') {
       const items: NavItem[] = [
         { label: 'Overview', href: '/dashboard/teacher/overview', icon: LayoutDashboard },
+        { label: 'Notifications', href: '/dashboard/teacher/notifications', icon: Bell },
         { label: 'Timetables', href: '/dashboard/teacher/timetables', icon: Clock },
-        { label: 'Classes', href: '/dashboard/teacher/classes', icon: BookOpen },
       ];
 
-      // Add "Form Management" links if they are a form/primary teacher
-      if (formClasses && formClasses.length > 0) {
-        const formLabel = currentType === 'SECONDARY' ? 'My Form' : 'My Class';
-        
-        formClasses.forEach((fc) => {
-          items.push({ 
-            label: formClasses.length > 1 ? `${formLabel} (${fc.name})` : formLabel, 
-            href: `/dashboard/teacher/classes/${fc.id}`, 
-            icon: Users,
-            badge: 'Form'
+      if (currentType === 'PRIMARY') {
+        // Primary teachers are class teachers for one arm — deep-link My Class, hide Classes list
+        if (formClasses && formClasses.length > 0) {
+          formClasses.forEach((fc) => {
+            items.push({
+              label: formClasses.length > 1 ? `My Class (${fc.name})` : 'My Class',
+              href: `/dashboard/teacher/classes/${fc.id}`,
+              icon: Users,
+            });
           });
-        });
+        } else {
+          // Fallback until form assignment loads / exists
+          items.push({ label: 'Classes', href: '/dashboard/teacher/classes', icon: BookOpen });
+        }
+      } else {
+        // SECONDARY / TERTIARY: multi-class subject teachers — Classes list only (no separate My Form nav)
+        items.push({ label: 'Classes', href: '/dashboard/teacher/classes', icon: BookOpen });
       }
 
       items.push({ label: 'Calendar', href: '/dashboard/teacher/calendar', icon: Calendar });
@@ -162,6 +169,7 @@ export function useSidebarConfig(): {
         {
           items: [
             { label: 'Overview', href: '/dashboard/student/overview', icon: LayoutDashboard },
+            { label: 'Notifications', href: '/dashboard/student/notifications', icon: Bell },
             { label: 'Classes', href: '/dashboard/student/classes', icon: BookOpen },
             { label: 'Timetables', href: '/dashboard/student/timetables', icon: Clock },
             { label: 'Results', href: '/dashboard/student/results', icon: FileText },
@@ -175,7 +183,7 @@ export function useSidebarConfig(): {
     }
 
     return [];
-  }, [user, currentType, terminology]);
+  }, [user, currentType, terminology, formClasses]);
 
   return {
     sections,

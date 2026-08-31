@@ -12,11 +12,14 @@ import { GlobalAiAssistant } from '@/components/ai/GlobalAiAssistant';
 import { NotificationProvider } from '@/components/notifications/NotificationProvider';
 
 function MainContent({ children, showNavbar, userRole }: { children: React.ReactNode, showNavbar: boolean, userRole?: string }) {
+  const ambientBg =
+    userRole === 'TEACHER' || userRole === 'STUDENT' || userRole === 'SCHOOL_ADMIN';
+
   return (
     <main
       className={cn(
         "flex-1 min-h-screen transition-all duration-300 scrollbar-hide overflow-y-auto overflow-x-hidden w-full",
-        (userRole === 'TEACHER' || userRole === 'STUDENT') ? "bg-transparent" : "bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]",
+        ambientBg ? "bg-transparent" : "bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]",
         // Leave 250px on desktop for the fixed sidebar
         "md:ml-[250px]",
         // Leave padding on top if Navbar or mobile header is present
@@ -36,11 +39,14 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   // Hide navbar for SUPER_ADMIN, SCHOOL_ADMIN, TEACHER, and STUDENT
   const showNavbar = userRole !== 'SUPER_ADMIN' && userRole !== 'SCHOOL_ADMIN' && userRole !== 'TEACHER' && userRole !== 'STUDENT';
 
+  const ambientBg =
+    userRole === 'TEACHER' || userRole === 'STUDENT' || userRole === 'SCHOOL_ADMIN';
+
   return (
     <NotificationProvider>
       <div className={cn(
         "min-h-screen transition-colors duration-200 flex overflow-hidden w-full relative",
-        (userRole === 'TEACHER' || userRole === 'STUDENT') ? "bg-transparent" : "bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]"
+        ambientBg ? "bg-transparent" : "bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]"
       )}>
         {showNavbar && <Navbar />}
         <SidebarNew hideMobileHeader={showNavbar} />

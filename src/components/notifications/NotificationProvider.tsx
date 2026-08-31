@@ -1,17 +1,20 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { useTeacherNotifications } from '@/hooks/useTeacherNotifications';
-import { useStudentNotifications } from '@/hooks/useStudentNotifications';
+import { useInboxNotifications } from '@/hooks/useInboxNotifications';
+import { usePwaPush } from '@/hooks/usePwaPush';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/lib/store/store';
 
 /**
- * Global Notification Provider that initializes the real-time notification hooks.
- * This should be wrapped around the dashboard layout.
+ * Global Notification Provider — SSE inbox + SW registration for dashboard users.
  */
 export function NotificationProvider({ children }: { children: ReactNode }) {
-    // Initialize the real-time notification listeners
-    useTeacherNotifications();
-    useStudentNotifications();
+  const user = useSelector((s: RootState) => s.auth.user);
+  const loggedIn = !!user && ['SCHOOL_ADMIN', 'TEACHER', 'STUDENT'].includes(user.role);
 
-    return <>{children}</>;
+  useInboxNotifications();
+  usePwaPush(loggedIn);
+
+  return <>{children}</>;
 }

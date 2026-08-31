@@ -30,6 +30,15 @@ export type ParsedSelectItem = { type: 'option'; value: string; label: string; d
 export type ParsedSelectGroup = { type: 'optgroup'; label: string; items: ParsedSelectItem[] };
 export type ParsedSelectNode = ParsedSelectItem | ParsedSelectGroup;
 
+function reactChildToLabel(children: ReactNode): string {
+  if (children == null) return '';
+  if (typeof children === 'string' || typeof children === 'number') return String(children);
+  if (Array.isArray(children)) {
+    return Children.toArray(children).map(reactChildToLabel).join('');
+  }
+  return String(children);
+}
+
 function toItems(children?: ReactNode): ParsedSelectNode[] {
   const results: ParsedSelectNode[] = [];
   Children.forEach(children, (child) => {
@@ -38,7 +47,7 @@ function toItems(children?: ReactNode): ParsedSelectNode[] {
     if (child.type === 'option') {
       const props: any = child.props || {};
       const value = props.value != null ? String(props.value) : '';
-      const label = props.children != null ? String(props.children) : '';
+      const label = props.children != null ? reactChildToLabel(props.children) : '';
       const disabled = !!props.disabled;
       if (value) results.push({ type: 'option', value, label, disabled });
     } else if (child.type === 'optgroup') {
@@ -50,7 +59,7 @@ function toItems(children?: ReactNode): ParsedSelectNode[] {
         if (isValidElement(subChild) && typeof subChild.type === 'string' && subChild.type === 'option') {
           const subProps: any = subChild.props || {};
           const value = subProps.value != null ? String(subProps.value) : '';
-          const label = subProps.children != null ? String(subProps.children) : '';
+          const label = subProps.children != null ? reactChildToLabel(subProps.children) : '';
           const disabled = !!subProps.disabled;
           if (value) items.push({ type: 'option', value, label, disabled });
         }

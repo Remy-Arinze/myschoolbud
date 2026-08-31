@@ -4,12 +4,12 @@ import React from 'react';
 import { CurriculumStatus } from '@/lib/store/api/schoolAdminApi';
 
 interface CurriculumStatusBadgeProps {
-  status: CurriculumStatus | null;
+  status: CurriculumStatus | string | null;
   size?: 'sm' | 'md';
 }
 
 export function CurriculumStatusBadge({ status, size = 'sm' }: CurriculumStatusBadgeProps) {
-  const getStatusConfig = (status: CurriculumStatus | null) => {
+  const getStatusConfig = (status: CurriculumStatus | string | null) => {
     switch (status) {
       case 'DRAFT':
         return {
@@ -26,9 +26,10 @@ export function CurriculumStatusBadge({ status, size = 'sm' }: CurriculumStatusB
           label: 'Approved',
           className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
         };
+      case 'PUBLISHED':
       case 'ACTIVE':
         return {
-          label: 'Active',
+          label: 'Published',
           className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
         };
       case 'COMPLETED':
@@ -37,13 +38,20 @@ export function CurriculumStatusBadge({ status, size = 'sm' }: CurriculumStatusB
           className: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
         };
       case 'REJECTED':
+      case 'FAILED':
         return {
-          label: 'Rejected',
+          label: 'Failed',
           className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+        };
+      case 'GENERATING':
+      case 'QUEUED':
+        return {
+          label: 'Generating',
+          className: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
         };
       default:
         return {
-          label: 'Not Created',
+          label: 'Not set up',
           className: 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-500',
         };
     }
@@ -58,4 +66,3 @@ export function CurriculumStatusBadge({ status, size = 'sm' }: CurriculumStatusB
     </span>
   );
 }
-

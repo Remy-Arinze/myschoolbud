@@ -1,6 +1,6 @@
 'use client';
 
-import { InputHTMLAttributes, forwardRef, ReactNode } from 'react';
+import { InputHTMLAttributes, forwardRef, ReactNode, useId } from 'react';
 import { cn } from '@/lib/utils';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -24,22 +24,26 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ 
-    className, 
-    label, 
-    error, 
-    helperText, 
-    id, 
-    type = 'text',
-    wrapperClassName,
-    inline = false,
-    labelClassName,
-    required,
-    leftAddon,
-    rightAddon,
-    ...props 
-  }, ref) => {
-    const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  function Input(
+    {
+      className,
+      label,
+      error,
+      helperText,
+      id,
+      type = 'text',
+      wrapperClassName,
+      inline = false,
+      labelClassName,
+      required,
+      leftAddon,
+      rightAddon,
+      ...props
+    },
+    ref,
+  ) {
+    const autoId = useId();
+    const inputId = id || autoId;
 
     return (
       <div className={cn(inline ? '' : 'w-full', wrapperClassName)}>
@@ -47,15 +51,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <label
             htmlFor={inputId}
             className={cn(
-              "block text-sm font-medium text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] mb-1",
-              labelClassName
+              'block text-sm font-medium text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] mb-1',
+              labelClassName,
             )}
           >
             {label}
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
-        <div className={cn("relative", leftAddon || rightAddon ? "flex" : "")}>
+        <div className={cn('relative', leftAddon || rightAddon ? 'flex' : '')}>
           {leftAddon && (
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--light-text-muted)] dark:text-[var(--dark-text-muted)]">
               {leftAddon}
@@ -79,28 +83,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 : 'border-[var(--light-border)] dark:border-[var(--dark-border)]',
               leftAddon ? 'pl-10' : '',
               rightAddon ? 'pr-10' : '',
-              className
+              className,
             )}
             {...props}
           />
           {rightAddon && (
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--light-text-muted)] dark:text-[var(--dark-text-muted)]">
-              <div className="pointer-events-auto">
-                {rightAddon}
-              </div>
+              <div className="pointer-events-auto">{rightAddon}</div>
             </div>
           )}
         </div>
-        {error && (
-          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
+        {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
         {helperText && !error && (
-          <p className="mt-1 text-sm text-[var(--light-text-muted)] dark:text-[var(--dark-text-muted)]">{helperText}</p>
+          <p className="mt-1 text-sm text-[var(--light-text-muted)] dark:text-[var(--dark-text-muted)]">
+            {helperText}
+          </p>
         )}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = 'Input';
-

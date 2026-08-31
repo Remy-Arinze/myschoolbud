@@ -82,7 +82,7 @@ export default function SuperAdminSubjectsPage() {
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary mb-2 font-heading" style={{ fontSize: 'var(--text-page-title)' }}>
-              Agora Subject Bank
+              Bud library
             </h1>
             <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-page-subtitle)' }}>
               Manage the global library of standard subjects available to all schools.

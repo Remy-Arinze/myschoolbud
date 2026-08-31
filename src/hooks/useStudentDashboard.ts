@@ -6,10 +6,22 @@ import {
   useGetMyStudentEnrollmentsQuery,
   useGetMyStudentClassesQuery,
   useGetMyStudentTimetableQuery,
+  useGetMyStudentExamTimetableQuery,
   useGetMyStudentGradesQuery,
   useGetActiveSessionQuery,
   TimetablePeriod,
+  Term,
+  ExamTimetableSlot,
 } from '@/lib/store/api/schoolAdminApi';
+import {
+  getTermDaysRemaining,
+  isTermOperationallyActive,
+  isTermPastEndDate,
+  isLessonScheduleActive,
+  isExamScheduleActive,
+  getTermPhase,
+  type TermPhase,
+} from '@/lib/academic/termSession';
 
 export type StudentSchoolType = 'PRIMARY' | 'SECONDARY' | 'TERTIARY' | null;
 
@@ -113,9 +125,21 @@ export interface StudentDashboardData {
   activeTerm: {
     id: string;
     name: string;
+    startDate: string;
+    endDate: string;
+    status: Term['status'];
+    daysRemaining: number;
+    isPastEndDate: boolean;
+    isOperationallyActive: boolean;
+    isLessonScheduleActive: boolean;
+    isExamScheduleActive: boolean;
+    termPhase: TermPhase;
   } | null;
-  
-  // Timetable data
+
+  liveTimetable: TimetablePeriod[];
+  examTimetable: ExamTimetableSlot[];
+
+  // Timetable data (raw — for historical term selection)
   timetable: TimetablePeriod[];
   
   // Grades data
@@ -285,6 +309,42 @@ export function useStudentDashboard(): StudentDashboardData {
   );
   
   const timetable = (timetableResponse?.data || []) as TimetablePeriod[];
+
+  const termMeta = useMemo(() => {
+    if (!activeTerm) return null;
+    const daysRemaining = activeTerm.daysRemaining ?? getTermDaysRemaining(activeTerm.endDate);
+    const isPastEndDate = activeTerm.isPastEndDate ?? isTermPastEndDate(activeTerm);
+    const operationallyActive =
+      activeTerm.isOperationallyActive ?? isTermOperationallyActive(activeTerm);
+    const lessonActive =
+      activeTerm.isLessonScheduleActive ?? isLessonScheduleActive(activeTerm);
+    const examActive =
+      activeTerm.isInExamPeriod ?? isExamScheduleActive(activeTerm);
+    return {
+      id: activeTerm.id,
+      name: activeTerm.name,
+      startDate: activeTerm.startDate,
+      endDate: activeTerm.endDate,
+      status: activeTerm.status,
+      daysRemaining,
+      isPastEndDate,
+      isOperationallyActive: operationallyActive,
+      isLessonScheduleActive: lessonActive,
+      isExamScheduleActive: examActive,
+      termPhase: (activeTerm.termPhase as TermPhase) ?? getTermPhase(activeTerm),
+    };
+  }, [activeTerm]);
+
+  const liveTimetable = useMemo(
+    () => (termMeta?.isLessonScheduleActive ? timetable : []),
+    [timetable, termMeta?.isLessonScheduleActive],
+  );
+
+  const { data: examTimetableResponse } = useGetMyStudentExamTimetableQuery(
+    { termId },
+    { skip: !termId || !termMeta?.isExamScheduleActive || !activeClass },
+  );
+  const examTimetable = (examTimetableResponse?.data || []) as ExamTimetableSlot[];
   
   // Step 7: Fetch grades
   const { 
@@ -380,11 +440,10 @@ export function useStudentDashboard(): StudentDashboardData {
       id: activeSession.id,
       name: activeSession.name,
     } : null,
-    activeTerm: activeTerm ? {
-      id: activeTerm.id,
-      name: activeTerm.name,
-    } : null,
+    activeTerm: termMeta,
     timetable,
+    liveTimetable,
+    examTimetable,
     grades,
     publishedGrades,
     stats,

@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { AnalyticsChart } from '@/components/dashboard/AnalyticsChart';
+import { SchoolSetupChecklist } from '@/components/dashboard/SchoolSetupChecklist';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { FadeInUp } from '@/components/ui/FadeInUp';
@@ -271,6 +272,7 @@ export default function AdminOverviewPage() {
   const dashboard = data?.data;
   const stats = dashboard?.stats;
   const growthTrends = dashboard?.growthTrends || [];
+  const studentDistribution = dashboard?.studentDistribution || [];
   const weeklyActivity = dashboard?.weeklyActivity || [];
   const recentStudents = dashboard?.recentStudents || [];
 
@@ -280,9 +282,158 @@ export default function AdminOverviewPage() {
         {/* Header */}
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-4 w-full">
-            <h1 className="order-1 font-medium lg:font-semibold text-xl lg:text-2xl text-light-text-primary dark:text-white leading-tight flex-1 min-w-[200px]">
-              Welcome back, {userName}
-            </h1>
+            <div className="order-1 flex-1 min-w-[200px]">
+              <h1 className="font-medium lg:font-semibold text-xl lg:text-2xl text-light-text-primary dark:text-white leading-tight">
+                Welcome back, {userName}
+              </h1>
+
+              {hasActiveTerm && activeSession?.term ? (
+                <div className="mt-2 space-y-1">
+                  {/* Session / term identity */}
+                  <p
+                    className="text-light-text-secondary dark:text-dark-text-secondary leading-snug"
+                    style={{ fontSize: 'var(--text-body)' }}
+                  >
+                    {currentType && (
+                      <span className="capitalize text-light-text-muted dark:text-dark-text-muted">
+                        {currentType.toLowerCase()}
+                        <span className="mx-1.5">·</span>
+                      </span>
+                    )}
+                    {activeSession.session?.name && (
+                      <>
+                        <span className="font-medium text-light-text-primary dark:text-dark-text-primary">
+                          {activeSession.session.name}
+                        </span>
+                        <span className="mx-1.5 text-light-text-muted dark:text-dark-text-muted">·</span>
+                      </>
+                    )}
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">
+                      {activeSession.term.name}
+                    </span>
+                    {typeof activeSession.term.currentWeek === 'number' &&
+                      activeSession.term.currentWeek > 0 && (
+                        <span className="ml-1.5 text-light-text-muted dark:text-dark-text-muted">
+                          (Week {activeSession.term.currentWeek}
+                          {activeSession.term.totalWeeks
+                            ? ` of ${activeSession.term.totalWeeks}`
+                            : ''}
+                          )
+                        </span>
+                      )}
+                  </p>
+
+                  {/* Term schedule — directly under identity */}
+                  {(() => {
+                    const startDate = new Date(activeSession.term.startDate);
+                    const endDate = new Date(activeSession.term.endDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const isUpcoming = today < startDate;
+
+                    if (isUpcoming) {
+                      startDate.setHours(0, 0, 0, 0);
+                      const daysUntilStart = Math.ceil(
+                        (startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+                      );
+                      return (
+                        <div
+                          className="flex items-center gap-1.5 text-light-text-muted dark:text-dark-text-muted"
+                          style={{ fontSize: 'var(--text-small)' }}
+                        >
+                          <Calendar className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" />
+                          <span>
+                            Starts{' '}
+                            <span className="font-medium text-light-text-secondary dark:text-dark-text-secondary">
+                              {startDate.toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </span>
+                            <span className="ml-1.5 font-medium text-orange-600 dark:text-orange-400">
+                              · in {daysUntilStart} {daysUntilStart === 1 ? 'day' : 'days'}
+                            </span>
+                          </span>
+                          <PermissionGate resource={PermissionResource.SESSIONS} type={PermissionType.WRITE}>
+                            <button
+                              onClick={() => setEditingTerm(activeSession.term!)}
+                              className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+                              title={`Adjust ${terminology.periodSingular} dates`}
+                            >
+                              <Settings className="h-3.5 w-3.5" />
+                            </button>
+                          </PermissionGate>
+                        </div>
+                      );
+                    }
+
+                    endDate.setHours(0, 0, 0, 0);
+                    const daysRemaining = Math.ceil(
+                      (endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+                    );
+                    const isPastDue = daysRemaining < 0;
+                    const isDueSoon = daysRemaining <= 7 && daysRemaining >= 0;
+
+                    return (
+                      <div
+                        className="flex items-center gap-1.5 text-light-text-muted dark:text-dark-text-muted"
+                        style={{ fontSize: 'var(--text-small)' }}
+                      >
+                        <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span>
+                          Ends{' '}
+                          <span className="font-medium text-light-text-secondary dark:text-dark-text-secondary">
+                            {endDate.toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </span>
+                          {isPastDue ? (
+                            <span className="ml-1.5 font-medium text-red-600 dark:text-red-400">
+                              · overdue by {Math.abs(daysRemaining)}{' '}
+                              {Math.abs(daysRemaining) === 1 ? 'day' : 'days'}
+                            </span>
+                          ) : isDueSoon ? (
+                            <span className="ml-1.5 font-medium text-orange-600 dark:text-orange-400">
+                              · {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
+                            </span>
+                          ) : (
+                            <span className="ml-1.5 font-medium text-blue-600/80 dark:text-blue-400/80">
+                              · {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
+                            </span>
+                          )}
+                        </span>
+                        <PermissionGate resource={PermissionResource.SESSIONS} type={PermissionType.WRITE}>
+                          <button
+                            onClick={() => setEditingTerm(activeSession.term!)}
+                            className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+                            title={`Adjust ${terminology.periodSingular} dates`}
+                          >
+                            <Settings className="h-3.5 w-3.5" />
+                          </button>
+                        </PermissionGate>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : !hasActiveTerm && hasActiveSession && activeSession?.session ? (
+                <p
+                  className="mt-2 text-light-text-secondary dark:text-dark-text-secondary"
+                  style={{ fontSize: 'var(--text-body)' }}
+                >
+                  Session{' '}
+                  <span className="font-medium text-light-text-primary dark:text-dark-text-primary">
+                    {activeSession.session.name}
+                  </span>
+                  <span className="mx-1.5">·</span>
+                  No active {terminology.periodSingular.toLowerCase()}
+                </p>
+              ) : null}
+            </div>
 
             <div className="order-3 lg:order-2 w-full lg:w-auto flex justify-start lg:justify-end">
               <PermissionGate resource={PermissionResource.SESSIONS} type={PermissionType.WRITE}>
@@ -441,107 +592,7 @@ export default function AdminOverviewPage() {
               )}
             </div>
           </div>
-
-          {/* Term Date Display - show upcoming or ending based on today's date */}
-          {hasActiveTerm && activeSession?.term && (() => {
-            const startDate = new Date(activeSession.term.startDate);
-            const endDate = new Date(activeSession.term.endDate);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            const isUpcoming = today < startDate;
-
-            if (isUpcoming) {
-              startDate.setHours(0, 0, 0, 0);
-              const daysUntilStart = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-              return (
-                <FadeInUp
-                  from={{ opacity: 0, y: -10 }}
-                  to={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-x-2 mt-4 md:mt-[50px]"
-                  style={{ fontSize: 'var(--text-body)' }}
-                >
-                  <Calendar className="hidden md:block h-4 w-4 text-orange-500 flex-shrink-0" />
-                  <span className="text-light-text-secondary dark:text-dark-text-secondary">
-                    Upcoming {terminology.periodSingular} starts on{' '}
-                    <span className="font-semibold text-light-text-primary dark:text-dark-text-primary">
-                      {startDate.toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </span>
-                    <span className="ml-2 text-orange-600 dark:text-orange-400 font-semibold">
-                      (Starts in {daysUntilStart} {daysUntilStart === 1 ? 'day' : 'days'})
-                    </span>
-                  </span>
-                  <PermissionGate resource={PermissionResource.SESSIONS} type={PermissionType.WRITE}>
-                    <button
-                      onClick={() => setEditingTerm(activeSession.term!)}
-                      className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-                      title={`Adjust ${terminology.periodSingular} dates`}
-                    >
-                      <Settings className="h-4 w-4 text-light-text-secondary dark:text-dark-text-secondary" />
-                    </button>
-                  </PermissionGate>
-                </FadeInUp>
-              );
-            }
-
-            // Normal active term logic (has started)
-            endDate.setHours(0, 0, 0, 0);
-            const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            const isPastDue = daysRemaining < 0;
-            const isDueSoon = daysRemaining <= 7 && daysRemaining >= 0;
-
-            return (
-              <FadeInUp
-                from={{ opacity: 0, y: -10 }}
-                to={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-x-2 mt-4 md:mt-[50px]"
-                style={{ fontSize: 'var(--text-body)' }}
-              >
-                <Calendar className="hidden md:block h-4 w-4 text-light-text-secondary dark:text-dark-text-secondary flex-shrink-0" />
-                <span className="text-light-text-secondary dark:text-dark-text-secondary">
-                  Current {terminology.periodSingular} ends on{' '}
-                  <span className="font-semibold text-light-text-primary dark:text-dark-text-primary">
-                    {endDate.toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </span>
-                  {isPastDue ? (
-                    <span className="ml-2 text-red-600 dark:text-red-400 font-semibold">
-                      (Overdue by {Math.abs(daysRemaining)} {Math.abs(daysRemaining) === 1 ? 'day' : 'days'})
-                    </span>
-                  ) : isDueSoon ? (
-                    <span className="ml-2 text-orange-600 dark:text-orange-400 font-semibold">
-                      ({daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining)
-                    </span>
-                  ) : (
-                    <span className="ml-2 text-blue-600 dark:text-blue-400 font-semibold">
-                      ({daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining)
-                    </span>
-                  )}
-                </span>
-                <PermissionGate resource={PermissionResource.SESSIONS} type={PermissionType.WRITE}>
-                  <button
-                    onClick={() => setEditingTerm(activeSession.term!)}
-                    className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
-                    title={`Adjust ${terminology.periodSingular} dates`}
-                  >
-                    <Settings className="h-4 w-4 text-light-text-secondary dark:text-dark-text-secondary" />
-                  </button>
-                </PermissionGate>
-              </FadeInUp>
-            );
-          })()
-          }
-        </FadeInUp >
+        </FadeInUp>
 
         {/* Error State */}
         {
@@ -567,6 +618,9 @@ export default function AdminOverviewPage() {
             </Alert>
           )
         }
+
+        {/* Setup guide — quiet, dismissible; does not replace existing dashboard */}
+        {!isLoading && !isLoadingSchool && !error && <SchoolSetupChecklist />}
 
         {/* Loading State */}
         {
@@ -639,7 +693,7 @@ export default function AdminOverviewPage() {
                 <AnalyticsChart
                   title="Student Distribution"
                   description="Distribution of students across different categories or levels."
-                  data={growthTrends}
+                  data={studentDistribution}
                   type="donut"
                   dataKeys={['students']}
                   colors={['#3b82f6', '#10b981', '#f59e0b', '#ef4444']}

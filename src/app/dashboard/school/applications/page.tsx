@@ -30,6 +30,7 @@ import {
   X,
   Award,
   AlertCircle,
+  HeartPulse,
 } from 'lucide-react';
 import {
   useGetMySchoolQuery,
@@ -479,6 +480,15 @@ export default function ApplicationsPage() {
   );
   const classes = classesResponse?.data || [];
 
+  // Real class levels from this school's arms/classes (not hardcoded Basic/JSS1 labels)
+  const availableClassLevels = useMemo(() => {
+    const levels = new Set<string>();
+    for (const c of classes) {
+      if (c.classLevel) levels.add(c.classLevel);
+    }
+    return Array.from(levels).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [classes]);
+
   // Outgoing transfers
   const { data: outgoingResponse, refetch: refetchOutgoing } = useGetOutgoingTransfersQuery(
     { schoolId: schoolId!, page: 1, limit: 50, schoolType: currentType || undefined },
@@ -562,7 +572,9 @@ export default function ApplicationsPage() {
       await approveApplication({
         schoolId: schoolId!,
         applicationId: showApproveApplicationModal.id,
-        ...completeFormData,
+        classLevel: completeFormData.targetClassLevel,
+        classArmId: completeFormData.classArmId || undefined,
+        academicYear: completeFormData.academicYear,
       }).unwrap();
 
       setShowApproveApplicationModal(null);
@@ -1306,36 +1318,76 @@ export default function ApplicationsPage() {
                   <select
                     className="w-full h-10 px-3 rounded-lg border border-light-border dark:border-dark-border bg-white dark:bg-dark-bg text-sm"
                     value={completeFormData.targetClassLevel}
-                    onChange={(e) => setCompleteFormData({ ...completeFormData, targetClassLevel: e.target.value })}
+                    onChange={(e) =>
+                      setCompleteFormData({
+                        ...completeFormData,
+                        targetClassLevel: e.target.value,
+                        classArmId: '', // reset arm when level changes
+                      })
+                    }
                   >
                     <option value="">Select Level</option>
-                    {/* Add options based on school type */}
-                    {currentType === 'PRIMARY' && ['Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5', 'Basic 6'].map(l => (
-                      <option key={l} value={l}>{l}</option>
-                    ))}
-                    {currentType === 'SECONDARY' && ['JSS1', 'JSS2', 'JSS3', 'SSS1', 'SSS2', 'SSS3'].map(l => (
-                      <option key={l} value={l}>{l}</option>
-                    ))}
+                    {availableClassLevels.length > 0 ? (
+                      availableClassLevels.map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))
+                    ) : (
+                      // Fallback if classes have not loaded / school has no arms yet
+                      (currentType === 'PRIMARY'
+                        ? ['Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6']
+                        : currentType === 'SECONDARY'
+                          ? ['JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3']
+                          : []
+                      ).map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))
+                    )}
                   </select>
+                  {availableClassLevels.length === 0 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      No class arms found for {currentType || 'this school type'}. Create classes first, or approve without an arm.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
-                    Class Arm (Optional)
+                    Class Arm (recommended)
                   </label>
                   <select
                     className="w-full h-10 px-3 rounded-lg border border-light-border dark:border-dark-border bg-white dark:bg-dark-bg text-sm"
                     value={completeFormData.classArmId}
-                    onChange={(e) => setCompleteFormData({ ...completeFormData, classArmId: e.target.value })}
+                    onChange={(e) => {
+                      const armId = e.target.value;
+                      const arm = classes.find((c: any) => c.id === armId);
+                      setCompleteFormData({
+                        ...completeFormData,
+                        classArmId: armId,
+                        // Keep level in sync with the chosen arm (source of truth for enrollment)
+                        targetClassLevel: arm?.classLevel || completeFormData.targetClassLevel,
+                      });
+                    }}
                   >
                     <option value="">No specific arm</option>
                     {classes
-                      .filter((c: any) => !completeFormData.targetClassLevel || c.classLevel === completeFormData.targetClassLevel)
+                      .filter(
+                        (c: any) =>
+                          !completeFormData.targetClassLevel ||
+                          c.classLevel === completeFormData.targetClassLevel,
+                      )
                       .map((c: any) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))
-                    }
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
                   </select>
+                  <p className="text-xs text-light-text-muted dark:text-dark-text-muted">
+                    Assigning an arm places the student in a real class for timetables and attendance.
+                  </p>
                 </div>
               </div>
 
@@ -1606,6 +1658,83 @@ export default function ApplicationsPage() {
                 </CardContent>
               </Card>
 
+              {/* Health records — transferred with the student package */}
+              {(showTransferPreview.studentData?.student?.bloodGroup ||
+                showTransferPreview.studentData?.student?.allergies?.length ||
+                showTransferPreview.studentData?.student?.medications?.length ||
+                showTransferPreview.studentData?.student?.emergencyContact ||
+                showTransferPreview.studentData?.student?.medicalNotes) && (
+                <Card data-testid="transfer-health-records">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <HeartPulse className="h-5 w-5" />
+                      Health Records
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {showTransferPreview.studentData?.student?.bloodGroup && (
+                        <div>
+                          <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                            Blood Group
+                          </p>
+                          <p className="font-medium text-base">
+                            {showTransferPreview.studentData.student.bloodGroup}
+                          </p>
+                        </div>
+                      )}
+                      {showTransferPreview.studentData?.student?.allergies?.length > 0 && (
+                        <div>
+                          <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                            Allergies
+                          </p>
+                          <p className="font-medium text-base">
+                            {Array.isArray(showTransferPreview.studentData.student.allergies)
+                              ? showTransferPreview.studentData.student.allergies.join(', ')
+                              : showTransferPreview.studentData.student.allergies}
+                          </p>
+                        </div>
+                      )}
+                      {showTransferPreview.studentData?.student?.medications?.length > 0 && (
+                        <div>
+                          <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                            Medications
+                          </p>
+                          <p className="font-medium text-base">
+                            {Array.isArray(showTransferPreview.studentData.student.medications)
+                              ? showTransferPreview.studentData.student.medications.join(', ')
+                              : showTransferPreview.studentData.student.medications}
+                          </p>
+                        </div>
+                      )}
+                      {showTransferPreview.studentData?.student?.emergencyContact && (
+                        <div>
+                          <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                            Emergency Contact
+                          </p>
+                          <p className="font-medium text-base">
+                            {showTransferPreview.studentData.student.emergencyContact}
+                            {showTransferPreview.studentData.student.emergencyContactPhone
+                              ? ` (${showTransferPreview.studentData.student.emergencyContactPhone})`
+                              : ''}
+                          </p>
+                        </div>
+                      )}
+                      {showTransferPreview.studentData?.student?.medicalNotes && (
+                        <div className="sm:col-span-2">
+                          <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                            Medical Notes
+                          </p>
+                          <p className="font-medium text-base">
+                            {showTransferPreview.studentData.student.medicalNotes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-3 pt-2 border-t border-light-border dark:border-dark-border">
                 <Button
@@ -1656,33 +1785,9 @@ export default function ApplicationsPage() {
           >
             <div className="space-y-4">
               <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                Select the target class for the student in your school.
+                Select the target class for the student in your school. Assigning a class arm places them on
+                timetables and attendance like a locally admitted student.
               </p>
-              <div>
-                <label className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-2 block">
-                  Class Level *
-                </label>
-                <select
-                  value={completeFormData.targetClassLevel}
-                  onChange={(e) => {
-                    const selectedClass = classes.find((c: any) => c.name === e.target.value);
-                    setCompleteFormData({
-                      ...completeFormData,
-                      targetClassLevel: e.target.value,
-                      classId: selectedClass?.id || '',
-                    });
-                  }}
-                  className="w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-lg bg-light-bg dark:bg-dark-surface text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select class...</option>
-                  {classes.map((cls: any) => (
-                    <option key={cls.id} value={cls.name}>
-                      {cls.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
               <div>
                 <label className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-2 block">
                   Academic Year *
@@ -1695,6 +1800,72 @@ export default function ApplicationsPage() {
                   }
                   required
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-2 block">
+                  Class Level *
+                </label>
+                <select
+                  value={completeFormData.targetClassLevel}
+                  onChange={(e) =>
+                    setCompleteFormData({
+                      ...completeFormData,
+                      targetClassLevel: e.target.value,
+                      classArmId: '',
+                      classId: '',
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-lg bg-light-bg dark:bg-dark-surface text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select level...</option>
+                  {availableClassLevels.length > 0
+                    ? availableClassLevels.map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))
+                    : classes.map((cls: any) => (
+                        <option key={cls.id} value={cls.classLevel || cls.name}>
+                          {cls.classLevel || cls.name}
+                        </option>
+                      ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-2 block">
+                  Class Arm (recommended)
+                </label>
+                <select
+                  value={completeFormData.classArmId}
+                  onChange={(e) => {
+                    const armId = e.target.value;
+                    const arm = classes.find((c: any) => c.id === armId);
+                    setCompleteFormData({
+                      ...completeFormData,
+                      classArmId: armId,
+                      classId: '', // ClassArm id must not be sent as Class.id (FK)
+                      targetClassLevel: arm?.classLevel || completeFormData.targetClassLevel,
+                    });
+                  }}
+                  className="w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-lg bg-light-bg dark:bg-dark-surface text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No specific arm</option>
+                  {classes
+                    .filter(
+                      (c: any) =>
+                        !completeFormData.targetClassLevel ||
+                        c.classLevel === completeFormData.targetClassLevel,
+                    )
+                    .map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-light-text-muted dark:text-dark-text-muted mt-1">
+                  Without an arm, the student may not appear on class rosters used for attendance.
+                </p>
               </div>
               <div className="flex gap-3">
                 <Button

@@ -32,6 +32,17 @@ import {
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import {
+    computeFinalAssessmentScore,
+    suggestedLateDueDeduction,
+    suggestedLateTimerDeduction,
+    sumQuestionScores,
+} from '@/lib/assessment-scoring';
+import {
+    GradingLatePanel,
+    GradingScoreBreakdown,
+    LateSubmissionBadges,
+} from '@/components/assessments/GradingLatePanel';
 
 export default function GradeAssessmentPage() {
     const params = useParams();
@@ -58,7 +69,10 @@ export default function GradeAssessmentPage() {
     const [questionScores, setQuestionScores] = useState<Record<string, number | string>>({});
     const [questionFeedback, setQuestionFeedback] = useState<Record<string, string>>({});
     const [overallFeedback, setOverallFeedback] = useState('');
-    const [totalScore, setTotalScore] = useState(0);
+    const [applyLateDueDeduction, setApplyLateDueDeduction] = useState(false);
+    const [applyLateTimerDeduction, setApplyLateTimerDeduction] = useState(false);
+    const [lateDueDeductionAmount, setLateDueDeductionAmount] = useState(0);
+    const [lateTimerDeductionAmount, setLateTimerDeductionAmount] = useState(0);
     const [isGradingAll, setIsGradingAll] = useState(false);
     const [allEvaluationsComplete, setAllEvaluationsComplete] = useState(false);
     const [hasAppliedAll, setHasAppliedAll] = useState(false);
@@ -111,17 +125,44 @@ export default function GradeAssessmentPage() {
             setQuestionScores(initialScores);
             setQuestionFeedback(initialFeedback);
             setOverallFeedback(submission.teacherFeedback || '');
-            
-            // Initial calc
-            const sum = Object.values(initialScores).reduce<number>((a, b) => a + (Number(b) || 0), 0);
-            setTotalScore(sum);
+
+            const suggestedDue = suggestedLateDueDeduction(
+                submission.isLateDue,
+                assessment.lateDuePenaltyPoints,
+            );
+            const suggestedTimer = suggestedLateTimerDeduction(
+                submission.isLateTimer,
+                assessment.lateTimerPenaltyPoints,
+            );
+            const storedDue = Number(submission.lateDueDeduction ?? suggestedDue);
+            const storedTimer = Number(submission.lateTimerDeduction ?? suggestedTimer);
+
+            setLateDueDeductionAmount(storedDue || suggestedDue);
+            setLateTimerDeductionAmount(storedTimer || suggestedTimer);
+            setApplyLateDueDeduction(submission.isLateDue && storedDue > 0);
+            setApplyLateTimerDeduction(submission.isLateTimer && storedTimer > 0);
         }
     }, [submission, assessment]);
 
-    useEffect(() => {
-        const sum = Object.values(questionScores).reduce<number>((a, b) => a + (Number(b) || 0), 0);
-        setTotalScore(sum);
-    }, [questionScores]);
+    const rawScore = sumQuestionScores(questionScores);
+    const integrityDeduction = Number(submission?.pointDeductions || 0);
+    const appliedLateDueDeduction = applyLateDueDeduction ? lateDueDeductionAmount : 0;
+    const appliedLateTimerDeduction = applyLateTimerDeduction ? lateTimerDeductionAmount : 0;
+    const finalScore = computeFinalAssessmentScore({
+        rawScore,
+        integrityDeduction,
+        lateDueDeduction: appliedLateDueDeduction,
+        lateTimerDeduction: appliedLateTimerDeduction,
+        maxScore: Number(assessment?.maxScore || 0),
+    });
+    const suggestedLateDue = suggestedLateDueDeduction(
+        submission?.isLateDue,
+        assessment?.lateDuePenaltyPoints,
+    );
+    const suggestedLateTimer = suggestedLateTimerDeduction(
+        submission?.isLateTimer,
+        assessment?.lateTimerPenaltyPoints,
+    );
 
     const handleScoreChange = (questionId: string, value: string | number, maxPoints: number) => {
         if (value === '') {
@@ -281,10 +322,12 @@ export default function GradeAssessmentPage() {
                 schoolId: schoolId!,
                 submissionId: submission.id,
                 dto: {
-                    totalScore,
+                    totalScore: finalScore,
                     teacherFeedback: overallFeedback,
                     questionScores: cleanedScores,
-                    questionFeedback
+                    questionFeedback,
+                    lateDueDeduction: appliedLateDueDeduction,
+                    lateTimerDeduction: appliedLateTimerDeduction,
                 }
             }).unwrap();
 
@@ -337,6 +380,12 @@ export default function GradeAssessmentPage() {
                         <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-2xl" style={{ fontSize: 'var(--text-page-subtitle)' }}>
                             {assessment.title} • {assessment.type}
                         </p>
+                        <LateSubmissionBadges
+                            className="mt-3"
+                            isLateDue={submission.isLateDue}
+                            isLateTimer={submission.isLateTimer}
+                            isAutoSubmitted={submission.isAutoSubmitted}
+                        />
                     </div>
                 </FadeInUp>
 
@@ -537,20 +586,43 @@ export default function GradeAssessmentPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="p-6 text-center border-b border-slate-100 dark:border-dark-border bg-slate-50 dark:from-blue-900/10 dark:to-dark-surface/50">
-                                    <p className="text-[10px] font-black text-slate-400 dark:text-light-text-muted uppercase tracking-widest mb-1">Total Score</p>
-                                    <div className="flex items-baseline justify-center gap-2">
-                                        <span className="text-6xl font-black text-slate-900 dark:text-blue-400 tracking-tighter">{totalScore}</span>
-                                        <span className="text-xl font-bold text-slate-400 dark:text-light-text-muted">/ {assessment.maxScore}</span>
-                                    </div>
-                                    {submission.pointDeductions > 0 && (
-                                        <div className="mt-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-red-100 dark:border-red-900/30">
-                                            -{submission.pointDeductions} Integrity Deduction
-                                        </div>
-                                    )}
+                                <div className="p-6 border-b border-slate-100 dark:border-dark-border bg-slate-50 dark:from-blue-900/10 dark:to-dark-surface/50">
+                                    <GradingScoreBreakdown
+                                        rawScore={rawScore}
+                                        integrityDeduction={integrityDeduction}
+                                        lateDueDeduction={appliedLateDueDeduction}
+                                        lateTimerDeduction={appliedLateTimerDeduction}
+                                        finalScore={finalScore}
+                                        maxScore={Number(assessment.maxScore)}
+                                    />
                                 </div>
                                 
                                 <div className="p-5 space-y-4">
+                                    <GradingLatePanel
+                                        isLateDue={submission.isLateDue}
+                                        isLateTimer={submission.isLateTimer}
+                                        isAutoSubmitted={submission.isAutoSubmitted}
+                                        applyLateDueDeduction={applyLateDueDeduction}
+                                        applyLateTimerDeduction={applyLateTimerDeduction}
+                                        lateDueDeductionAmount={lateDueDeductionAmount}
+                                        lateTimerDeductionAmount={lateTimerDeductionAmount}
+                                        suggestedLateDue={suggestedLateDue}
+                                        suggestedLateTimer={suggestedLateTimer}
+                                        onApplyLateDueChange={(apply) => {
+                                            setApplyLateDueDeduction(apply);
+                                            if (apply && lateDueDeductionAmount === 0) {
+                                                setLateDueDeductionAmount(suggestedLateDue);
+                                            }
+                                        }}
+                                        onApplyLateTimerChange={(apply) => {
+                                            setApplyLateTimerDeduction(apply);
+                                            if (apply && lateTimerDeductionAmount === 0) {
+                                                setLateTimerDeductionAmount(suggestedLateTimer);
+                                            }
+                                        }}
+                                        onLateDueAmountChange={setLateDueDeductionAmount}
+                                        onLateTimerAmountChange={setLateTimerDeductionAmount}
+                                    />
                                     <div className="space-y-3">
                                         <label className="text-xs font-black text-slate-700 dark:text-dark-text-primary uppercase tracking-wider flex items-center gap-2">
                                             <MessageSquare className="h-3.5 w-3.5 text-indigo-500 dark:text-blue-500" />
@@ -644,20 +716,43 @@ export default function GradeAssessmentPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="p-6 text-center border-b border-slate-100 dark:border-dark-border bg-slate-50 dark:from-blue-900/10 dark:to-dark-surface/50">
-                                    <p className="text-[10px] font-black text-slate-400 dark:text-light-text-muted uppercase tracking-widest mb-1">Total Score</p>
-                                    <div className="flex items-baseline justify-center gap-2">
-                                        <span className="text-6xl font-black text-slate-900 dark:text-blue-400 tracking-tighter">{totalScore}</span>
-                                        <span className="text-xl font-bold text-slate-400 dark:text-light-text-muted">/ {assessment.maxScore}</span>
-                                    </div>
-                                    {submission.pointDeductions > 0 && (
-                                        <div className="mt-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-red-100 dark:border-red-900/30">
-                                            -{submission.pointDeductions} Integrity Deduction
-                                        </div>
-                                    )}
+                                <div className="p-6 border-b border-slate-100 dark:border-dark-border bg-slate-50 dark:from-blue-900/10 dark:to-dark-surface/50">
+                                    <GradingScoreBreakdown
+                                        rawScore={rawScore}
+                                        integrityDeduction={integrityDeduction}
+                                        lateDueDeduction={appliedLateDueDeduction}
+                                        lateTimerDeduction={appliedLateTimerDeduction}
+                                        finalScore={finalScore}
+                                        maxScore={Number(assessment.maxScore)}
+                                    />
                                 </div>
                                 
                                 <div className="p-5 space-y-4">
+                                    <GradingLatePanel
+                                        isLateDue={submission.isLateDue}
+                                        isLateTimer={submission.isLateTimer}
+                                        isAutoSubmitted={submission.isAutoSubmitted}
+                                        applyLateDueDeduction={applyLateDueDeduction}
+                                        applyLateTimerDeduction={applyLateTimerDeduction}
+                                        lateDueDeductionAmount={lateDueDeductionAmount}
+                                        lateTimerDeductionAmount={lateTimerDeductionAmount}
+                                        suggestedLateDue={suggestedLateDue}
+                                        suggestedLateTimer={suggestedLateTimer}
+                                        onApplyLateDueChange={(apply) => {
+                                            setApplyLateDueDeduction(apply);
+                                            if (apply && lateDueDeductionAmount === 0) {
+                                                setLateDueDeductionAmount(suggestedLateDue);
+                                            }
+                                        }}
+                                        onApplyLateTimerChange={(apply) => {
+                                            setApplyLateTimerDeduction(apply);
+                                            if (apply && lateTimerDeductionAmount === 0) {
+                                                setLateTimerDeductionAmount(suggestedLateTimer);
+                                            }
+                                        }}
+                                        onLateDueAmountChange={setLateDueDeductionAmount}
+                                        onLateTimerAmountChange={setLateTimerDeductionAmount}
+                                    />
                                     <div className="space-y-3">
                                         <label className="text-xs font-black text-slate-700 dark:text-dark-text-primary uppercase tracking-wider flex items-center gap-2">
                                             <MessageSquare className="h-3.5 w-3.5 text-indigo-500 dark:text-blue-500" />

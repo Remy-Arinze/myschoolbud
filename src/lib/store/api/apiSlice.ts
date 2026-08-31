@@ -15,7 +15,8 @@ const baseQuery = fetchBaseQuery({
       headers.set('authorization', `Bearer ${token}`);
     }
 
-    headers.set('Content-Type', 'application/json');
+    // Do not force Content-Type — fetchBaseQuery sets JSON for objects,
+    // and the browser must set multipart boundaries for FormData uploads.
     return headers;
   },
 });
@@ -144,7 +145,7 @@ const staggeredBaseQuery = retry(
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: staggeredBaseQuery,
-  tagTypes: ['Student', 'School', 'User', 'Timetable', 'Event', 'Session', 'ClassLevel', 'ClassArm', 'Subject', 'Room', 'Class', 'ClassResource', 'StudentResource', 'Permission', 'Curriculum', 'Grade', 'Grades', 'Transfer', 'Subscription', 'SubscriptionPlan', 'TeacherSubject', 'Faculty', 'Department', 'SchoolErrors', 'Error', 'ErrorStats', 'TeacherWorkload', 'Assessments', 'Submissions', 'AiHistory', 'Attendance', 'SchemeOfWork', 'AgoraCurriculum', 'AgoraCurriculumSource', 'AgoraSubject', 'Campaigns', 'LoisSystemConfig', 'LoisSkills'],
+  tagTypes: ['Student', 'School', 'User', 'Timetable', 'Event', 'Session', 'ClassLevel', 'ClassArm', 'Subject', 'Room', 'Class', 'ClassResource', 'StudentResource', 'Permission', 'Curriculum', 'Grade', 'Grades', 'Transfer', 'Subscription', 'SubscriptionPlan', 'TeacherSubject', 'Faculty', 'Department', 'SchoolErrors', 'Error', 'ErrorStats', 'TeacherWorkload', 'Assessments', 'Submissions', 'AiHistory', 'Attendance', 'SchemeOfWork', 'AgoraCurriculum', 'AgoraCurriculumSource', 'AgoraSubject', 'Campaigns', 'LoisSystemConfig', 'LoisSkills', 'Notification', 'SchoolSettings', 'BackupStatus'],
   endpoints: (builder) => ({
     changePassword: builder.mutation<
       { success: boolean; message: string },

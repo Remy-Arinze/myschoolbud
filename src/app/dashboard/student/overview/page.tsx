@@ -34,6 +34,7 @@ import {
   getStudentTodaySchedule,
   getStudentTerminology
 } from '@/hooks/useStudentDashboard';
+import { getExamTodaySchedule } from '@/lib/academic/termSession';
 import { format, parseISO } from 'date-fns';
 import {
   PieChart,
@@ -53,7 +54,8 @@ export default function StudentOverviewPage() {
     activeEnrollment,
     activeClass,
     activeTerm,
-    timetable,
+    liveTimetable,
+    examTimetable,
     stats,
     isLoading,
     isLoadingProfile,
@@ -71,9 +73,14 @@ export default function StudentOverviewPage() {
   const schoolId = school?.id;
   const activeTermId = activeTerm?.id;
 
+  const termEnded = activeTerm != null && !activeTerm.isOperationallyActive;
+  const termOverdue = activeTerm?.isPastEndDate === true;
+  const inExamPeriod = activeTerm?.isExamScheduleActive === true;
+
   const todaySchedule = useMemo(() => {
-    return getStudentTodaySchedule(timetable);
-  }, [timetable]);
+    return getStudentTodaySchedule(liveTimetable);
+  }, [liveTimetable]);
+  const todaysExams = useMemo(() => getExamTodaySchedule(examTimetable), [examTimetable]);
 
   const upcomingPromotedIndex = useMemo(() => {
     if (todaySchedule.length === 0) return -1;
@@ -89,15 +96,22 @@ export default function StudentOverviewPage() {
   const scheduleContainerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Auto-scroll to the upcoming/ongoing class
+  // Auto-scroll the schedule panel to the upcoming/ongoing class (not the whole page)
   useEffect(() => {
-    if (!isInitialLoadingTimetable && upcomingPromotedIndex !== -1 && cardRefs.current[upcomingPromotedIndex]) {
-      // Small timeout to ensure DOM is ready and animations are playing nicely
+    if (!isInitialLoadingTimetable && upcomingPromotedIndex !== -1) {
       const timer = setTimeout(() => {
-        cardRefs.current[upcomingPromotedIndex]?.scrollIntoView({
+        const container = scheduleContainerRef.current;
+        const target = cardRefs.current[upcomingPromotedIndex];
+        if (!container || !target) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const scrollTop =
+          container.scrollTop + (targetRect.top - containerRect.top) - 8;
+
+        container.scrollTo({
+          top: Math.max(0, scrollTop),
           behavior: 'smooth',
-          block: 'start',
-          inline: 'nearest'
         });
       }, 300);
       return () => clearTimeout(timer);
@@ -233,6 +247,84 @@ export default function StudentOverviewPage() {
           </div>
         </FadeInUp>
 
+        {inExamPeriod && activeTerm && (
+          <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.4} className="mb-6">
+            <div className="rounded-lg border px-4 py-3 bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700">
+              <p className="font-semibold text-red-900 dark:text-red-100">Exam period — follow your exam timetable</p>
+              <p className="text-sm text-red-800 dark:text-red-200 mt-1">Regular classes are paused. Good luck!</p>
+            </div>
+          </FadeInUp>
+        )}
+
+        {termEnded && activeTerm && !inExamPeriod && (
+          <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.4} className="mb-6">
+            <div
+              className={`rounded-lg border px-4 py-3 flex items-start gap-3 ${
+                termOverdue
+                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700'
+                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+              }`}
+            >
+              <AlertCircle
+                className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+                  termOverdue ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'
+                }`}
+              />
+              <div>
+                <p
+                  className={`font-semibold ${
+                    termOverdue
+                      ? 'text-amber-900 dark:text-amber-100'
+                      : 'text-blue-900 dark:text-blue-100'
+                  }`}
+                >
+                  {termOverdue
+                    ? `${activeTerm.name} has ended — no classes are scheduled`
+                    : `${activeTerm.name} has not started yet`}
+                </p>
+                <p
+                  className={`text-sm mt-1 ${
+                    termOverdue
+                      ? 'text-amber-800 dark:text-amber-200'
+                      : 'text-blue-800 dark:text-blue-200'
+                  }`}
+                >
+                  {termOverdue ? (
+                    <>
+                      Scheduled end was{' '}
+                      {new Date(activeTerm.endDate).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                      {Math.abs(activeTerm.daysRemaining) > 0 && (
+                        <>
+                          {' '}
+                          · overdue by {Math.abs(activeTerm.daysRemaining)}{' '}
+                          {Math.abs(activeTerm.daysRemaining) === 1 ? 'day' : 'days'}
+                        </>
+                      )}
+                      . Your school will start the next {terminology.periodSingular.toLowerCase()} soon.
+                    </>
+                  ) : (
+                    <>
+                      Classes begin{' '}
+                      {new Date(activeTerm.startDate).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                      .
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          </FadeInUp>
+        )}
+
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Main Column */}
           <div className="xl:col-span-2 space-y-8">
@@ -248,12 +340,31 @@ export default function StudentOverviewPage() {
                 </Link>
               </div>
 
-              {isInitialLoadingTimetable || timetable === undefined ? (
+              {isInitialLoadingTimetable ? (
                 <div className="space-y-2 px-2">
                   <Skeleton className="h-[74px] w-full rounded-xl border border-light-border dark:border-dark-border" />
                   <Skeleton className="h-[74px] w-full rounded-xl border border-light-border dark:border-dark-border" />
                   <Skeleton className="h-[74px] w-full rounded-xl border border-light-border dark:border-dark-border" />
                 </div>
+              ) : inExamPeriod ? (
+                todaysExams.length > 0 ? (
+                  <div className="space-y-2 px-2">
+                    {todaysExams.map((exam) => (
+                      <Card key={exam.id}>
+                        <CardContent className="py-3">
+                          <p className="font-bold text-sm">{exam.subjectName}</p>
+                          <p className="text-xs text-light-text-secondary">{exam.startTime} – {exam.endTime}</p>
+                          {exam.roomName && <p className="text-xs text-light-text-muted">{exam.roomName}</p>}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="border-dashed py-12 text-center mx-2">
+                    <Calendar className="h-8 w-8 text-light-text-muted mx-auto mb-3" />
+                    <p className="text-sm text-light-text-secondary">No exams scheduled for today</p>
+                  </Card>
+                )
               ) : todaySchedule.length > 0 ? (
                 <div ref={scheduleContainerRef} className="max-h-[350px]  overflow-y-auto scrollbar-hide pr-2 py-2 scroll-smooth">
                   <div className="relative pl-6 space-y-2 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-100 dark:before:bg-blue-900/40">
@@ -341,9 +452,19 @@ export default function StudentOverviewPage() {
                   <div className="bg-slate-100 dark:bg-dark-surface h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Calendar className="h-8 w-8 text-light-text-muted" />
                   </div>
-                  <h3 className="text-lg font-bold">A Clean Slate!</h3>
-                  <p className="text-light-text-secondary max-w-[200px] mx-auto text-sm">
-                    No classes scheduled for today. Take some time for self-study and rest.
+                  <h3 className="text-lg font-bold">
+                    {termEnded
+                      ? termOverdue
+                        ? 'Term is over'
+                        : 'Term not started yet'
+                      : 'A Clean Slate!'}
+                  </h3>
+                  <p className="text-light-text-secondary max-w-[280px] mx-auto text-sm">
+                    {termEnded
+                      ? termOverdue
+                        ? 'This term is over — your timetable is paused until the next term begins.'
+                        : 'No classes scheduled until this term starts.'
+                      : 'No classes scheduled for today. Take some time for self-study and rest.'}
                   </p>
                 </Card>
               )}

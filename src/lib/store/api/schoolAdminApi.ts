@@ -20,6 +20,11 @@ export interface GrowthTrendData {
   courses: number;
 }
 
+export interface StudentDistributionData {
+  name: string;
+  students: number;
+}
+
 export interface WeeklyActivityData {
   name: string;
   admissions: number;
@@ -39,8 +44,26 @@ export interface RecentStudent {
 export interface SchoolDashboard {
   stats: DashboardStats;
   growthTrends: GrowthTrendData[];
+  studentDistribution: StudentDistributionData[];
   weeklyActivity: WeeklyActivityData[];
   recentStudents: RecentStudent[];
+}
+
+export interface SchoolSetupProgress {
+  hasActiveSession: boolean;
+  hasSubjects: boolean;
+  hasClasses: boolean;
+  hasStaff: boolean;
+  hasTimetable: boolean;
+  hasCurriculum: boolean;
+  hasStudents: boolean;
+  hasMidtermDates: boolean;
+  hasExamDates: boolean;
+  hasHolidays: boolean;
+  isFoundationComplete: boolean;
+  completedCount: number;
+  totalCount: number;
+  suggestedClassId?: string | null;
 }
 
 // Staff list types
@@ -152,6 +175,7 @@ export enum PermissionResource {
   RESOURCES = 'RESOURCES',
   TRANSFERS = 'TRANSFERS',
   INTEGRATIONS = 'INTEGRATIONS',
+  SETTINGS = 'SETTINGS',
 }
 
 // Subscription Types
@@ -202,6 +226,11 @@ export interface SchemeOfWorkWeek {
   privateTeacherNotes: string | null;
   isDelivered: boolean;
   deliveredAt: string | null;
+  deliveryNote?: string | null;
+  catchUpReason?: 'MISSED' | 'CATCH_UP' | 'COMBINED' | null;
+  lessonNoteUrl?: string | null;
+  lessonNoteFileName?: string | null;
+  deliveryConfidence?: number;
 }
 
 export interface SchemeOfWork {
@@ -210,18 +239,31 @@ export interface SchemeOfWork {
   classId: string | null;
   classArmId: string | null;
   subjectId: string;
+  subjectName?: string | null;
   termId: string;
   status: 'GENERATING' | 'DRAFT' | 'APPROVED' | 'PUBLISHED' | 'FAILED';
   version: number;
   weeks: SchemeOfWorkWeek[];
+  availableSubjects?: Array<{
+    subjectId: string;
+    subjectName: string;
+    subjectCode: string | null;
+    schemeId: string;
+    status: string;
+    termId: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
+
+export type SchemeDeliveryCatchUpReason = 'MISSED' | 'CATCH_UP' | 'COMBINED';
 
 export interface UpdateSchemeOfWorkWeekDto {
   isDelivered?: boolean;
   privateTeacherNotes?: string;
   teacherNotes?: string;
+  deliveryNote?: string;
+  catchUpReason?: SchemeDeliveryCatchUpReason;
 }
 
 export enum PermissionType {
@@ -740,7 +782,7 @@ export interface PaginatedResponse<T> {
 
 // Session types
 export type SessionType = 'NEW_SESSION' | 'NEW_TERM';
-export type SessionStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
+export type SessionStatus = 'ACTIVE' | 'COMPLETED';
 export type TermStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
 export type DayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 export type PeriodType = 'LESSON' | 'BREAK' | 'ASSEMBLY' | 'LUNCH';
@@ -753,10 +795,23 @@ export interface Term {
   endDate: string;
   halfTermStart?: string;
   halfTermEnd?: string;
+  midtermStart?: string;
+  midtermEnd?: string;
+  examStart?: string;
+  examEnd?: string;
   status: TermStatus;
   academicSessionId: string;
   currentWeek?: number;
   totalWeeks?: number;
+  currentTeachingWeek?: number;
+  totalTeachingWeeks?: number;
+  daysRemaining?: number;
+  isPastEndDate?: boolean;
+  isOperationallyActive?: boolean;
+  examTimetablePublishedAt?: string;
+  isInExamPeriod?: boolean;
+  isLessonScheduleActive?: boolean;
+  termPhase?: 'NOT_STARTED' | 'IN_SESSION' | 'EXAM_PERIOD' | 'OVERDUE' | 'ENDED';
   createdAt: string;
 }
 
@@ -792,6 +847,10 @@ export interface CreateTermDto {
   endDate: string;
   halfTermStart?: string;
   halfTermEnd?: string;
+  midtermStart?: string;
+  midtermEnd?: string;
+  examStart?: string;
+  examEnd?: string;
 }
 
 export interface TermDateInput {
@@ -804,6 +863,7 @@ export interface StartTermDto extends InitializeSessionDto {
   termId?: string;
   startingTermNumber?: number;
   termDates?: TermDateInput[];
+  carryOver?: boolean;
 }
 
 export interface StartTermResponse {
@@ -822,6 +882,16 @@ export interface UpdateTermDatesDto {
   endDate?: string;
   halfTermStart?: string;
   halfTermEnd?: string;
+  midtermStart?: string;
+  midtermEnd?: string;
+  examStart?: string;
+  examEnd?: string;
+}
+
+export interface UpdateSessionDatesDto {
+  startDate?: string;
+  endDate?: string;
+  recalibrateTerms?: 'none' | 'draft_only';
 }
 
 export interface TimetablePeriod {
@@ -859,6 +929,50 @@ export interface TimetablePeriod {
   conflictingPeriodIds?: string[];
   // Course registration indicator (for TERTIARY carry-overs)
   isFromCourseRegistration?: boolean;
+}
+
+export interface ExamTimetableSlot {
+  id: string;
+  termId: string;
+  examDate: string;
+  startTime: string;
+  endTime: string;
+  subjectId: string;
+  subjectName?: string;
+  classId?: string;
+  classArmId?: string;
+  className?: string;
+  classArmName?: string;
+  teacherId?: string;
+  teacherName?: string;
+  roomId?: string;
+  roomName?: string;
+  notes?: string;
+}
+
+export interface CreateExamTimetableSlotDto {
+  termId: string;
+  examDate: string;
+  startTime: string;
+  endTime: string;
+  subjectId: string;
+  classId?: string;
+  classArmId?: string;
+  teacherId?: string;
+  roomId?: string;
+  notes?: string;
+}
+
+export interface UpdateExamTimetableSlotDto {
+  examDate?: string;
+  startTime?: string;
+  endTime?: string;
+  subjectId?: string;
+  classId?: string;
+  classArmId?: string;
+  teacherId?: string;
+  roomId?: string;
+  notes?: string;
 }
 
 export interface CreateTimetablePeriodDto {
@@ -942,6 +1056,10 @@ export interface Assessment {
   duration: number | null;
   hasIntegrity: boolean;
   autoSubmitOnTimeout: boolean;
+  allowLateSubmissionAfterDue: boolean;
+  allowLateSubmissionAfterTimer: boolean;
+  lateDuePenaltyPoints: number;
+  lateTimerPenaltyPoints: number;
   violationThreshold: number | null;
   pointsPerViolation: number | null;
 
@@ -950,6 +1068,8 @@ export interface Assessment {
   questions?: AssessmentQuestion[];
   submissions?: AssessmentSubmission[];
   isSubmitted?: boolean;
+  isPastDue?: boolean;
+  isMissed?: boolean;
   submission?: AssessmentSubmission | null;
   subject?: Subject;
   class?: Class;
@@ -976,6 +1096,10 @@ export interface AssessmentSubmission {
   isFlagged: boolean;
   pointDeductions: number;
   isAutoSubmitted: boolean;
+  isLateDue: boolean;
+  isLateTimer: boolean;
+  lateDueDeduction: number;
+  lateTimerDeduction: number;
 
   student?: Student;
   answers?: AssessmentAnswer[];
@@ -1018,6 +1142,10 @@ export interface CreateAssessmentDto {
   duration?: number;
   hasIntegrity?: boolean;
   autoSubmitOnTimeout?: boolean;
+  allowLateSubmissionAfterDue?: boolean;
+  allowLateSubmissionAfterTimer?: boolean;
+  lateDuePenaltyPoints?: number;
+  lateTimerPenaltyPoints?: number;
   violationThreshold?: number;
   pointsPerViolation?: number;
 
@@ -1033,6 +1161,7 @@ export interface CreateAssessmentDto {
 
 export interface SubmitAssessmentDto {
   examSessionToken: string;
+  isAutoSubmit?: boolean;
   answers: {
     questionId: string;
     text?: string;
@@ -1044,7 +1173,11 @@ export interface StartAssessmentResponse {
   submissionId: string;
   examSessionToken: string;
   startedAt: string;
-  expiresAt?: string;
+  duration?: number | null;
+  expiresAt?: string | null;
+  isPastDue?: boolean;
+  allowLateSubmissionAfterDue?: boolean;
+  allowLateSubmissionAfterTimer?: boolean;
 }
 
 export interface LogViolationDto {
@@ -1057,6 +1190,8 @@ export interface GradeSubmissionDto {
   teacherFeedback?: string;
   questionScores?: Record<string, number>;
   questionFeedback?: Record<string, string>;
+  lateDueDeduction?: number;
+  lateTimerDeduction?: number;
 }
 
 
@@ -1465,6 +1600,16 @@ export interface ReassignStudentDto {
   reason?: string;
 }
 
+export interface BackupStatus {
+  isConnected: boolean;
+  lastBackupAt: string | null;
+  lastBackupStatus: 'SUCCESS' | 'FAILED' | null;
+}
+
+export interface OAuthUrlResponse {
+  authUrl: string;
+}
+
 export const schoolAdminApi = apiSlice.injectEndpoints({
   overrideExisting: true,
   endpoints: (builder) => ({
@@ -1551,6 +1696,15 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         return `/school-admin/dashboard${queryString ? `?${queryString}` : ''}`;
       },
       providesTags: ['School'],
+    }),
+    getSetupProgress: builder.query<ResponseDto<SchoolSetupProgress>, string | undefined>({
+      query: (schoolType) => {
+        const queryParams = new URLSearchParams();
+        if (schoolType) queryParams.append('schoolType', schoolType);
+        const queryString = queryParams.toString();
+        return `/school-admin/setup-progress${queryString ? `?${queryString}` : ''}`;
+      },
+      providesTags: ['School', 'Timetable', 'Subject', 'Class', 'Curriculum'],
     }),
     // Get staff list with pagination, search, and filtering
     getStaffList: builder.query<ResponseDto<StaffListResponse>, GetStaffListParams>({
@@ -1692,8 +1846,17 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
     }),
 
     // Scheme of Work endpoints
-    getSchemeOfWorkForClass: builder.query<ResponseDto<SchemeOfWork>, { schoolId: string, classId: string }>({
-      query: ({ schoolId, classId }) => `/schools/${schoolId}/scheme-of-work/class/${classId}`,
+    getSchemeOfWorkForClass: builder.query<
+      ResponseDto<SchemeOfWork | null>,
+      { schoolId: string; classId: string; subjectId?: string; termId?: string }
+    >({
+      query: ({ schoolId, classId, subjectId, termId }) => {
+        const params = new URLSearchParams();
+        if (subjectId) params.append('subjectId', subjectId);
+        if (termId) params.append('termId', termId);
+        const qs = params.toString();
+        return `/schools/${schoolId}/scheme-of-work/class/${classId}${qs ? `?${qs}` : ''}`;
+      },
       providesTags: (result, error, { classId }) => [{ type: 'SchemeOfWork' as const, id: classId }],
     }),
     updateSchemeOfWorkWeek: builder.mutation<ResponseDto<SchemeOfWorkWeek>, { schoolId: string, weekId: string, data: UpdateSchemeOfWorkWeekDto }>({
@@ -1702,7 +1865,22 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: (result, error, { weekId }) => ['SchemeOfWork'],
+      invalidatesTags: ['SchemeOfWork'],
+    }),
+    uploadSchemeOfWorkLessonNote: builder.mutation<
+      ResponseDto<SchemeOfWorkWeek>,
+      { schoolId: string; weekId: string; file: File }
+    >({
+      query: ({ schoolId, weekId, file }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: `/schools/${schoolId}/scheme-of-work/week/${weekId}/lesson-note`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['SchemeOfWork'],
     }),
 
     // Create a new class
@@ -1793,13 +1971,16 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       },
       providesTags: ['Session'],
     }),
-    initializeSession: builder.mutation<ResponseDto<AcademicSession>, { schoolId: string; data: InitializeSessionDto }>({
-      query: ({ schoolId, data }) => ({
-        url: `/schools/${schoolId}/sessions/initialize`,
-        method: 'POST',
+    updateSessionDates: builder.mutation<
+      ResponseDto<AcademicSession>,
+      { schoolId: string; sessionId: string; data: UpdateSessionDatesDto }
+    >({
+      query: ({ schoolId, sessionId, data }) => ({
+        url: `/schools/${schoolId}/sessions/${sessionId}/dates`,
+        method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: ['Session'],
+      invalidatesTags: ['Session', 'School'],
     }),
     createTerm: builder.mutation<ResponseDto<Term>, { schoolId: string; sessionId: string; data: CreateTermDto }>({
       query: ({ schoolId, sessionId, data }) => ({
@@ -1866,7 +2047,7 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: ['Session'],
+      invalidatesTags: ['Session', 'School'],
     }),
     // Timetable Management
     getTimetableForClassArm: builder.query<ResponseDto<TimetablePeriod[]>, { schoolId: string; classArmId: string; termId: string }>({
@@ -1890,6 +2071,107 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         { type: 'Timetable' as const, id: `teacher-${teacherId}` },
         { type: 'Timetable' as const, id: `teacher-${teacherId}-${termId}` },
       ],
+    }),
+    getPublishedExamTimetable: builder.query<
+      ResponseDto<ExamTimetableSlot[]>,
+      { schoolId: string; termId: string }
+    >({
+      query: ({ schoolId, termId }) =>
+        `/schools/${schoolId}/exam-timetable/published?termId=${termId}`,
+      providesTags: (result, error, { termId }) => [{ type: 'Timetable', id: `exam-${termId}` }],
+    }),
+    getExamTimetable: builder.query<
+      ResponseDto<ExamTimetableSlot[]>,
+      { schoolId: string; termId: string }
+    >({
+      query: ({ schoolId, termId }) =>
+        `/schools/${schoolId}/exam-timetable?termId=${termId}`,
+      providesTags: (result, error, { termId }) => [
+        { type: 'Timetable', id: `exam-admin-${termId}` },
+      ],
+    }),
+    createExamTimetableSlot: builder.mutation<
+      ResponseDto<ExamTimetableSlot>,
+      { schoolId: string } & CreateExamTimetableSlotDto
+    >({
+      query: ({ schoolId, ...body }) => ({
+        url: `/schools/${schoolId}/exam-timetable/slots`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (result, error, { termId }) => [
+        { type: 'Timetable', id: `exam-admin-${termId}` },
+        { type: 'Timetable', id: `exam-${termId}` },
+      ],
+    }),
+    updateExamTimetableSlot: builder.mutation<
+      ResponseDto<ExamTimetableSlot>,
+      { schoolId: string; slotId: string; termId: string; data: UpdateExamTimetableSlotDto }
+    >({
+      query: ({ schoolId, slotId, data }) => ({
+        url: `/schools/${schoolId}/exam-timetable/slots/${slotId}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { termId }) => [
+        { type: 'Timetable', id: `exam-admin-${termId}` },
+        { type: 'Timetable', id: `exam-${termId}` },
+      ],
+    }),
+    deleteExamTimetableSlot: builder.mutation<
+      ResponseDto<null>,
+      { schoolId: string; slotId: string; termId: string }
+    >({
+      query: ({ schoolId, slotId }) => ({
+        url: `/schools/${schoolId}/exam-timetable/slots/${slotId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, { termId }) => [
+        { type: 'Timetable', id: `exam-admin-${termId}` },
+        { type: 'Timetable', id: `exam-${termId}` },
+      ],
+    }),
+    publishExamTimetable: builder.mutation<
+      ResponseDto<{ termId: string; examTimetablePublishedAt: string; slotCount: number }>,
+      { schoolId: string; termId: string }
+    >({
+      query: ({ schoolId, termId }) => ({
+        url: `/schools/${schoolId}/exam-timetable/publish`,
+        method: 'POST',
+        body: { termId },
+      }),
+      invalidatesTags: (result, error, { termId }) => [
+        { type: 'Timetable', id: `exam-admin-${termId}` },
+        { type: 'Timetable', id: `exam-${termId}` },
+        'Session',
+      ],
+    }),
+    unpublishExamTimetable: builder.mutation<
+      ResponseDto<{ termId: string; examTimetablePublishedAt: string | null }>,
+      { schoolId: string; termId: string }
+    >({
+      query: ({ schoolId, termId }) => ({
+        url: `/schools/${schoolId}/exam-timetable/unpublish`,
+        method: 'POST',
+        body: { termId },
+      }),
+      invalidatesTags: (result, error, { termId }) => [
+        { type: 'Timetable', id: `exam-admin-${termId}` },
+        { type: 'Timetable', id: `exam-${termId}` },
+        'Session',
+      ],
+    }),
+    getMyStudentExamTimetable: builder.query<
+      ResponseDto<ExamTimetableSlot[]>,
+      { termId?: string }
+    >({
+      query: ({ termId }) => {
+        const queryParams = new URLSearchParams();
+        if (termId) queryParams.append('termId', termId);
+        const qs = queryParams.toString();
+        return `/students/me/exam-timetable${qs ? `?${qs}` : ''}`;
+      },
+      providesTags: ['Student', 'Timetable'],
     }),
     getTimetableForClass: builder.query<ResponseDto<TimetablePeriod[]>, { schoolId: string; classId: string; termId: string }>({
       query: ({ schoolId, classId, termId }) => {
@@ -2395,7 +2677,18 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: ['Event'],
+      invalidatesTags: ['Event', 'School'],
+    }),
+    importNigerianHolidays: builder.mutation<
+      ResponseDto<{ created: number; skipped: number; events: CalendarEvent[] }>,
+      { schoolId: string; startDate?: string; endDate?: string; schoolType?: string }
+    >({
+      query: ({ schoolId, ...body }) => ({
+        url: `/schools/${schoolId}/events/import-nigerian-holidays`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Event', 'School'],
     }),
     updateEvent: builder.mutation<ResponseDto<CalendarEvent>, { schoolId: string; eventId: string; data: Partial<CreateEventDto> }>({
       query: ({ schoolId, eventId, data }) => ({
@@ -2688,13 +2981,13 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
     }),
     // Get admission applications
     getAdmissionApplications: builder.query<ResponseDto<any[]>, { schoolId: string; status?: string }>({
-      query: ({ schoolId, status }) => `/schools/${schoolId}/admissions/applications${status ? `?status=${status}` : ''}`,
+      query: ({ schoolId, status }) => `/schools/${schoolId}/students/admissions/applications${status ? `?status=${status}` : ''}`,
       providesTags: (result, error, { schoolId }) => [{ type: 'School', id: schoolId }, 'Student'],
     }),
     // Approve admission application
     approveAdmissionApplication: builder.mutation<ResponseDto<any>, { schoolId: string; applicationId: string; classLevel?: string; classArmId?: string; academicYear?: string }>({
       query: ({ schoolId, applicationId, ...body }) => ({
-        url: `/schools/${schoolId}/admissions/applications/${applicationId}/approve`,
+        url: `/schools/${schoolId}/students/admissions/applications/${applicationId}/approve`,
         method: 'POST',
         body,
       }),
@@ -2703,19 +2996,20 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
     // Reject admission application
     rejectAdmissionApplication: builder.mutation<ResponseDto<any>, { schoolId: string; applicationId: string; reason: string }>({
       query: ({ schoolId, applicationId, reason }) => ({
-        url: `/schools/${schoolId}/admissions/applications/${applicationId}/reject`,
+        url: `/schools/${schoolId}/students/admissions/applications/${applicationId}/reject`,
         method: 'POST',
         body: { reason },
       }),
       invalidatesTags: (result, error, { schoolId }) => [{ type: 'School', id: schoolId }],
     }),
     // Get students list
-    getStudents: builder.query<ResponseDto<PaginatedResponse<StudentWithEnrollment>>, { schoolId: string; page?: number; limit?: number; schoolType?: string }>({
+    getStudents: builder.query<ResponseDto<PaginatedResponse<StudentWithEnrollment>>, { schoolId: string; page?: number; limit?: number; schoolType?: string; search?: string }>({
       query: ({ schoolId, ...params }) => {
         const queryParams = new URLSearchParams();
         if (params.page) queryParams.append('page', params.page.toString());
         if (params.limit) queryParams.append('limit', params.limit.toString());
         if (params.schoolType) queryParams.append('schoolType', params.schoolType);
+        if (params.search) queryParams.append('search', params.search);
         const queryString = queryParams.toString();
         return `/schools/${schoolId}/students${queryString ? `?${queryString}` : ''}`;
       },
@@ -3670,7 +3964,7 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       query: () => 'subscriptions/summary',
       transformResponse: (response: ResponseDto<SubscriptionSummaryDto>) => response.data,
     }),
-    // Agora Subject Bank
+    // Bud library (subject bank)
     getAgoraSubjects: builder.query<ResponseDto<AgoraSubject[]>, { schoolId: string; schoolType?: string; category?: string }>({
       query: ({ schoolId, schoolType, category }) => ({
         url: `/schools/${schoolId}/curriculum/agora/subjects`,
@@ -3753,6 +4047,100 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         { type: 'Class', id: 'LIST' },
       ],
     }),
+
+    // ── School CSV Export ─────────────────────────────────────────────────────
+    exportRoster: builder.query<Blob, { schoolId: string; academicYear: string }>({
+      query: ({ schoolId, academicYear }) => ({
+        url: `/schools/${schoolId}/export/roster?academicYear=${encodeURIComponent(academicYear)}`,
+        responseHandler: (response) => response.blob(),
+        cache: 'no-cache',
+      }),
+    }),
+
+    exportAttendanceCsv: builder.query<Blob, { schoolId: string; classId: string; classType?: string; termId: string }>({
+      query: ({ schoolId, classId, classType = 'CLASS_ARM', termId }) => ({
+        url: `/schools/${schoolId}/export/attendance?classId=${classId}&classType=${classType}&termId=${termId}`,
+        responseHandler: (response) => response.blob(),
+        cache: 'no-cache',
+      }),
+    }),
+
+    exportGradesCsv: builder.query<Blob, { schoolId: string; classId: string; termId: string }>({
+      query: ({ schoolId, classId, termId }) => ({
+        url: `/schools/${schoolId}/export/grades?classId=${classId}&termId=${termId}`,
+        responseHandler: (response) => response.blob(),
+        cache: 'no-cache',
+      }),
+    }),
+
+    exportFeesCsv: builder.query<Blob, { schoolId: string; termId: string }>({
+      query: ({ schoolId, termId }) => ({
+        url: `/schools/${schoolId}/export/fees?termId=${termId}`,
+        responseHandler: (response) => response.blob(),
+        cache: 'no-cache',
+      }),
+    }),
+
+    // ── Student PDF Export ────────────────────────────────────────────────────
+    exportReportCard: builder.query<Blob, { termId: string }>({
+      query: ({ termId }) => ({
+        url: `/students/me/export/report-card?termId=${termId}`,
+        responseHandler: (response) => response.blob(),
+        cache: 'no-cache',
+      }),
+    }),
+
+    exportAttendancePdf: builder.query<Blob, { termId: string }>({
+      query: ({ termId }) => ({
+        url: `/students/me/export/attendance?termId=${termId}`,
+        responseHandler: (response) => response.blob(),
+        cache: 'no-cache',
+      }),
+    }),
+
+    exportTranscriptPdf: builder.query<Blob, void>({
+      query: () => ({
+        url: '/students/me/export/transcript',
+        responseHandler: (response) => response.blob(),
+        cache: 'no-cache',
+      }),
+    }),
+
+    // ── Cloud Backup ──────────────────────────────────────────────────────────
+    getBackupStatus: builder.query<BackupStatus, { schoolId: string; provider: string }>({
+      query: ({ schoolId, provider }) =>
+        `/schools/${schoolId}/export/backup/${provider.toLowerCase().replace(/_/g, '-')}/status`,
+      providesTags: (_result, _err, { provider }) => [{ type: 'BackupStatus' as const, id: provider }],
+    }),
+
+    getBackupAuthUrl: builder.query<OAuthUrlResponse, { schoolId: string; provider: 'google-drive' | 'dropbox' }>({
+      query: ({ schoolId, provider }) => `/schools/${schoolId}/export/backup/${provider}/auth`,
+    }),
+
+    disconnectBackup: builder.mutation<void, { schoolId: string; provider: string }>({
+      query: ({ schoolId, provider }) => ({
+        url: `/schools/${schoolId}/export/backup/${provider.toLowerCase().replace(/_/g, '-')}/disconnect`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _err, { provider }) => [{ type: 'BackupStatus' as const, id: provider }],
+    }),
+
+    connectMegaBackup: builder.mutation<void, { schoolId: string; email: string; password: string }>({
+      query: ({ schoolId, email, password }) => ({
+        url: `/schools/${schoolId}/export/backup/mega/connect`,
+        method: 'POST',
+        body: { email, password },
+      }),
+      invalidatesTags: [{ type: 'BackupStatus' as const, id: 'MEGA' }],
+    }),
+
+    triggerBackup: builder.mutation<void, { schoolId: string; provider: string }>({
+      query: ({ schoolId, provider }) => ({
+        url: `/schools/${schoolId}/export/backup/${provider.toLowerCase().replace(/_/g, '-')}/backup-now`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _err, { provider }) => [{ type: 'BackupStatus' as const, id: provider }],
+    }),
   }),
 });
 
@@ -3763,6 +4151,7 @@ export const {
   useRequestEditTokenMutation,
   useVerifyEditTokenMutation,
   useGetSchoolAdminDashboardQuery,
+  useGetSetupProgressQuery,
   useGetStaffListQuery,
   useGetStaffMemberQuery,
   useDeleteAdminMutation,
@@ -3785,17 +4174,24 @@ export const {
   useGetTermsQuery,
   useGetSessionsQuery,
   useGetActiveSessionQuery,
-  useInitializeSessionMutation,
   useCreateTermMutation,
   useStartNewTermMutation,
   useMigrateStudentsMutation,
   useEndTermMutation,
   useReactivateTermMutation,
   useEndSessionMutation,
+  useUpdateSessionDatesMutation,
   useUpdateTermDatesMutation,
   // Timetable hooks
   useGetTimetableForClassArmQuery,
   useGetTimetableForTeacherQuery,
+  useGetPublishedExamTimetableQuery,
+  useGetExamTimetableQuery,
+  useCreateExamTimetableSlotMutation,
+  useUpdateExamTimetableSlotMutation,
+  useDeleteExamTimetableSlotMutation,
+  usePublishExamTimetableMutation,
+  useUnpublishExamTimetableMutation,
   useGetTimetableForClassQuery,
   useGetTimetablesForSchoolTypeQuery,
   useCreateTimetablePeriodMutation,
@@ -3855,6 +4251,7 @@ export const {
   useGetEventsQuery,
   useGetUpcomingEventsQuery,
   useCreateEventMutation,
+  useImportNigerianHolidaysMutation,
   useUpdateEventMutation,
   useDeleteEventMutation,
   useGetGoogleCalendarStatusQuery,
@@ -3906,6 +4303,7 @@ export const {
   useGetMyStudentClassesQuery,
   useGetMyClassmatesQuery,
   useGetMyStudentTimetableQuery,
+  useGetMyStudentExamTimetableQuery,
   useGetMyStudentGradesQuery,
   useGetMyStudentAttendanceQuery,
   useGetMyStudentResourcesQuery,
@@ -3967,6 +4365,7 @@ export const {
   // Scheme of Work hooks
   useGetSchemeOfWorkForClassQuery,
   useUpdateSchemeOfWorkWeekMutation,
+  useUploadSchemeOfWorkLessonNoteMutation,
   useGetSchemesSummaryQuery,
   useSetupSchemeOfWorkMutation,
   useCancelSchemeOfWorkMutation,
@@ -3982,5 +4381,19 @@ export const {
   useGetSubscriptionSummaryQuery,
   useGetAgoraSubjectsQuery,
   useReassignStudentMutation,
+  // Export hooks
+  useLazyExportRosterQuery,
+  useLazyExportAttendanceCsvQuery,
+  useLazyExportGradesCsvQuery,
+  useLazyExportFeesCsvQuery,
+  useLazyExportReportCardQuery,
+  useLazyExportAttendancePdfQuery,
+  useLazyExportTranscriptPdfQuery,
+  // Backup hooks
+  useGetBackupStatusQuery,
+  useLazyGetBackupAuthUrlQuery,
+  useDisconnectBackupMutation,
+  useConnectMegaBackupMutation,
+  useTriggerBackupMutation,
 } = schoolAdminApi;
 

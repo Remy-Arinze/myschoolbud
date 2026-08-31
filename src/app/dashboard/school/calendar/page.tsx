@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Calendar as RBCalendar, View, SlotInfo, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay, addDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
@@ -18,6 +18,7 @@ import {
   useCreateEventMutation,
   useUpdateEventMutation,
   useDeleteEventMutation,
+  useImportNigerianHolidaysMutation,
   useGetTimetablesForSchoolTypeQuery,
   useGetClassArmsQuery,
   useGetRoomsQuery,
@@ -27,9 +28,16 @@ import {
   type Term,
 } from '@/lib/store/api/schoolAdminApi';
 import { useSchoolType } from '@/hooks/useSchoolType';
+import {
+  DEFAULT_WORKING_DAYS,
+  buildHalfTermRange,
+  holidayRangesFromEvents,
+  isInstructionalDay,
+} from '@/lib/calendar/instructionalDays';
 import toast from 'react-hot-toast';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
-import { Calendar as CalendarIcon, X, MapPin } from 'lucide-react';
+import { Calendar as CalendarIcon, X, MapPin, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Create date-fns localizer
@@ -50,7 +58,16 @@ interface CalendarEventWithType {
   title: string;
   startDate: string;
   endDate: string;
-  type: CalendarEventType | 'TIMETABLE' | 'SESSION_START' | 'SESSION_END' | 'TERM_START' | 'TERM_END' | 'HALF_TERM';
+  type:
+    | CalendarEventType
+    | 'TIMETABLE'
+    | 'SESSION_START'
+    | 'SESSION_END'
+    | 'TERM_START'
+    | 'TERM_END'
+    | 'HALF_TERM'
+    | 'MIDTERM'
+    | 'EXAM_PERIOD';
   schoolType?: string;
   location?: string;
   roomId?: string;
@@ -66,6 +83,7 @@ interface CalendarEventWithType {
 }
 
 export default function CalendarPage() {
+  const searchParams = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>('month');
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
@@ -81,6 +99,8 @@ export default function CalendarPage() {
   const { data: schoolResponse } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
   const { currentType } = useSchoolType();
+
+  const [importHolidays, { isLoading: isImportingHolidays }] = useImportNigerianHolidaysMutation();
 
   const { data: activeSessionResponse } = useGetActiveSessionQuery(
     { schoolId: schoolId! },
@@ -281,11 +301,58 @@ export default function CalendarPage() {
             allDay: true,
           });
         }
+
+        if (term.midtermStart && term.midtermEnd) {
+          combined.push({
+            id: `midterm-${term.id}`,
+            title: `Midterm tests: ${term.name}`,
+            startDate: new Date(term.midtermStart).toISOString(),
+            endDate: new Date(term.midtermEnd).toISOString(),
+            type: 'MIDTERM' as const,
+            schoolId: schoolId!,
+            isAllDay: true,
+            createdAt: term.createdAt,
+            updatedAt: term.createdAt,
+            start: new Date(term.midtermStart),
+            end: new Date(term.midtermEnd),
+            allDay: true,
+          });
+        }
+
+        if (term.examStart && term.examEnd) {
+          combined.push({
+            id: `exam-period-${term.id}`,
+            title: `Exams: ${term.name}`,
+            startDate: new Date(term.examStart).toISOString(),
+            endDate: new Date(term.examEnd).toISOString(),
+            type: 'EXAM_PERIOD' as const,
+            schoolId: schoolId!,
+            isAllDay: true,
+            createdAt: term.createdAt,
+            updatedAt: term.createdAt,
+            start: new Date(term.examStart),
+            end: new Date(term.examEnd),
+            allDay: true,
+          });
+        }
       });
     });
 
-    // Add recurring timetable periods (for current week/month)
+    const holidayRanges = holidayRangesFromEvents(events);
+    const halfTermRanges = allSessions.flatMap((session: AcademicSession) =>
+      session.terms
+        .map((term: Term) => buildHalfTermRange(term.halfTermStart, term.halfTermEnd))
+        .filter(Boolean),
+    );
+    const nonInstructionalRanges = [...holidayRanges, ...halfTermRanges];
+
+    // Add recurring timetable periods — only on instructional days
     if (activeSession?.term && timetablesByClass) {
+      const termRange = {
+        start: new Date(activeSession.term.startDate),
+        end: new Date(activeSession.term.endDate),
+      };
+
       // Iterate through all classes and their timetable periods
       Object.entries(timetablesByClass).forEach(([classId, periods]) => {
         periods.forEach((period) => {
@@ -304,6 +371,16 @@ export default function CalendarPage() {
           }
 
           dates.forEach((date) => {
+            if (
+              !isInstructionalDay(date, {
+                workingDays: DEFAULT_WORKING_DAYS,
+                termRange,
+                nonInstructionalRanges,
+              })
+            ) {
+              return;
+            }
+
             const [startHour, startMin] = period.startTime.split(':').map(Number);
             const [endHour, endMin] = period.endTime.split(':').map(Number);
 
@@ -425,6 +502,38 @@ export default function CalendarPage() {
     }
   };
 
+  const handleImportHolidays = useCallback(async () => {
+    if (!schoolId) {
+      toast.error('School not found');
+      return;
+    }
+    try {
+      const result = await importHolidays({
+        schoolId,
+        schoolType: currentType || undefined,
+        startDate: activeSession?.session?.startDate,
+        endDate: activeSession?.session?.endDate,
+      }).unwrap();
+      const created = result.data?.created ?? 0;
+      const skipped = result.data?.skipped ?? 0;
+      if (created === 0 && skipped > 0) {
+        toast.success('Public holidays already on the calendar');
+      } else {
+        toast.success(
+          `Imported ${created} holiday(s)${skipped ? ` (${skipped} already present)` : ''}`,
+        );
+      }
+    } catch (error: any) {
+      toast.error(error?.data?.message || 'Failed to import holidays');
+    }
+  }, [schoolId, importHolidays, currentType, activeSession]);
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'import-holidays' && schoolId) {
+      void handleImportHolidays();
+    }
+  }, [searchParams, schoolId, handleImportHolidays]);
+
   const eventStyleGetter = (event: CalendarEventWithType) => {
     const colors: Record<string, { backgroundColor: string; borderColor: string; color: string }> = {
       ACADEMIC: {
@@ -482,6 +591,16 @@ export default function CalendarPage() {
         borderColor: '#f59e0b',
         color: '#92400e',
       },
+      MIDTERM: {
+        backgroundColor: '#ffedd5',
+        borderColor: '#f97316',
+        color: '#9a3412',
+      },
+      EXAM_PERIOD: {
+        backgroundColor: '#fee2e2',
+        borderColor: '#ef4444',
+        color: '#991b1b',
+      },
     };
 
     const style = colors[event.type] || colors.EVENT;
@@ -501,13 +620,28 @@ export default function CalendarPage() {
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
       <div className="w-full">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary mb-2" style={{ fontSize: 'var(--text-page-title)' }}>
-            Calendar
-          </h1>
-          <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-page-subtitle)' }}>
-            Unified schedule: Timetable slots and one-off events
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary mb-2" style={{ fontSize: 'var(--text-page-title)' }}>
+              Calendar
+            </h1>
+            <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-page-subtitle)' }}>
+              Unified schedule: timetable, holidays, midterms, and exams
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleImportHolidays}
+            disabled={!schoolId || isImportingHolidays}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-light-border dark:border-dark-border bg-white dark:bg-dark-surface text-sm font-medium text-light-text-primary dark:text-dark-text-primary hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+          >
+            {isImportingHolidays ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CalendarIcon className="h-4 w-4" />
+            )}
+            Import Nigerian holidays
+          </button>
         </div>
 
         {/* F4: Term selector */}
@@ -542,6 +676,36 @@ export default function CalendarPage() {
           {/* Main Calendar Area (3/4 width) */}
           <Card className="lg:col-span-3">
             <CardContent className="pt-6">
+              {/* Event type legend — above calendar for easy reference */}
+              <div className="mb-4 flex flex-wrap gap-2">
+                {[
+                  { type: 'ACADEMIC', label: 'Academic', color: 'bg-blue-200 border-blue-400' },
+                  { type: 'EVENT', label: 'Event', color: 'bg-green-200 border-green-400' },
+                  { type: 'EXAM', label: 'Exam', color: 'bg-red-200 border-red-400' },
+                  { type: 'MEETING', label: 'Meeting', color: 'bg-purple-200 border-purple-400' },
+                  { type: 'HOLIDAY', label: 'Holiday', color: 'bg-gray-200 border-gray-400' },
+                  { type: 'TIMETABLE', label: 'Timetable', color: 'bg-indigo-200 border-indigo-400' },
+                  { type: 'TERM_START', label: 'Term Start', color: 'bg-emerald-200 border-emerald-400' },
+                  { type: 'TERM_END', label: 'Term End', color: 'bg-pink-200 border-pink-400' },
+                  { type: 'HALF_TERM', label: 'Half-Term', color: 'bg-amber-200 border-amber-400' },
+                  { type: 'MIDTERM', label: 'Midterm tests', color: 'bg-orange-200 border-orange-400' },
+                  { type: 'EXAM_PERIOD', label: 'Exam Period', color: 'bg-red-200 border-red-400' },
+                ].map(({ type, label, color }) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => toggleType(type)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                      hiddenTypes.has(type) ? 'opacity-40 line-through' : color
+                    }`}
+                    title={hiddenTypes.has(type) ? `Show ${label}` : `Hide ${label}`}
+                  >
+                    <span className={`w-2 h-2 rounded-full border ${color}`} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               <div style={{ height: '600px' }}>
                 <RBCalendar
                   localizer={localizer as any}
@@ -600,33 +764,6 @@ export default function CalendarPage() {
               )}
             </CardContent>
           </Card>
-        </div>
-
-        {/* F5: Event Type Legend */}
-        <div className="mt-3 px-2 flex flex-wrap gap-2">
-          {[
-            { type: 'ACADEMIC', label: 'Academic', color: 'bg-blue-200 border-blue-400' },
-            { type: 'EVENT', label: 'Event', color: 'bg-green-200 border-green-400' },
-            { type: 'EXAM', label: 'Exam', color: 'bg-red-200 border-red-400' },
-            { type: 'MEETING', label: 'Meeting', color: 'bg-purple-200 border-purple-400' },
-            { type: 'HOLIDAY', label: 'Holiday', color: 'bg-gray-200 border-gray-400' },
-            { type: 'TIMETABLE', label: 'Timetable', color: 'bg-indigo-200 border-indigo-400' },
-            { type: 'TERM_START', label: 'Term Start', color: 'bg-emerald-200 border-emerald-400' },
-            { type: 'TERM_END', label: 'Term End', color: 'bg-pink-200 border-pink-400' },
-            { type: 'HALF_TERM', label: 'Half-Term', color: 'bg-amber-200 border-amber-400' },
-          ].map(({ type, label, color }) => (
-            <button
-              key={type}
-              onClick={() => toggleType(type)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                hiddenTypes.has(type) ? 'opacity-40 line-through' : color
-              }`}
-              title={hiddenTypes.has(type) ? `Show ${label}` : `Hide ${label}`}
-            >
-              <span className={`w-2 h-2 rounded-full border ${color}`} />
-              {label}
-            </button>
-          ))}
         </div>
 
         {/* Create Event Modal */}

@@ -58,8 +58,10 @@ import { ConfirmModal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { useAutoGenerateWithTeachers, type GeneratedPeriodWithTeacher } from '@/hooks/useAutoGenerateWithTeachers';
 import toast from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { ExamTimetablesTab } from '@/components/timetable/ExamTimetablesTab';
+import { buildTermOptions } from '@/lib/academic/buildTermOptions';
 
 // Types for teacher selection state
 interface TeacherSelectionState {
@@ -70,6 +72,20 @@ interface TeacherSelectionState {
 
 export default function TimetablesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'exam' ? 'exam' : 'class';
+
+  const handleTabChange = (tab: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === 'class') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+    const qs = params.toString();
+    router.replace(`/dashboard/school/timetables${qs ? `?${qs}` : ''}`);
+  };
+
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedTermId, setSelectedTermId] = useState<string>('');
   const [showHistory, setShowHistory] = useState(false);
@@ -106,7 +122,7 @@ export default function TimetablesPage() {
   );
 
   // Get classes filtered by school type (same as courses page)
-  const { data: classesResponse } = useGetClassesQuery(
+  const { data: classesResponse, isLoading: isLoadingClasses, isFetching: isFetchingClasses } = useGetClassesQuery(
     { schoolId: schoolId!, type: currentType || undefined },
     { skip: !schoolId }
   );
@@ -181,38 +197,9 @@ export default function TimetablesPage() {
   const timetable = timetableResponse?.data || [];
   const timetablesByClass = timetablesResponse?.data || {};
 
-  // Get all terms from sessions - filtered by current school type and deduplicated
   const allTerms = useMemo(() => {
-    if (!sessionsResponse?.data) return [];
-
-    // IMPORTANT: Only show sessions that match the current school type
-    // Each school type (PRIMARY, SECONDARY, TERTIARY) has its own independent sessions
-    const filteredSessions = sessionsResponse.data.filter((session) => {
-      return session.schoolType === (currentType || null);
-    });
-
-    // Deduplicate sessions by name (keep first/latest)
-    const uniqueSessionsMap = new Map<string, typeof filteredSessions[0]>();
-    filteredSessions.forEach((session) => {
-      // Use session name as key - if duplicate exists, keep the first one (latest by startDate)
-      if (!uniqueSessionsMap.has(session.name)) {
-        uniqueSessionsMap.set(session.name, session);
-      }
-    });
-    const uniqueSessions = Array.from(uniqueSessionsMap.values());
-
-    // Map terms with session info
-    return uniqueSessions.flatMap((session) =>
-      session.terms.map((term) => ({
-        ...term,
-        sessionName: session.name,
-        schoolType: session.schoolType,
-      }))
-    ).sort((a, b) => {
-      // Sort by session name (desc) then term number (asc)
-      const sessionCompare = b.sessionName.localeCompare(a.sessionName);
-      if (sessionCompare !== 0) return sessionCompare;
-      return a.number - b.number;
+    return buildTermOptions(sessionsResponse?.data, {
+      schoolType: currentType || null,
     });
   }, [sessionsResponse, currentType]);
 
@@ -224,12 +211,14 @@ export default function TimetablesPage() {
   const paramsProcessed = useRef(false);
 
   useEffect(() => {
-    if (paramsProcessed.current || isLoadingTimetables || classes.length === 0) return;
+    if (paramsProcessed.current || isLoadingTimetables) return;
     
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
       const classIdParam = searchParams.get('class') || searchParams.get('classId');
+      const actionParam = searchParams.get('action');
       if (classIdParam) {
+        if (classes.length === 0) return;
         paramsProcessed.current = true;
         
         const cls = classes.find(c => c.id === classIdParam);
@@ -243,6 +232,13 @@ export default function TimetablesPage() {
             setShowCreateModal(true);
           }
         }
+      } else if (actionParam === 'add') {
+        paramsProcessed.current = true;
+        setShowCreateModal(true);
+        const next = new URLSearchParams(searchParams.toString());
+        next.delete('action');
+        const qs = next.toString();
+        window.history.replaceState({}, '', `/dashboard/school/timetables${qs ? `?${qs}` : ''}`);
       }
     }
   }, [classes, timetablesByClass, isLoadingTimetables]);
@@ -782,42 +778,73 @@ export default function TimetablesPage() {
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
       <div className="w-full">
         {/* Header */}
-        <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex flex-col w-full md:w-auto">
-                <div className="flex items-center justify-between w-full">
-                  <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
-                    Timetables
-                  </h1>
-                </div>
-                <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1" style={{ fontSize: 'var(--text-page-subtitle)' }}>
-                  Manage class schedules and timetables for {currentType || 'your school'}
-                </p>
-              </div>
-              <div className="flex flex-row items-center gap-3 w-full md:w-auto md:justify-end">
+        <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
+                Timetables
+              </h1>
+              <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1" style={{ fontSize: 'var(--text-page-subtitle)' }}>
+                Manage class schedules and exam timetables for {currentType || 'your school'}
+              </p>
+            </div>
+            {activeTab === 'class' && (
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   variant="ghost"
+                  size="sm"
                   onClick={() => setShowHistory(!showHistory)}
-                  className={`flex-1 sm:w-auto h-9 text-[10px] sm:text-xs ${showHistory ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' : ''}`}
+                  className={`h-8 px-3 text-xs ${showHistory ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' : ''}`}
                 >
-                  <Clock className="h-4 w-4 mr-1 sm:mr-2" />
+                  <Clock className="h-3.5 w-3.5 mr-1.5" />
                   {showHistory ? 'Current Term' : 'History'}
                 </Button>
                 <PermissionGate resource={PermissionResource.TIMETABLES} type={PermissionType.WRITE}>
                   <Button
                     variant="primary"
+                    size="sm"
                     onClick={() => setShowCreateModal(true)}
-                    className="flex-1 md:w-auto h-9 px-4 text-[10px] sm:text-xs whitespace-nowrap shrink-0 min-w-fit"
+                    className="h-8 px-3 text-xs whitespace-nowrap"
                   >
-                    <Plus className="h-4 w-4 mr-1 md:mr-2" />
-                    <span className="hidden sm:inline">Create Timetable</span>
-                    <span className="sm:hidden">Create</span>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    Create Timetable
                   </Button>
                 </PermissionGate>
               </div>
-            </div>
+            )}
+          </div>
         </FadeInUp>
 
+        {/* Tabs */}
+        <div className="mb-6 border-b border-light-border dark:border-dark-border">
+          <div className="flex space-x-1 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => handleTabChange('class')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'class'
+                ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
+                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
+                }`}
+            >
+              <Clock className="h-4 w-4" />
+              Class schedules
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('exam')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'exam'
+                ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
+                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
+                }`}
+            >
+              <GraduationCap className="h-4 w-4" />
+              Exam timetable
+            </button>
+          </div>
+        </div>
+
+        {activeTab === 'class' && (
+          <>
         {/* Timetables List */}
         {isLoadingSchool || isLoadingActiveSession || (selectedTermId && isLoadingTimetables) ? (
           <div className="py-24 flex flex-col items-center justify-center">
@@ -1119,7 +1146,12 @@ export default function TimetablesPage() {
               </p>
               <div className="space-y-4">
                 {/* Classes Selection */}
-                {classes.length === 0 ? (
+                {isLoadingClasses || isFetchingClasses ? (
+                  <div className="flex items-center gap-2 py-3 text-light-text-secondary dark:text-dark-text-secondary">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span style={{ fontSize: 'var(--text-small)' }}>Loading classes...</span>
+                  </div>
+                ) : classes.length === 0 ? (
                   <div className="p-4 border border-yellow-500/30 dark:border-yellow-500/30 rounded-lg bg-yellow-50/50 dark:bg-yellow-900/10">
                     <div className="flex items-start gap-3">
                       <Info className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
@@ -1280,6 +1312,10 @@ export default function TimetablesPage() {
             isLoading={isApplyingPreview}
           />
         )}
+          </>
+        )}
+
+        {activeTab === 'exam' && <ExamTimetablesTab />}
       </div>
     </ProtectedRoute>
   );

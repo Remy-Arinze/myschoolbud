@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -35,6 +35,7 @@ import toast from 'react-hot-toast';
 
 export default function ClassesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showAddClass, setShowAddClass] = useState(false);
@@ -61,6 +62,16 @@ export default function ClassesPage() {
   });
   const { currentType } = useSchoolType();
   const terminology = getTerminology(currentType);
+
+  // Deep-link from setup checklist: /courses?action=add
+  useEffect(() => {
+    if (searchParams.get('action') !== 'add') return;
+    setShowAddClass(true);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('action');
+    const qs = next.toString();
+    router.replace(`/dashboard/school/courses${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [searchParams, router]);
 
   // Get school data
   const { data: schoolResponse, isLoading: isLoadingSchool } = useGetMySchoolQuery();

@@ -19,6 +19,7 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
+import { isPastDueDate } from '@/lib/assessment-deadline';
 import {
   useGetMyStudentProfileQuery,
   useGetMyStudentClassesQuery,
@@ -397,8 +398,8 @@ export default function StudentClassesPage() {
                     const submission = assessment.submission;
                     const isSubmitted = assessment.isSubmitted;
                     const isGraded = submission?.status === 'GRADED';
-                    const isPastDue = assessment.dueDate ? new Date(assessment.dueDate) < new Date() : false;
-                    const isMissed = !isSubmitted && isPastDue;
+                    const isPastDue = assessment.isPastDue ?? (assessment.dueDate ? isPastDueDate(assessment.dueDate) : false);
+                    const isMissed = assessment.isMissed ?? (!isSubmitted && isPastDue && !assessment.allowLateSubmissionAfterDue && submission?.status !== 'STARTED');
 
                     return (
                       <FadeInUp key={assessment.id} duration={0.4}>

@@ -97,7 +97,7 @@ export default function AssessmentDetailPage() {
                             }}>
                                 Copy Link
                             </Button>
-                            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                            <Button className="bg-[var(--agora-blue)] hover:bg-[#1a7de0] text-white">
                                 Edit Assessment
                             </Button>
                         </div>
@@ -121,8 +121,8 @@ export default function AssessmentDetailPage() {
                                             setActiveTab(tab);
                                         }}
                                         className={`flex items-center gap-2 px-6 py-4 font-bold transition-all whitespace-nowrap border-b-2 uppercase tracking-wider ${activeTab === tab
-                                                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                                                : 'border-transparent text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
+                                                ? 'border-[var(--agora-blue)] text-[var(--agora-blue)] dark:border-blue-400 dark:text-blue-400'
+                                                : 'border-transparent text-light-text-secondary dark:text-dark-text-secondary hover:text-[var(--agora-text)] dark:hover:text-dark-text-primary'
                                             }`}
                                         style={{ fontSize: 'var(--text-tiny)' }}
                                     >
@@ -156,7 +156,7 @@ export default function AssessmentDetailPage() {
                                             return (
                                                 <div
                                                     key={submission.id}
-                                                    className="flex items-center justify-between p-4 border border-light-border dark:border-dark-border rounded-xl hover:bg-light-surface/50 dark:hover:bg-dark-surface/50 transition-colors cursor-pointer"
+                                                    className="flex items-center justify-between p-4 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-xl hover:bg-gray-100 dark:hover:bg-[var(--dark-hover)] transition-colors cursor-pointer"
                                                     onClick={() => router.push(`/dashboard/teacher/assessments/${assessmentId}/grade/${student.id}`)}
                                                 >
                                                     <div className="flex items-center gap-4">
@@ -180,6 +180,17 @@ export default function AssessmentDetailPage() {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-4">
+                                                        <div className="flex flex-wrap gap-1 justify-end">
+                                                            {submission.isLateDue && (
+                                                                <Badge variant="danger" className="text-[9px] uppercase">Late Due</Badge>
+                                                            )}
+                                                            {submission.isLateTimer && (
+                                                                <Badge variant="danger" className="text-[9px] uppercase">Late Timer</Badge>
+                                                            )}
+                                                            {submission.isAutoSubmitted && (
+                                                                <Badge variant="outline" className="text-[9px] uppercase">Auto</Badge>
+                                                            )}
+                                                        </div>
                                                         <Badge variant={status === 'Graded' ? 'success' : 'outline'} className="text-xs uppercase">
                                                             {status}
                                                         </Badge>

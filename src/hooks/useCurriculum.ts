@@ -157,7 +157,7 @@ export function useCurriculum(options: UseCurriculumOptions = {}) {
 
     try {
       const result = await generateCurriculum({ schoolId, data }).unwrap();
-      toast.success('Curriculum generated from Agora template');
+      toast.success('Curriculum generated from Bud library template');
       return result.data;
     } catch (error: any) {
       toast.error(error?.data?.message || 'Failed to generate curriculum');
@@ -173,7 +173,7 @@ export function useCurriculum(options: UseCurriculumOptions = {}) {
       const { created, failed } = result.data;
 
       if (created.length > 0) {
-        toast.success(`Generated ${created.length} curricula from Agora templates`);
+        toast.success(`Generated ${created.length} curricula from Bud library templates`);
       }
       if (failed.length > 0) {
         toast(`${failed.length} curricula failed to generate`, { icon: '⚠️' });

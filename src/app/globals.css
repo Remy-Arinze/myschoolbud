@@ -83,15 +83,25 @@
     /* 24px - Large card padding */
 
     /* Light Mode Colors */
-    --light-bg: #ebebeb;
-    --light-card: #f1f1f1;
+    --light-bg: #f3fbff;
+    --light-card: #f3fbff;
     --light-surface: #f8fafc;
     --light-text-primary: #111827;
     --light-text-secondary: #4b5563;
     --light-text-muted: #9ca3af;
     --light-border: #dddddd;
     --light-hover: #f9fafb;
-    --light-sidebar-active: #f5f5f5;
+    /* Selected sidebar item — solid white for contrast on pale dashboards */
+    --light-sidebar-active: #ffffff;
+
+    /* Staff dashboard (teacher + school admin) — shared theme tokens */
+    --dashboard-sidebar-border: rgba(36, 144, 253, 0.12);
+    --dashboard-sidebar-active-border: rgba(36, 144, 253, 0.35);
+    --dashboard-sidebar-active-shadow: 0 1px 2px rgba(2, 23, 61, 0.06), inset 3px 0 0 0 var(--agora-blue);
+    --dashboard-nav-hover-bg: rgba(255, 255, 255, 0.65);
+    --dashboard-mobile-nav-border: rgba(36, 144, 253, 0.12);
+    --dashboard-mobile-nav-shadow: 0 1px 2px rgba(2, 23, 61, 0.04);
+    --dashboard-drawer-shadow: 20px 0 50px rgba(0, 0, 0, 0.1);
 
     /* Map dark variables strictly to light colors by default for light mode scale */
     --dark-bg: var(--light-bg);
@@ -152,199 +162,169 @@
     color: var(--dark-text-primary);
   }
 
-  /* --- Glassmorphism Overrides for Teacher Dashboard --- */
-  body.teacher-dashboard-active {
-    background-color: #f4f7fa;
-    /* Slightly cleaner light grey-blue */
+  /* --- Staff dashboard (teacher + school admin) — single shared theme --- */
+  body.staff-dashboard-active {
+    background-color: var(--light-bg);
   }
 
-  body.teacher-dashboard-active .desktop-sidebar {
-    background-color: transparent !important;
+  body.staff-dashboard-active .desktop-sidebar {
+    background-color: var(--light-bg) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    border-right: 1px solid var(--light-border) !important;
+    border-right: 1px solid var(--dashboard-sidebar-border) !important;
     box-shadow: none !important;
   }
 
-  /* Solid Mobile Drawer for Teacher & School Admin Light Mode */
-  body.teacher-dashboard-active .mobile-sidebar-drawer,
-  body.school-dashboard-active .mobile-sidebar-drawer {
-    background-color: #f4f7fa !important;
+  body.staff-dashboard-active .mobile-sidebar-drawer {
+    background-color: var(--light-bg) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.1) !important;
-    border-right: 1px solid rgba(0, 0, 0, 0.05) !important;
+    box-shadow: var(--dashboard-drawer-shadow) !important;
+    border-right: 1px solid var(--dashboard-sidebar-border) !important;
     opacity: 1 !important;
   }
 
-  /* Sidebar Link Styling for Light Theme Teacher Dashboard */
-  body.teacher-dashboard-active:not(.dark) .sidebar-link-item {
+  body.staff-dashboard-active:not(.dark) .sidebar-link-item {
     font-size: var(--text-body) !important;
     font-weight: 500 !important;
     transition: all 0.2s ease;
+    border: 1px solid transparent !important;
   }
 
-  body.teacher-dashboard-active:not(.dark) .sidebar-link-active {
+  body.staff-dashboard-active:not(.dark) .sidebar-link-active {
     background-color: var(--light-sidebar-active) !important;
-    color: #0f172a !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
-    border-color: rgba(0, 0, 0, 0.02) !important;
+    color: var(--agora-text) !important;
+    font-weight: 600 !important;
+    border: 1px solid var(--dashboard-sidebar-active-border) !important;
+    box-shadow: var(--dashboard-sidebar-active-shadow) !important;
   }
 
-  body.teacher-dashboard-active:not(.dark) .sidebar-link-active span {
-    color: #0f172a !important;
+  body.staff-dashboard-active:not(.dark) .sidebar-link-active span,
+  body.staff-dashboard-active:not(.dark) .sidebar-link-active svg {
+    color: var(--agora-text) !important;
   }
 
-  body.teacher-dashboard-active:not(.dark) .sidebar-link-inactive {
-    color: #64748b !important;
+  body.staff-dashboard-active:not(.dark) .sidebar-link-inactive {
+    color: var(--light-text-secondary) !important;
     background-color: transparent !important;
   }
 
-  body.teacher-dashboard-active:not(.dark) .sidebar-link-inactive:hover {
-    color: #0f172a !important;
-    background-color: var(--light-hover) !important;
+  body.staff-dashboard-active:not(.dark) .sidebar-link-inactive:hover {
+    color: var(--agora-text) !important;
+    background-color: var(--dashboard-nav-hover-bg) !important;
   }
 
-  /* Logout & Theme Toggle matching for light mode */
-  body.teacher-dashboard-active:not(.dark) .desktop-sidebar button,
-  body.teacher-dashboard-active:not(.dark) .mobile-sidebar-drawer button {
-    color: #64748b !important;
+  body.staff-dashboard-active:not(.dark) .desktop-sidebar button,
+  body.staff-dashboard-active:not(.dark) .mobile-sidebar-drawer button {
+    color: var(--light-text-secondary) !important;
     font-size: var(--text-body) !important;
     font-weight: 500 !important;
   }
 
-  body.teacher-dashboard-active:not(.dark) .desktop-sidebar button:hover,
-  body.teacher-dashboard-active:not(.dark) .mobile-sidebar-drawer button:hover {
-    color: #0f172a !important;
-    background-color: rgba(0, 0, 0, 0.02) !important;
+  body.staff-dashboard-active:not(.dark) .desktop-sidebar button:hover,
+  body.staff-dashboard-active:not(.dark) .mobile-sidebar-drawer button:hover {
+    color: var(--agora-text) !important;
+    background-color: var(--dashboard-nav-hover-bg) !important;
   }
 
-  /* Card styling for light mode teacher dashboard - Solid white with soft shadow */
-  body.teacher-dashboard-active:not(.dark) .bg-white\/80 {
-    background-color: #ffffff !important;
+  body.staff-dashboard-active:not(.dark) .mobile-navbar {
+    background-color: var(--light-bg) !important;
+    border-bottom: 1px solid var(--dashboard-mobile-nav-border) !important;
+    box-shadow: var(--dashboard-mobile-nav-shadow) !important;
+  }
+
+  .staff-dashboard-active main,
+  .staff-dashboard-active .relative.z-10 {
+    background-color: transparent !important;
+  }
+
+  .dark body.staff-dashboard-active {
+    background-color: var(--dark-bg) !important;
+  }
+
+  .dark body.staff-dashboard-active .desktop-sidebar,
+  .dark body.staff-dashboard-active .mobile-sidebar-drawer {
+    background-color: var(--dark-bg) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
-    border: 1px solid rgba(0, 0, 0, 0.02) !important;
-  }
-
-  .dark body.teacher-dashboard-active {
-    background-color: #000000 !important;
-  }
-
-  .dark body.teacher-dashboard-active .desktop-sidebar,
-  .dark body.teacher-dashboard-active .mobile-sidebar-drawer,
-  .dark body.school-dashboard-active .mobile-sidebar-drawer {
-    background-color: #000000 !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border-right: 1px solid #111111 !important;
+    border-right: 1px solid var(--dark-border) !important;
     box-shadow: none !important;
   }
 
-  /* --- Sidebar Link Overrides for Teacher Dashboard --- */
-  .dark body.teacher-dashboard-active .sidebar-link-item {
+  .dark body.staff-dashboard-active .sidebar-link-item {
     transition: all 0.2s ease;
     font-size: var(--text-body) !important;
     font-weight: normal !important;
+    border: 1px solid transparent !important;
   }
 
-  .dark body.teacher-dashboard-active .sidebar-link-active {
+  .dark body.staff-dashboard-active .sidebar-link-active {
+    background-color: rgba(36, 144, 253, 0.16) !important;
+    color: var(--dark-text-primary) !important;
+    font-weight: 600 !important;
+    border: 1px solid rgba(36, 144, 253, 0.45) !important;
+    box-shadow: inset 3px 0 0 0 var(--agora-blue) !important;
+  }
+
+  .dark body.staff-dashboard-active .sidebar-link-active span,
+  .dark body.staff-dashboard-active .sidebar-link-active svg {
+    color: var(--dark-text-primary) !important;
+  }
+
+  .dark body.staff-dashboard-active .sidebar-link-inactive,
+  .dark body.staff-dashboard-active .sidebar-link-inactive svg {
+    color: var(--dark-text-muted) !important;
+  }
+
+  .dark body.staff-dashboard-active .sidebar-link-inactive:hover {
+    color: var(--dark-text-primary) !important;
     background-color: rgba(255, 255, 255, 0.05) !important;
-    color: #ffffff !important;
   }
 
-  .dark body.teacher-dashboard-active .sidebar-link-inactive,
-  .dark body.teacher-dashboard-active .sidebar-link-inactive svg {
-    color: #6b7280 !important;
-    /* Muted grey for inactive state */
-  }
-
-  .dark body.teacher-dashboard-active .sidebar-link-inactive:hover {
-    color: #ffffff !important;
-    opacity: 1;
-    background-color: rgba(255, 255, 255, 0.03) !important;
-  }
-
-  .dark body.teacher-dashboard-active .sidebar-link-item span {
-    color: inherit !important;
-  }
-
-  .dark body.teacher-dashboard-active .sidebar-section-title {
-    color: #6b7280 !important;
-    /* var(--dark-text-muted) equivalent for titles */
+  .dark body.staff-dashboard-active .sidebar-section-title {
+    color: var(--dark-text-muted) !important;
     font-size: var(--text-body) !important;
     font-weight: 600 !important;
-    letter-spacing: 0.02em !important;
-    text-transform: none !important;
-    margin-bottom: 0.75rem !important;
-    margin-top: 1.5rem !important;
   }
 
-
-  /* Logout button matching */
-  .dark body.teacher-dashboard-active .desktop-sidebar button,
-  .dark body.teacher-dashboard-active .mobile-sidebar-drawer button {
-    color: #6b7280 !important;
+  .dark body.staff-dashboard-active .desktop-sidebar button,
+  .dark body.staff-dashboard-active .mobile-sidebar-drawer button {
+    color: var(--dark-text-muted) !important;
     font-size: var(--text-body) !important;
     font-weight: normal !important;
   }
 
-  .dark body.teacher-dashboard-active .desktop-sidebar button:hover,
-  .dark body.teacher-dashboard-active .mobile-sidebar-drawer button:hover {
-    color: #ffffff !important;
-    opacity: 1;
-    background-color: rgba(255, 255, 255, 0.03) !important;
+  .dark body.staff-dashboard-active .desktop-sidebar button:hover,
+  .dark body.staff-dashboard-active .mobile-sidebar-drawer button:hover {
+    color: var(--dark-text-primary) !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
   }
 
-  /* Mobile Navbar Solid Backgrounds */
-  body.teacher-dashboard-active:not(.dark) .mobile-navbar,
-  body.student-dashboard-active:not(.dark) .mobile-navbar,
-  body.school-dashboard-active:not(.dark) .mobile-navbar {
-    background-color: #f4f7fa !important;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-  }
-
-  .dark body.teacher-dashboard-active .mobile-navbar,
-  .dark body.school-dashboard-active .mobile-navbar {
-    background-color: #000000 !important;
+  .dark body.staff-dashboard-active .mobile-navbar {
+    background-color: var(--dark-bg) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
 
-  .dark body.student-dashboard-active .mobile-navbar {
-    background-color: #0b0b0e !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-  }
-
-  /* Make sure background is totally transparent so blobs show through */
-  .teacher-dashboard-active main,
-  .teacher-dashboard-active .relative.z-10 {
-    background-color: transparent !important;
-  }
-
-  /* Target cards dynamically */
-  /* Target cards dynamically for Teacher - Solid & Deep */
-  .dark body.teacher-dashboard-active .teacher-glass-content .rounded-lg,
-  .dark body.teacher-dashboard-active .teacher-glass-content .border,
-  .dark body.teacher-dashboard-active .teacher-glass-content [class*="bg-"] {
+  .dark body.staff-dashboard-active .dashboard-content .rounded-lg,
+  .dark body.staff-dashboard-active .dashboard-content .border,
+  .dark body.staff-dashboard-active .dashboard-content [class*="bg-"] {
     background-color: #0a0a0b !important;
     border-color: #1a1a1c !important;
     backdrop-filter: none !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
   }
 
-  .dark body.teacher-dashboard-active .teacher-glass-content h1,
-  .dark body.teacher-dashboard-active .teacher-glass-content h2,
-  .dark body.teacher-dashboard-active .teacher-glass-content h3 {
-    color: #ffffff !important;
+  .dark body.staff-dashboard-active .dashboard-content h1,
+  .dark body.staff-dashboard-active .dashboard-content h2,
+  .dark body.staff-dashboard-active .dashboard-content h3 {
+    color: var(--dark-text-primary) !important;
   }
 
-  .dark body.teacher-dashboard-active .teacher-glass-content p {
-    color: #9ca3af !important;
+  .dark body.staff-dashboard-active .dashboard-content p {
+    color: var(--dark-text-muted) !important;
   }
 
-  /* --- Student Dashboard Theme Sync --- */
+  /* --- Student Dashboard Theme --- */
   body.student-dashboard-active {
     background-color: #f4f7fa;
   }
@@ -428,6 +408,17 @@
   .dark body.student-dashboard-active .sidebar-link-inactive:hover {
     color: #ffffff !important;
     background-color: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  body.student-dashboard-active:not(.dark) .mobile-navbar {
+    background-color: #f4f7fa !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .dark body.student-dashboard-active .mobile-navbar {
+    background-color: #0b0b0e !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
 
   /* Make background transparent */
@@ -566,6 +557,10 @@
   }
 
   /* react-day-picker: theme to match app (light + dark) */
+  .date-picker-dropdown .rdp-caption {
+    display: none;
+  }
+
   .date-picker-dropdown .rdp {
     --rdp-cell-size: 36px;
     --rdp-caption-font-size: var(--text-body);
@@ -587,27 +582,6 @@
   .date-picker-dropdown .rdp-head_cell,
   .date-picker-dropdown .rdp-day {
     font-size: var(--text-body);
-  }
-
-  .date-picker-dropdown .rdp-caption {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.25rem 0.5rem;
-  }
-
-  .date-picker-dropdown .rdp-caption select {
-    background-color: var(--light-input);
-    color: var(--agora-text);
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    padding: 0.25rem 0.5rem;
-  }
-
-  .dark .date-picker-dropdown .rdp-caption select {
-    background-color: var(--dark-input);
-    color: var(--dark-text-primary);
-    border: 1px solid var(--dark-border);
   }
 
   .date-picker-dropdown .rdp-head_cell {

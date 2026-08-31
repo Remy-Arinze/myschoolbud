@@ -12,6 +12,7 @@ interface ModalProps {
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
+  footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   showCloseButton?: boolean;
   className?: string;
@@ -23,7 +24,8 @@ export function Modal({
   isOpen, 
   onClose, 
   title, 
-  children, 
+  children,
+  footer,
   size = 'md',
   showCloseButton = true,
   className,
@@ -81,6 +83,9 @@ export function Modal({
       <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none">
         <div
           ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={typeof title === 'string' ? 'agora-modal-title' : undefined}
           className={cn(
             "bg-light-card dark:bg-dark-surface rounded-3xl shadow-2xl w-full",
             sizes[size],
@@ -92,7 +97,10 @@ export function Modal({
         >
           {!hideHeader && (
             <div className="flex items-center justify-between p-6 border-b border-light-border dark:border-dark-border">
-              <h2 className="text-xl font-heading font-black text-light-text-primary dark:text-dark-text-primary">
+              <h2
+                id={typeof title === 'string' ? 'agora-modal-title' : undefined}
+                className="text-xl font-heading font-black text-light-text-primary dark:text-dark-text-primary"
+              >
                 {title}
               </h2>
               {showCloseButton && (
@@ -106,7 +114,14 @@ export function Modal({
               )}
             </div>
           )}
-          <div className={cn("flex-1 overflow-y-auto p-6 scrollbar-hide", contentClassName)}>{children}</div>
+          <div className={cn("flex-1 min-h-0 overflow-y-auto p-6 scrollbar-hide", contentClassName)}>
+            {children}
+          </div>
+          {footer && (
+            <div className="flex-shrink-0 px-6 py-4 border-t border-light-border dark:border-dark-border bg-light-card dark:bg-dark-surface">
+              {footer}
+            </div>
+          )}
         </div>
       </div>
     </Fragment>,
@@ -152,7 +167,7 @@ export function ConfirmModal({
             ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
             : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
         }`}>
-          <p className="text-sm font-medium leading-relaxed">
+          <p className="text-sm font-medium leading-relaxed whitespace-pre-line">
             {message}
           </p>
         </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 import { RootState } from '@/lib/store/store';
 import { logout } from '@/lib/store/slices/authSlice';
+import { apiSlice } from '@/lib/store/api/apiSlice';
 
 export function useAuth() {
   const auth = useSelector((state: RootState) => state.auth);
@@ -27,8 +28,9 @@ export function useAuth() {
       console.error('Logout API call failed:', error);
     }
     
-    // Clear local state
+    // Clear local state and API cache so the next user does not inherit stale badge counts
     dispatch(logout());
+    dispatch(apiSlice.util.resetApiState());
     router.push('/auth/login');
   }, [dispatch, router]);
 

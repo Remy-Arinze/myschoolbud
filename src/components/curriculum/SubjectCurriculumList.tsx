@@ -2,17 +2,13 @@
 
 import React, { useState } from 'react';
 import {
-  Sparkles,
   BookOpen,
   Loader2,
-  Plus
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { SubjectCurriculumCard } from './SubjectCurriculumCard';
 import { CurriculumSetupModal } from './CurriculumSetupModal';
 import { CurriculumDetailModal } from './CurriculumDetailModal';
 import { NoTimetableMessage } from './NoTimetableMessage';
-import { cn } from '@/lib/utils';
 import { 
   useGetSchemesSummaryQuery, 
   useCancelSchemeOfWorkMutation,
@@ -20,7 +16,6 @@ import {
   useGetSubscriptionSummaryQuery
 } from '@/lib/store/api/schoolAdminApi';
 import toast from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
 
 interface SubjectCurriculumListProps {
   schoolId: string;
@@ -41,7 +36,6 @@ export function SubjectCurriculumList({
   schoolType,
   canEdit = false,
 }: SubjectCurriculumListProps) {
-  const router = useRouter();
   const [setupSubject, setSetupSubject] = useState<any | null>(null);
   const [viewCurriculumId, setViewCurriculumId] = useState<string | null>(null);
 
@@ -133,19 +127,14 @@ export function SubjectCurriculumList({
       {/* Stats Summary Panel */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Subjects', value: subjects.length, color: 'agora-blue' },
-          { label: 'Published', value: subjects.filter((s: any) => s.status === 'PUBLISHED').length, color: 'agora-success' },
-          { label: 'Draft', value: subjects.filter((s: any) => s.status === 'DRAFT').length, color: 'amber-500' },
-          { label: 'Unset', value: subjects.filter((s: any) => s.status === 'NOT_SET_UP').length, color: 'light-text-muted' }
+          { label: 'Total Subjects', value: subjects.length },
+          { label: 'Published', value: subjects.filter((s: any) => s.status === 'PUBLISHED').length },
+          { label: 'Draft', value: subjects.filter((s: any) => s.status === 'DRAFT').length },
+          { label: 'Unset', value: subjects.filter((s: any) => s.status === 'NOT_SET_UP').length },
         ].map((stat, i) => (
           <div key={i} className="p-4 rounded-2xl bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border shadow-sm transition-all hover:bg-light-surface dark:hover:bg-dark-surface/50 translate-z-0">
             <p className="text-[9px] uppercase font-black text-light-text-muted dark:text-dark-text-muted tracking-widest mb-1 font-heading">{stat.label}</p>
-            <p className={cn(
-              "text-2xl font-black font-heading",
-              stat.color === 'agora-success' ? "text-agora-success" : 
-              stat.color === 'agora-blue' ? "text-agora-blue" : 
-              stat.color === 'amber-500' ? "text-amber-500" : "text-light-text-muted dark:text-dark-text-muted"
-            )}>
+            <p className="text-2xl font-black font-heading text-agora-blue">
               {stat.value}
             </p>
           </div>
@@ -191,6 +180,7 @@ export function SubjectCurriculumList({
           classId={classId}
           canEdit={canEdit}
           isScheme={true}
+          schoolType={schoolType}
           onDelete={handleDeleteScheme}
           onUpdate={() => refetchSchemes()}
         />

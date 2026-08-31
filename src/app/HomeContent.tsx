@@ -9,7 +9,6 @@ import { LandingNavbar } from '@/components/layout/LandingNavbar';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useGetPublicSchoolsQuery, useGetPlatformStatsQuery } from '@/lib/store/api/publicApi';
 import { PricingTable } from '@/components/subscriptions/PricingTable';
 import { useState, useEffect, useRef } from 'react';
 import Lenis from 'lenis';
@@ -18,17 +17,6 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SkewSection } from '@/components/ui/SkewSection';
 import { TransferVisual } from '@/components/ui/TransferVisual';
 import { useTheme } from '@/contexts/ThemeContext';
-
-// Helper to format large numbers
-const formatNumber = (num: number): string => {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M+';
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K+';
-  }
-  return num.toString() + '+';
-};
 
 // Color classes for the timetable mini-grid cells
 const TIMETABLE_CELL_CLASSES = Array.from({ length: 20 }).map((_, i) => {
@@ -141,10 +129,6 @@ export default function HomeContent() {
   const user = useSelector((state: RootState) => state.auth.user);
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
-  const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
-  const featuredCardRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Ensure component is mounted before using persisted auth state
   useEffect(() => {
@@ -182,83 +166,6 @@ export default function HomeContent() {
     };
   }, []);
 
-  // Fetch real platform data
-  const { data: stats, error: statsError, isLoading: statsLoading } = useGetPlatformStatsQuery();
-  const { data: schools, error: schoolsError, isLoading: schoolsLoading } = useGetPublicSchoolsQuery();
-
-  // Debug: log errors in development
-  if (process.env.NODE_ENV === 'development') {
-    if (statsError) {
-      console.error('Stats API error detail:', {
-        error: statsError,
-        message: 'status' in statsError ? statsError.status : 'Unknown status',
-        data: 'data' in statsError ? statsError.data : 'No data'
-      });
-    }
-    if (schoolsError) {
-      console.error('Schools API error detail:', {
-        error: schoolsError,
-        message: 'status' in schoolsError ? schoolsError.status : 'Unknown status',
-        data: 'data' in schoolsError ? schoolsError.data : 'No data'
-      });
-    }
-  }
-
-  // Auto-rotate featured school every 4 seconds with sliding animations
-  useEffect(() => {
-    if (!schools || schools.length <= 1) return;
-
-    const animateRotation = () => {
-      const nextIndex = (currentFeaturedIndex + 1) % schools.length;
-      const gridElement = gridRef.current;
-      
-      if (gridElement) {
-        // Animate the entire grid container
-        gsap.to(gridElement, {
-          x: -100, // Slide to reveal next card
-          duration: 0.6,
-          ease: "power2.inOut",
-          onComplete: () => {
-            // Update index after slide
-            setCurrentFeaturedIndex(nextIndex);
-            
-            // Slide back to center with new content
-            setTimeout(() => {
-              gsap.to(gridElement, {
-                x: 0,
-                duration: 0.6,
-                ease: "power2.out"
-              });
-            }, 50);
-          }
-        });
-      } else {
-        // Fallback for initial load
-        setCurrentFeaturedIndex(nextIndex);
-      }
-    };
-
-    const interval = setInterval(animateRotation, 4000);
-    return () => clearInterval(interval);
-  }, [schools, currentFeaturedIndex]);
-
-  // Initial entrance animation for featured card
-  useEffect(() => {
-    if (featuredCardRef.current && schools && schools.length > 0) {
-      gsap.fromTo(featuredCardRef.current,
-        { scale: 0.9, opacity: 0, y: 30 },
-        { 
-          scale: 1, 
-          opacity: 1, 
-          y: 0,
-          duration: 1.2,
-          ease: "power3.out",
-          delay: 0.3
-        }
-      );
-    }
-  }, [currentFeaturedIndex, schools]);
-
   // Only use user state after hydration to avoid mismatch
   const isLoggedIn = isMounted && !!user;
 
@@ -281,7 +188,7 @@ export default function HomeContent() {
       {/* Navbar outside overflow-x-hidden so fixed nav links are never clipped (e.g. Pricing). */}
       <LandingNavbar />
 
-      <div className="min-h-screen bg-white dark:bg-[var(--dark-bg)] text-gray-900 dark:text-[var(--dark-text-primary)] transition-colors duration-300 overflow-x-hidden relative">
+      <div className="min-h-screen bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] text-gray-900 dark:text-[var(--dark-text-primary)] transition-colors duration-300 overflow-x-hidden relative">
       {/* Global Background Grid */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0"
         style={{ backgroundImage: 'radial-gradient(circle, var(--agora-blue) 1px, transparent 1px)', backgroundSize: '40px 40px' }}
@@ -298,7 +205,7 @@ export default function HomeContent() {
 
           <FadeInUp from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} delay={0.3} duration={0.8}>
             <p className="text-lg md:text-xl text-[var(--dark-text-secondary)] mb-12 max-w-2xl mx-auto leading-relaxed">
-              Agora uses AI to generate curriculums, auto-grade assessments, build timetables, and predict student performance — so your team can focus on what matters most: teaching.
+              School Bud uses AI to generate curriculums, auto-grade assessments, build timetables, and predict student performance — so your teachers can focus on what matters most: teaching.
             </p>
           </FadeInUp>
 
@@ -438,7 +345,7 @@ export default function HomeContent() {
         */}
       </section>
 
-      {/* Agora AI Section */}
+      {/* School Bud AI Section */}
       <section data-navbar-light="true" className="py-24 relative">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
@@ -575,7 +482,7 @@ export default function HomeContent() {
                 Every Tool, Powered <br /> by Intelligence.
               </h2>
               <p className="text-base md:text-lg text-[var(--dark-text-secondary)] leading-relaxed font-light">
-                From AI-parsed curriculums to auto-graded assessments — Agora doesn't just automate your school, it thinks alongside you.
+                From AI-parsed curriculums to auto-graded assessments — School Bud doesn't just automate your school, it thinks alongside you.
               </p>
             </AnimateInView>
           </div>
@@ -744,7 +651,7 @@ export default function HomeContent() {
               Unified Data <br /> Infrastructure
             </h2>
             <p className="text-base md:text-xl text-[var(--dark-text-secondary)] max-w-2xl mx-auto leading-relaxed font-light">
-              Agora removes the administrative walls between institutions. Transfer students, their grades, and their entire legacy across schools as fast as a single click securely.
+              School Bud removes the administrative walls between institutions. Transfer students, their grades, and their entire legacy across schools as fast as a single click securely.
             </p>
           </AnimateInView>
 
@@ -834,10 +741,10 @@ export default function HomeContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <AnimateInView className="text-center mb-20 px-4">
             <span className="inline-block text-agora-blue text-[10px] font-mono mb-6 uppercase tracking-[0.3em]">
-              The_Agora_Network
+              The_School_Bud_Network
             </span>
             <h2 className="text-4xl md:text-6xl font-bold text-[var(--dark-text-primary)] mb-8 font-heading tracking-tight leading-[1.1]">
-              Schools Are Already <br className="md:hidden" /> Using Agora
+              Schools Are Already <br className="md:hidden" /> Using School Bud
             </h2>
             <p className="text-base md:text-xl text-[var(--dark-text-secondary)] max-w-2xl mx-auto leading-relaxed font-light">
               Join the growing ecosystem of world-class institutions digitizing the future of African education.
@@ -859,13 +766,13 @@ export default function HomeContent() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-50 dark:bg-[var(--dark-bg)] text-gray-600 dark:text-[var(--dark-text-secondary)] py-20 relative z-10 border-t border-gray-200 dark:border-[var(--dark-border)]">
+      <footer className="bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] py-20 relative z-10 border-t border-[var(--light-border)] dark:border-[var(--dark-border)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-16 md:gap-8">
             <div className="col-span-1 md:col-span-1">
               <Image
                 src={theme === 'light' ? '/assets/logos/agora_word_blue.png' : '/assets/logos/agora_worded_white.png'}
-                alt="Agora - Verified Academic History Logo"
+                alt="School Bud - Verified Academic History Logo"
                 width={140}
                 height={38}
                 className="h-8 w-auto mb-8 opacity-90 transition-opacity"
@@ -898,7 +805,7 @@ export default function HomeContent() {
             </div>
           </div>
           <div className="mt-20 pt-8 border-t border-[var(--dark-border)] flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-sm text-[var(--dark-text-muted)] font-light">&copy; 2026 Agora. All rights reserved.</p>
+            <p className="text-sm text-[var(--dark-text-muted)] font-light">&copy; 2026 School Bud. All rights reserved.</p>
             <div className="flex gap-8">
               {/* Optional Social Icons */}
             </div>

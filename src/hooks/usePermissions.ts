@@ -178,6 +178,7 @@ export const ROUTE_PERMISSIONS: Record<string, { resource: PermissionResource; t
 
   // Timetables
   '/dashboard/school/timetables': { resource: PermissionResource.TIMETABLES, type: PermissionType.READ },
+  '/dashboard/school/exam-timetables': { resource: PermissionResource.TIMETABLES, type: PermissionType.READ }, // redirects to timetables?tab=exam
   '/dashboard/school/timetable': { resource: PermissionResource.TIMETABLES, type: PermissionType.READ },
 
   // Calendar
@@ -203,6 +204,10 @@ export const ROUTE_PERMISSIONS: Record<string, { resource: PermissionResource; t
 
   // Transfers (new)
   '/dashboard/school/transfers': { resource: PermissionResource.TRANSFERS, type: PermissionType.READ },
+
+  // Settings
+  '/dashboard/school/settings/profile': { resource: PermissionResource.SETTINGS, type: PermissionType.READ },
+  '/dashboard/school/settings/session': { resource: PermissionResource.SETTINGS, type: PermissionType.READ },
 };
 
 /**

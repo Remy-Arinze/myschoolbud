@@ -24,8 +24,10 @@ import {
   useGetMyStudentGradesQuery,
   useGetActiveSessionQuery,
   useGetSessionsQuery,
+  useLazyExportReportCardQuery,
 } from '@/lib/store/api/schoolAdminApi';
 import { useStudentSchoolType, getStudentTerminology } from '@/hooks/useStudentDashboard';
+import { useFileDownload } from '@/hooks/useFileDownload';
 import { format } from 'date-fns';
 
 interface Grade {
@@ -152,6 +154,18 @@ export default function StudentResultsPage() {
     error: gradesError
   } = useGetMyStudentGradesQuery({});
   const grades = gradesResponse?.data;
+
+  // Export hooks
+  const [triggerExportReportCard] = useLazyExportReportCardQuery();
+  const { isDownloading: isDownloadingPdf, download: downloadPdf } = useFileDownload();
+
+  const handleDownloadPdf = async () => {
+    if (!effectiveTermId) return;
+    await downloadPdf(
+      () => triggerExportReportCard({ termId: effectiveTermId }),
+      `report-card-${effectiveTermId}.pdf`,
+    );
+  };
 
   // Get available grade types from data
   const availableGradeTypes = useMemo(() => {
@@ -337,8 +351,17 @@ export default function StudentResultsPage() {
               </p>
             </div>
             {currentResults && currentResults.subjects.length > 0 && (
-              <Button variant="ghost" size="sm" disabled>
-                <Download className="h-4 w-4 mr-2" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDownloadPdf}
+                disabled={isDownloadingPdf}
+              >
+                {isDownloadingPdf ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
                 Download PDF
               </Button>
             )}

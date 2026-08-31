@@ -31,6 +31,7 @@ import {
 import { ConfirmModal } from '@/components/ui/Modal';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import toast from 'react-hot-toast';
+import { isPastDueDate, isTimerExpiredForUi } from '@/lib/assessment-deadline';
 
 export default function StudentAssessmentPage() {
     const params = useParams();
@@ -62,6 +63,21 @@ export default function StudentAssessmentPage() {
     const submission = assessment?.submissions?.find(s => s.studentId === studentId);
     const isSubmitted = submission?.status === 'SUBMITTED' || submission?.status === 'GRADED';
     const isGraded = submission?.status === 'GRADED';
+    const pastDue = assessment?.dueDate ? isPastDueDate(assessment.dueDate) : false;
+    const allowLateDue = assessment?.allowLateSubmissionAfterDue ?? false;
+    const allowLateTimer = assessment?.allowLateSubmissionAfterTimer ?? false;
+    const canStart =
+        !isSubmitted &&
+        (!pastDue || allowLateDue || submission?.status === 'STARTED');
+    const isWindowClosed = !isSubmitted && pastDue && !allowLateDue && submission?.status !== 'STARTED';
+    const timerExpired =
+        assessment?.isTimed &&
+        isTimerExpiredForUi(submission?.startedAt, assessment?.duration);
+    const isSubmitLocked =
+        isStarted &&
+        !isSubmitted &&
+        timerExpired &&
+        !allowLateTimer;
 
     // Heartbeat for auto-saving every 30 seconds
     useEffect(() => {
@@ -214,9 +230,11 @@ export default function StudentAssessmentPage() {
     const handleAutoSubmit = async () => {
         if (assessment?.autoSubmitOnTimeout) {
             toast.loading('Time expired! Auto-submitting...', { duration: 3000 });
-            await performSubmission();
+            await performSubmission(true);
+        } else if (assessment?.allowLateSubmissionAfterTimer) {
+            toast.error('Time expired! You may still submit, but it will be marked late.');
         } else {
-            toast.error('Time expired! Please submit your work immediately.');
+            toast.error('Time expired! The submission window is closed.');
         }
     };
 
@@ -236,8 +254,13 @@ export default function StudentAssessmentPage() {
         setAnswers(prev => ({ ...prev, [questionId]: value }));
     };
 
-    const performSubmission = async () => {
+    const performSubmission = async (isAutoSubmit = false) => {
         if (!assessment || !schoolId) return;
+
+        if (isSubmitLocked && !isAutoSubmit) {
+            toast.error('The exam time limit has expired. Late submissions are not allowed.');
+            return;
+        }
 
         try {
             const dtoAnswers = assessment.questions?.map((q: AssessmentQuestion) => {
@@ -254,7 +277,8 @@ export default function StudentAssessmentPage() {
                 assessmentId,
                 dto: {
                     answers: dtoAnswers,
-                    examSessionToken: examSessionToken || submission?.examSessionToken || ''
+                    examSessionToken: examSessionToken || submission?.examSessionToken || '',
+                    isAutoSubmit,
                 }
             }).unwrap();
 
@@ -373,7 +397,19 @@ export default function StudentAssessmentPage() {
                 </div>
 
                 {!isSubmitted ? (
-                    !isStarted ? (
+                    isWindowClosed ? (
+                        <Card className="border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-900/10">
+                            <CardContent className="p-8 text-center space-y-4">
+                                <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
+                                <h2 className="text-xl font-black uppercase tracking-tight text-red-700 dark:text-red-400">
+                                    Submission Window Closed
+                                </h2>
+                                <p className="text-sm text-red-600/80 dark:text-red-300/80 max-w-md mx-auto">
+                                    The due date for this assessment has passed and your teacher does not allow late submissions.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ) : !isStarted ? (
                         <Card className="overflow-hidden border-none shadow-2xl bg-white dark:bg-dark-surface">
                             <CardContent className="p-0">
                                 <div className="grid grid-cols-1 md:grid-cols-2">
@@ -392,7 +428,7 @@ export default function StudentAssessmentPage() {
                                             size="lg"
                                             className="w-full max-w-[240px] bg-blue-600 hover:bg-blue-700 text-white font-black h-16 text-lg rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
                                             onClick={handleStartExam}
-                                            disabled={isStarting}
+                                            disabled={isStarting || !canStart}
                                         >
                                             {isStarting ? <Loader2 className="animate-spin" /> : 'Launch Assessment'}
                                         </Button>
@@ -415,8 +451,17 @@ export default function StudentAssessmentPage() {
                                                             {assessment.isTimed
                                                                 ? `You have exactly ${assessment.duration} minutes to complete this. The timer starts once you launch.`
                                                                 : 'This assessment is not timed. Take your time to answer carefully.'}
-                                                            {assessment.autoSubmitOnTimeout && (
-                                                                <span className="block mt-1 font-bold text-orange-600">⚠️ System will auto-submit at zero.</span>
+                                                            {assessment.autoSubmitOnTimeout && assessment.isTimed && (
+                                                                <span className="block mt-1 font-bold text-orange-600">System will auto-submit at zero.</span>
+                                                            )}
+                                                            {assessment.isTimed && !assessment.allowLateSubmissionAfterTimer && (
+                                                                <span className="block mt-1 font-bold text-red-600">No submissions after the timer expires.</span>
+                                                            )}
+                                                            {assessment.isTimed && assessment.allowLateSubmissionAfterTimer && (
+                                                                <span className="block mt-1 text-amber-600">Late timer submissions are allowed and may affect your grade.</span>
+                                                            )}
+                                                            {pastDue && allowLateDue && (
+                                                                <span className="block mt-1 text-amber-600">This assessment is past due; late submissions are allowed.</span>
                                                             )}
                                                         </p>
                                                     </div>
@@ -536,18 +581,22 @@ export default function StudentAssessmentPage() {
                             <div className="flex flex-col items-center gap-4 py-8">
                                 <Button
                                     size="md"
-                                    className="px-12 bg-green-600 hover:bg-green-700 text-white font-bold h-16 text-xl rounded-2xl shadow-2xl gap-3 w-full md:w-auto"
+                                    className="px-12 bg-green-600 hover:bg-green-700 text-white font-bold h-16 text-xl rounded-2xl shadow-2xl gap-3 w-full md:w-auto disabled:opacity-50"
                                     onClick={handleSubmit}
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || isSubmitLocked}
                                 >
                                     {isSubmitting ? (
                                         <Loader2 className="h-6 w-6 animate-spin" />
                                     ) : (
                                         <Send className="h-6 w-6" />
                                     )}
-                                    Submit Assessment
+                                    {isSubmitLocked ? 'Time Expired' : 'Submit Assessment'}
                                 </Button>
-                                <p className="text-light-text-muted text-sm font-medium">Please review your answers before submitting.</p>
+                                <p className="text-light-text-muted text-sm font-medium">
+                                    {isSubmitLocked
+                                        ? 'The exam time limit has expired. Contact your teacher if you need an extension.'
+                                        : 'Please review your answers before submitting.'}
+                                </p>
                             </div>
                         </div>
                     )

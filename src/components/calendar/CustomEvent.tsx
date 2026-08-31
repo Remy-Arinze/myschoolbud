@@ -8,7 +8,7 @@ interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
-  type: 'ACADEMIC' | 'EVENT' | 'EXAM' | 'MEETING' | 'HOLIDAY' | 'TIMETABLE' | 'SESSION_START' | 'SESSION_END' | 'TERM_START' | 'TERM_END' | 'HALF_TERM';
+  type: 'ACADEMIC' | 'EVENT' | 'EXAM' | 'MEETING' | 'HOLIDAY' | 'TIMETABLE' | 'SESSION_START' | 'SESSION_END' | 'TERM_START' | 'TERM_END' | 'HALF_TERM' | 'MIDTERM' | 'EXAM_PERIOD';
   location?: string;
   roomName?: string;
   resource?: any;
@@ -69,6 +69,16 @@ const eventTypeColors: Record<string, { bg: string; text: string; border: string
     bg: 'bg-amber-50 dark:bg-amber-900/30',
     text: 'text-amber-900 dark:text-amber-300',
     border: 'border-amber-300 dark:border-amber-700 border-2',
+  },
+  MIDTERM: {
+    bg: 'bg-orange-50 dark:bg-orange-900/30',
+    text: 'text-orange-900 dark:text-orange-300',
+    border: 'border-orange-300 dark:border-orange-700 border-2',
+  },
+  EXAM_PERIOD: {
+    bg: 'bg-red-50 dark:bg-red-900/30',
+    text: 'text-red-900 dark:text-red-300',
+    border: 'border-red-300 dark:border-red-700 border-2',
   },
 };
 

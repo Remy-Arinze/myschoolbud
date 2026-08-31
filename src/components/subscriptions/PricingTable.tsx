@@ -23,7 +23,7 @@ const ENTERPRISE_AI_CREDITS = 125_000;
 const ENTERPRISE_FEATURES: FeatureDto[] = [
   { text: 'Unlimited students', included: true },
   { text: 'Unlimited teachers & admin users', included: true },
-  { text: `${ENTERPRISE_AI_CREDITS.toLocaleString('en-NG')} Agora AI credits / month`, included: true, isGlowing: true },
+  { text: `${ENTERPRISE_AI_CREDITS.toLocaleString('en-NG')} School Bud AI credits / month`, included: true, isGlowing: true },
   { text: 'Full AI Suite — all LOIS features', included: true, isGlowing: true },
   { text: 'Multi-branch / campus support', included: true },
   { text: 'Custom integrations', included: true },
@@ -54,21 +54,24 @@ function isStaleCapacityFeature(text: string): boolean {
     /^(\d{1,7}|Unlimited)\s+students\b/i.test(t) ||
     /^(\d{1,7}|Unlimited)\s+teachers?\b/i.test(t) ||
     /^(\d{1,7}|Unlimited)\s+admin\b/i.test(t) ||
+    /^\d{1,7}\s+School Bud AI credits\b/i.test(t) ||
     /^\d{1,7}\s+Agora AI credits\b/i.test(t) ||
+    /^No School Bud AI\b/i.test(t) ||
     /^No Agora AI\b/i.test(t) ||
+    /^Unlimited School Bud AI credits\b/i.test(t) ||
     /^Unlimited Agora AI credits\b/i.test(t)
   );
 }
 
 function aiCreditsFeature(plan: SubscriptionPlanDto): FeatureDto {
   if (plan.aiCredits === -1) {
-    return { text: 'Unlimited Agora AI credits / month', included: true, isGlowing: true };
+    return { text: 'Unlimited School Bud AI credits / month', included: true, isGlowing: true };
   }
   if (plan.aiCredits === 0) {
-    return { text: 'Agora AI Assistant & grading', included: false };
+    return { text: 'School Bud AI Assistant & grading', included: false };
   }
   return {
-    text: `${plan.aiCredits.toLocaleString('en-NG')} Agora AI credits / month`,
+    text: `${plan.aiCredits.toLocaleString('en-NG')} School Bud AI credits / month`,
     included: true,
     isGlowing: true,
   };

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -70,6 +71,8 @@ import toast from 'react-hot-toast';
 import React from 'react';
 
 export default function SubjectsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevelGroup, setSelectedLevelGroup] = useState<'all' | 'jss' | 'sss'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'standard' | 'custom'>('all');
@@ -81,6 +84,7 @@ export default function SubjectsPage() {
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]); // Multi-select for SECONDARY
   const [showClassAssignmentModal, setShowClassAssignmentModal] = useState<Subject | null>(null);
+  const [detailSubjectId, setDetailSubjectId] = useState<string | null>(null);
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -94,6 +98,16 @@ export default function SubjectsPage() {
   const schoolId = schoolResponse?.data?.id;
   const { currentType } = useSchoolType();
   const terminology = getTerminology(currentType);
+
+  // Deep-link from setup checklist: /subjects?action=add
+  useEffect(() => {
+    if (searchParams.get('action') !== 'add') return;
+    setShowCreateModal(true);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('action');
+    const qs = next.toString();
+    router.replace(`/dashboard/school/subjects${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [searchParams, router]);
 
   // Auto-generate subjects hook
   const {
@@ -138,6 +152,10 @@ export default function SubjectsPage() {
   const [bulkDeleteSubjects, { isLoading: isBulkDeleting }] = useBulkDeleteSubjectsMutation();
 
   const subjects = subjectsResponse?.data || [];
+  const detailSubject = useMemo(
+    () => (detailSubjectId ? subjects.find((s) => s.id === detailSubjectId) ?? null : null),
+    [subjects, detailSubjectId],
+  );
   const classLevels = classLevelsResponse?.data || [];
   // Filter to only get teachers (type === 'teacher') from staff list
   const teachers = useMemo(() => {
@@ -333,6 +351,9 @@ export default function SubjectsPage() {
         await deleteSubject({ schoolId, subjectId: showDeleteConfirm.id }).unwrap();
         toast.success('Subject deleted successfully');
         setSelectedIds(prev => prev.filter(id => id !== showDeleteConfirm.id));
+        if (detailSubjectId === showDeleteConfirm.id) {
+          setDetailSubjectId(null);
+        }
       }
       setShowDeleteConfirm({ ...showDeleteConfirm, isOpen: false });
       refetchSubjects();
@@ -475,7 +496,7 @@ export default function SubjectsPage() {
               className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-dark-surface text-xs"
             >
               <option value="all">All Types</option>
-              <option value="standard">Standard</option>
+              <option value="standard">Bud library</option>
               <option value="custom">Custom</option>
             </select>
 
@@ -580,8 +601,7 @@ export default function SubjectsPage() {
                               onEdit={() => setEditingSubject(subject)}
                               onDelete={() => handleDeleteSubject(subject.id, subject.name)}
                               onAssignTeacher={() => setShowTeacherModal(subject)}
-                              onRemoveTeacher={handleRemoveTeacher}
-                              onClassAssignment={() => setShowClassAssignmentModal(subject)}
+                              onOpenDetail={() => setDetailSubjectId(subject.id)}
                               isDeleting={isDeleting}
                               currentType={currentType}
                               isSelected={selectedIds.includes(subject.id)}
@@ -608,8 +628,7 @@ export default function SubjectsPage() {
                               onEdit={() => setEditingSubject(subject)}
                               onDelete={() => handleDeleteSubject(subject.id, subject.name)}
                               onAssignTeacher={() => setShowTeacherModal(subject)}
-                              onRemoveTeacher={handleRemoveTeacher}
-                              onClassAssignment={() => setShowClassAssignmentModal(subject)}
+                              onOpenDetail={() => setDetailSubjectId(subject.id)}
                               isDeleting={isDeleting}
                               currentType={currentType}
                               isSelected={selectedIds.includes(subject.id)}
@@ -636,8 +655,7 @@ export default function SubjectsPage() {
                               onEdit={() => setEditingSubject(subject)}
                               onDelete={() => handleDeleteSubject(subject.id, subject.name)}
                               onAssignTeacher={() => setShowTeacherModal(subject)}
-                              onRemoveTeacher={handleRemoveTeacher}
-                              onClassAssignment={() => setShowClassAssignmentModal(subject)}
+                              onOpenDetail={() => setDetailSubjectId(subject.id)}
                               isDeleting={isDeleting}
                               currentType={currentType}
                               isSelected={selectedIds.includes(subject.id)}
@@ -671,7 +689,7 @@ export default function SubjectsPage() {
                           onEdit={() => setEditingSubject(subject)}
                           onDelete={() => handleDeleteSubject(subject.id, subject.name)}
                           onAssignTeacher={() => setShowTeacherModal(subject)}
-                          onRemoveTeacher={handleRemoveTeacher}
+                          onOpenDetail={() => setDetailSubjectId(subject.id)}
                           isDeleting={isDeleting}
                           currentType={currentType}
                           isSelected={selectedIds.includes(subject.id)}
@@ -715,6 +733,34 @@ export default function SubjectsPage() {
               ? (data) => handleUpdateSubject(editingSubject.id, data)
               : (data) => handleCreateSubject(data as CreateSubjectDto)}
             isLoading={isCreating || isUpdating}
+          />
+        )}
+
+        {/* Subject Detail Modal */}
+        {detailSubject && (
+          <SubjectDetailModal
+            subject={detailSubject}
+            currentType={currentType}
+            isRemoving={isRemoving}
+            onClose={() => setDetailSubjectId(null)}
+            onAssignTeacher={() => setShowTeacherModal(detailSubject)}
+            onRemoveTeacher={handleRemoveTeacher}
+            onClassAssignment={
+              currentType === 'SECONDARY'
+                ? () => setShowClassAssignmentModal(detailSubject)
+                : undefined
+            }
+            onEdit={
+              !detailSubject.isAgoraStandard
+                ? () => {
+                    setEditingSubject(detailSubject);
+                    setDetailSubjectId(null);
+                  }
+                : undefined
+            }
+            onDelete={() => {
+              handleDeleteSubject(detailSubject.id, detailSubject.name);
+            }}
           />
         )}
 
@@ -827,8 +873,7 @@ function SubjectCard({
   onEdit,
   onDelete,
   onAssignTeacher,
-  onRemoveTeacher,
-  onClassAssignment,
+  onOpenDetail,
   isDeleting,
   currentType,
   isSelected,
@@ -839,19 +884,34 @@ function SubjectCard({
   onEdit: () => void;
   onDelete: () => void;
   onAssignTeacher: () => void;
-  onRemoveTeacher: (subjectId: string, teacherId: string) => void;
-  onClassAssignment?: () => void;
+  onOpenDetail: () => void;
   isDeleting: boolean;
   currentType: 'PRIMARY' | 'SECONDARY' | 'TERTIARY' | null;
   isSelected: boolean;
   isSelectionMode: boolean;
   onToggleSelection: () => void;
 }) {
+  const teacherCount = subject.teachers?.length ?? 0;
+  const teachersLabel =
+    currentType === 'PRIMARY'
+      ? teacherCount === 1
+        ? '1 teacher'
+        : `${teacherCount} teachers`
+      : currentType === 'SECONDARY'
+        ? teacherCount === 1
+          ? '1 competent teacher'
+          : `${teacherCount} competent teachers`
+        : teacherCount === 1
+          ? '1 teacher'
+          : `${teacherCount} teachers`;
+
   const longPressProps = useLongPress(
-    () => onToggleSelection(), // Long press to toggle selection (starts selection mode)
+    () => onToggleSelection(),
     () => {
       if (isSelectionMode) {
         onToggleSelection();
+      } else {
+        onOpenDetail();
       }
     }
   );
@@ -859,7 +919,7 @@ function SubjectCard({
   return (
     <Card
       className={cn(
-        "hover:bg-light-surface dark:hover:bg-dark-bg hover:shadow-lg transition-all duration-300 cursor-pointer relative overflow-hidden group",
+        "hover:bg-light-surface dark:hover:bg-dark-bg hover:shadow-lg transition-all duration-300 cursor-pointer relative overflow-hidden group h-full",
         isSelected && "ring-2 ring-primary border-primary bg-primary/5 dark:bg-primary/10",
         isSelectionMode && "select-none"
       )}
@@ -890,9 +950,11 @@ function SubjectCard({
       </AnimatePresence>
 
       <CardHeader className={cn("transition-opacity duration-200", isSelectionMode && "opacity-60")}>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle style={{ fontSize: 'var(--text-card-title)' }} className="font-black tracking-tight">{subject.name}</CardTitle>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <CardTitle style={{ fontSize: 'var(--text-card-title)' }} className="font-black tracking-tight truncate">
+              {subject.name}
+            </CardTitle>
             {subject.code && (
               <p className="text-light-text-muted dark:text-[#9ca3af] mt-1.5 font-medium" style={{ fontSize: 'var(--text-small)' }}>
                 {subject.code}
@@ -906,7 +968,7 @@ function SubjectCard({
             <div className="flex flex-wrap gap-2 mt-3">
               {subject.isAgoraStandard && (
                 <p className="text-green-600 dark:text-green-400 border-green-200/50 dark:border-green-500/20 font-bold px-2 py-0 h-5 text-[10px] rounded-lg">
-                  Standard
+                  Bud library
                 </p>
               )}
               {!subject.isAgoraStandard && (
@@ -916,7 +978,7 @@ function SubjectCard({
               )}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1.5 min-w-[80px]">
+          <div className="flex flex-col items-end gap-1.5 min-w-[80px] shrink-0">
             {subject.category && (
               <Badge className="bg-primary/10 text-primary border-primary/20 font-black px-2 py-0.5 h-6 text-[10px] rounded-md tracking-widest uppercase">
                 {subject.category}
@@ -929,6 +991,8 @@ function SubjectCard({
                     <Button
                       variant="ghost"
                       size="sm"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
                         onEdit();
@@ -941,6 +1005,8 @@ function SubjectCard({
                   <Button
                     variant="ghost"
                     size="sm"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete();
@@ -957,81 +1023,265 @@ function SubjectCard({
         </div>
       </CardHeader>
       <CardContent className={cn("transition-opacity duration-200", isSelectionMode && "opacity-60")}>
-        {subject.description && (
-          <p className="text-light-text-secondary dark:text-dark-text-secondary mb-4" style={{ fontSize: 'var(--text-small)' }}>
-            {subject.description}
-          </p>
-        )}
-        <div className="space-y-3">
-          {/* Competent Teachers Section - SECONDARY and TERTIARY only */}
-          {currentType !== 'PRIMARY' && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-small)' }}>
-                  {currentType === 'SECONDARY' ? 'Competent Teachers:' : 'Teachers:'}
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2 min-w-0 text-light-text-secondary dark:text-dark-text-secondary">
+            <Users className="h-4 w-4 shrink-0 text-light-text-muted dark:text-dark-text-muted" />
+            <span className="truncate" style={{ fontSize: 'var(--text-small)' }}>
+              {teacherCount > 0 ? teachersLabel : currentType === 'PRIMARY' ? 'No teacher assigned' : 'No teachers assigned'}
+            </span>
+          </div>
+          <PermissionGate resource={PermissionResource.SUBJECTS} type={PermissionType.WRITE}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAssignTeacher();
+              }}
+              className="shrink-0"
+            >
+              <Users className="h-4 w-4 mr-1" />
+              {currentType === 'PRIMARY'
+                ? teacherCount > 0
+                  ? 'Change'
+                  : 'Assign'
+                : currentType === 'SECONDARY'
+                  ? 'Add'
+                  : 'Assign'}
+            </Button>
+          </PermissionGate>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Subject Detail Modal — teachers & actions live here so cards stay even height
+function SubjectDetailModal({
+  subject,
+  currentType,
+  isRemoving,
+  onClose,
+  onAssignTeacher,
+  onRemoveTeacher,
+  onClassAssignment,
+  onEdit,
+  onDelete,
+}: {
+  subject: Subject;
+  currentType: 'PRIMARY' | 'SECONDARY' | 'TERTIARY' | null;
+  isRemoving: boolean;
+  onClose: () => void;
+  onAssignTeacher: () => void;
+  onRemoveTeacher: (subjectId: string, teacherId: string) => void;
+  onClassAssignment?: () => void;
+  onEdit?: () => void;
+  onDelete: () => void;
+}) {
+  const teachers = subject.teachers || [];
+  const teacherSectionTitle =
+    currentType === 'SECONDARY'
+      ? 'Competent Teachers'
+      : currentType === 'PRIMARY'
+        ? 'Assigned Teacher'
+        : 'Teachers';
+  const assignLabel =
+    currentType === 'PRIMARY'
+      ? teachers.length > 0
+        ? 'Change Teacher'
+        : 'Assign Teacher'
+      : currentType === 'SECONDARY'
+        ? 'Add Teachers'
+        : 'Assign Teachers';
+  const primaryNote =
+    currentType === 'PRIMARY'
+      ? 'Primary subjects can have one assigned teacher.'
+      : null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <FadeInUp
+        from={{ opacity: 0, scale: 0.95 }}
+        to={{ opacity: 1, scale: 1 }}
+        duration={0.25}
+        className="bg-white dark:bg-dark-surface rounded-lg max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col shadow-xl"
+      >
+        <div className="flex items-start justify-between gap-3 p-5 border-b border-gray-100 dark:border-gray-800">
+          <div className="min-w-0">
+            <p
+              className="font-semibold text-light-text-primary dark:text-dark-text-primary truncate"
+              style={{ fontSize: 'var(--text-section-title)' }}
+            >
+              {subject.name}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {subject.code && (
+                <span
+                  className="text-light-text-muted dark:text-dark-text-muted font-medium"
+                  style={{ fontSize: 'var(--text-small)' }}
+                >
+                  {subject.code}
                 </span>
-                <PermissionGate resource={PermissionResource.SUBJECTS} type={PermissionType.WRITE}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onAssignTeacher}
-                  >
-                    <Users className="h-4 w-4 mr-1" />
-                    {currentType === 'SECONDARY' ? 'Add' : 'Assign'}
-                  </Button>
-                </PermissionGate>
-              </div>
-              {subject.teachers && subject.teachers.length > 0 ? (
-                <div className="space-y-1">
-                  {subject.teachers.map((teacher) => (
-                    <div
-                      key={teacher.id}
-                      className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-2 rounded"
-                      style={{ fontSize: 'var(--text-small)' }}
-                    >
-                      <span className="text-light-text-primary dark:text-dark-text-primary">
-                        {teacher.firstName} {teacher.lastName}
-                      </span>
-                      <PermissionGate resource={PermissionResource.SUBJECTS} type={PermissionType.WRITE}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onRemoveTeacher(subject.id, teacher.id)}
-                          className="text-red-600 hover:text-red-700 h-6 px-2"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </PermissionGate>
-                    </div>
-                  ))}
-                </div>
+              )}
+              {subject.category && (
+                <Badge className="bg-primary/10 text-primary border-primary/20 font-black px-2 py-0.5 h-6 text-[10px] rounded-md tracking-widest uppercase">
+                  {subject.category}
+                </Badge>
+              )}
+              {subject.isAgoraStandard ? (
+                <span className="text-green-600 dark:text-green-400 font-bold text-[10px]">Bud library</span>
               ) : (
-                <p className="text-light-text-muted dark:text-dark-text-muted" style={{ fontSize: 'var(--text-small)' }}>
-                  No teachers assigned
-                </p>
+                <span className="text-amber-600 dark:text-amber-400 font-bold text-[10px]">Custom</span>
+              )}
+              {subject.classLevelName && (
+                <span
+                  className="text-light-text-muted dark:text-dark-text-muted"
+                  style={{ fontSize: 'var(--text-small)' }}
+                >
+                  {subject.classLevelName}
+                </span>
               )}
             </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary shrink-0"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-5 overflow-y-auto flex-1 space-y-5">
+          {subject.description && (
+            <p
+              className="text-light-text-secondary dark:text-dark-text-secondary"
+              style={{ fontSize: 'var(--text-body)' }}
+            >
+              {subject.description}
+            </p>
           )}
 
-          {/* Class Assignments Section - SECONDARY only - Only show if teachers are added */}
-          {currentType === 'SECONDARY' && onClassAssignment && subject.teachers && subject.teachers.length > 0 && (
-            <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p
+                  className="font-medium text-light-text-primary dark:text-dark-text-primary"
+                  style={{ fontSize: 'var(--text-body)' }}
+                >
+                  {teacherSectionTitle}{' '}
+                  <span className="text-light-text-muted dark:text-dark-text-muted font-normal">
+                    ({teachers.length})
+                  </span>
+                </p>
+                {primaryNote && (
+                  <p
+                    className="text-light-text-muted dark:text-dark-text-muted mt-0.5"
+                    style={{ fontSize: 'var(--text-small)' }}
+                  >
+                    {primaryNote}
+                  </p>
+                )}
+              </div>
+              <PermissionGate resource={PermissionResource.SUBJECTS} type={PermissionType.WRITE}>
+                <Button variant="ghost" size="sm" onClick={onAssignTeacher}>
+                  <Users className="h-4 w-4 mr-1" />
+                  {assignLabel}
+                </Button>
+              </PermissionGate>
+            </div>
+
+            {teachers.length > 0 ? (
+              <div className="space-y-2">
+                {teachers.map((teacher) => (
+                  <div
+                    key={teacher.id}
+                    className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/80 px-3 py-2.5 rounded-lg"
+                    style={{ fontSize: 'var(--text-small)' }}
+                  >
+                    <span className="font-medium text-light-text-primary dark:text-dark-text-primary">
+                      {teacher.firstName} {teacher.lastName}
+                    </span>
+                    <PermissionGate resource={PermissionResource.SUBJECTS} type={PermissionType.WRITE}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onRemoveTeacher(subject.id, teacher.id)}
+                        disabled={isRemoving}
+                        className="text-red-600 hover:text-red-700 h-7 px-2"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </PermissionGate>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p
+                className="text-light-text-muted dark:text-dark-text-muted py-4 text-center rounded-lg border border-dashed border-gray-200 dark:border-gray-700"
+                style={{ fontSize: 'var(--text-small)' }}
+              >
+                {currentType === 'PRIMARY'
+                  ? 'No teacher assigned yet'
+                  : 'No teachers assigned yet'}
+              </p>
+            )}
+          </div>
+
+          {currentType === 'SECONDARY' && onClassAssignment && (
+            <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
               <PermissionGate resource={PermissionResource.SUBJECTS} type={PermissionType.WRITE}>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={onClassAssignment}
-                  className="w-full justify-center bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                  disabled={teachers.length === 0}
+                  className="w-full justify-center bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 disabled:opacity-50"
                 >
                   <GraduationCap className="h-4 w-4 mr-2" />
                   Assign to Classes
                 </Button>
               </PermissionGate>
+              {teachers.length === 0 && (
+                <p
+                  className="text-center text-light-text-muted dark:text-dark-text-muted mt-2"
+                  style={{ fontSize: 'var(--text-small)' }}
+                >
+                  Add competent teachers before assigning to classes
+                </p>
+              )}
             </div>
           )}
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="flex items-center justify-between gap-3 p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/30">
+          <PermissionGate resource={PermissionResource.SUBJECTS} type={PermissionType.WRITE}>
+            <div className="flex gap-2">
+              {onEdit && (
+                <Button variant="ghost" size="sm" onClick={onEdit}>
+                  <Edit className="h-4 w-4 mr-1" />
+                  Edit
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDelete}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+            </div>
+          </PermissionGate>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </FadeInUp>
+    </div>
   );
 }
 
@@ -1322,7 +1572,7 @@ function SubjectModal({
             <div>
               <Combobox
                 label={`${currentType === 'TERTIARY' ? 'Course' : 'Subject'} Name *`}
-                placeholder="Search Agora standard subjects..."
+                placeholder="Search Bud library subjects..."
                 options={comboboxOptions}
                 value={agoraSubjectId}
                 onSelect={handleSelectAgora}
@@ -1334,7 +1584,7 @@ function SubjectModal({
               {!isAgoraStandard && name && (
                 <div className="mt-1 flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  <span className="text-[10px] font-medium">Matching Agora Subject Not Found - Will be created as Custom</span>
+                  <span className="text-[10px] font-medium">Matching Bud library subject not found — will be created as Custom</span>
                 </div>
               )}
             </div>
@@ -1550,7 +1800,7 @@ function SubjectModal({
 
           <div className="space-y-4 text-sm text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
             <p>
-              The subject <span className="font-bold text-light-text-primary dark:text-dark-text-primary">"{name}"</span> is not part of the <span className="font-semibold italic text-primary">Agora Standard Library</span>.
+              The subject <span className="font-bold text-light-text-primary dark:text-dark-text-primary">"{name}"</span> is not part of the <span className="font-semibold italic text-primary">Bud library</span>.
             </p>
 
             <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg space-y-2 border border-light-border dark:border-dark-border">

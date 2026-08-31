@@ -23,6 +23,13 @@ import {
   type Term,
 } from '@/lib/store/api/schoolAdminApi';
 import { useStudentSchoolType } from '@/hooks/useStudentDashboard';
+import {
+  DEFAULT_WORKING_DAYS,
+  buildHalfTermRange,
+  holidayRangesFromEvents,
+  isInstructionalDay,
+} from '@/lib/calendar/instructionalDays';
+import { isTermOperationallyActive } from '@/lib/academic/termSession';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -73,7 +80,7 @@ export default function StudentCalendarPage() {
   const classData = useMemo(() => classes[0] || null, [classes]);
 
   const { data: activeSessionResponse } = useGetActiveSessionQuery(
-    { schoolId: schoolId! },
+    { schoolId: schoolId!, schoolType: currentType || undefined },
     { skip: !schoolId }
   );
   const activeSession = activeSessionResponse?.data;
@@ -235,11 +242,62 @@ export default function StudentCalendarPage() {
             allDay: true,
           });
         }
+
+        if (term.midtermStart && term.midtermEnd) {
+          combined.push({
+            id: `midterm-${term.id}`,
+            title: `Midterm tests: ${term.name}`,
+            startDate: new Date(term.midtermStart).toISOString(),
+            endDate: new Date(term.midtermEnd).toISOString(),
+            type: 'HALF_TERM' as const,
+            schoolId: schoolId!,
+            isAllDay: true,
+            createdAt: term.createdAt,
+            updatedAt: term.createdAt,
+            start: new Date(term.midtermStart),
+            end: new Date(term.midtermEnd),
+            allDay: true,
+          });
+        }
+
+        if (term.examStart && term.examEnd) {
+          combined.push({
+            id: `exam-period-${term.id}`,
+            title: `Exams: ${term.name}`,
+            startDate: new Date(term.examStart).toISOString(),
+            endDate: new Date(term.examEnd).toISOString(),
+            type: 'EXAM' as const,
+            schoolId: schoolId!,
+            isAllDay: true,
+            createdAt: term.createdAt,
+            updatedAt: term.createdAt,
+            start: new Date(term.examStart),
+            end: new Date(term.examEnd),
+            allDay: true,
+          });
+        }
       });
     });
 
-    // Add recurring timetable periods (for current week/month)
-    if (activeSession?.term && timetable.length > 0) {
+    const holidayRanges = holidayRangesFromEvents(events);
+    const halfTermRanges = allSessions.flatMap((session: AcademicSession) =>
+      session.terms
+        .map((term: Term) => buildHalfTermRange(term.halfTermStart, term.halfTermEnd))
+        .filter(Boolean),
+    );
+    const nonInstructionalRanges = [...holidayRanges, ...halfTermRanges];
+
+    // Add recurring timetable periods — instructional days only, while term is in session
+    if (
+      activeSession?.term &&
+      timetable.length > 0 &&
+      isTermOperationallyActive(activeSession.term)
+    ) {
+      const termRange = {
+        start: new Date(activeSession.term.startDate),
+        end: new Date(activeSession.term.endDate),
+      };
+
       timetable.forEach((period: any) => {
         // Convert dayOfWeek and time to actual dates for the current view range
         const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -256,6 +314,16 @@ export default function StudentCalendarPage() {
         }
 
         dates.forEach((date) => {
+          if (
+            !isInstructionalDay(date, {
+              workingDays: DEFAULT_WORKING_DAYS,
+              termRange,
+              nonInstructionalRanges,
+            })
+          ) {
+            return;
+          }
+
           const [startHour, startMin] = period.startTime.split(':').map(Number);
           const [endHour, endMin] = period.endTime.split(':').map(Number);
 

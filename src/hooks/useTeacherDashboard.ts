@@ -7,8 +7,20 @@ import {
   useGetActiveSessionQuery,
   useGetTimetableForTeacherQuery,
   useGetMyClassesQuery,
+  useGetPublishedExamTimetableQuery,
   TimetablePeriod,
+  Term,
+  ExamTimetableSlot,
 } from '@/lib/store/api/schoolAdminApi';
+import {
+  getTermDaysRemaining,
+  isTermOperationallyActive,
+  isTermPastEndDate,
+  isLessonScheduleActive,
+  isExamScheduleActive,
+  getTermPhase,
+  type TermPhase,
+} from '@/lib/academic/termSession';
 
 export type TeacherSchoolType = 'PRIMARY' | 'SECONDARY' | 'TERTIARY' | null;
 
@@ -39,10 +51,25 @@ export interface TeacherDashboardData {
   activeTerm: {
     id: string;
     name: string;
+    startDate: string;
+    endDate: string;
+    status: Term['status'];
+    daysRemaining: number;
+    isPastEndDate: boolean;
+    isOperationallyActive: boolean;
+    isLessonScheduleActive: boolean;
+    isExamScheduleActive: boolean;
+    termPhase: TermPhase;
+    examStart?: string;
+    examEnd?: string;
+    examTimetablePublishedAt?: string;
   } | null;
-  
-  // Timetable data
-  timetable: TimetablePeriod[];
+
+  /** Timetable filtered to when lesson schedule is active (hidden during published exam period). */
+  liveTimetable: TimetablePeriod[];
+
+  /** Published exam slots for the active term (populated during exam period). */
+  examTimetable: ExamTimetableSlot[];
   
   // Classes the teacher is assigned to (full data from API)
   classes: any[];
@@ -190,6 +217,50 @@ export function useTeacherDashboard(): TeacherDashboardData {
   );
   
   const timetable = timetableResponse?.data || [];
+
+  const termMeta = useMemo(() => {
+    if (!activeTerm) return null;
+    const daysRemaining = activeTerm.daysRemaining ?? getTermDaysRemaining(activeTerm.endDate);
+    const isPastEndDate = activeTerm.isPastEndDate ?? isTermPastEndDate(activeTerm);
+    const operationallyActive =
+      activeTerm.isOperationallyActive ?? isTermOperationallyActive(activeTerm);
+    const lessonActive =
+      activeTerm.isLessonScheduleActive ?? isLessonScheduleActive(activeTerm);
+    const examActive =
+      activeTerm.isInExamPeriod ?? isExamScheduleActive(activeTerm);
+    return {
+      id: activeTerm.id,
+      name: activeTerm.name,
+      startDate: activeTerm.startDate,
+      endDate: activeTerm.endDate,
+      status: activeTerm.status,
+      daysRemaining,
+      isPastEndDate,
+      isOperationallyActive: operationallyActive,
+      isLessonScheduleActive: lessonActive,
+      isExamScheduleActive: examActive,
+      termPhase: (activeTerm.termPhase as TermPhase) ?? getTermPhase(activeTerm),
+      examStart: activeTerm.examStart,
+      examEnd: activeTerm.examEnd,
+      examTimetablePublishedAt: activeTerm.examTimetablePublishedAt,
+    };
+  }, [activeTerm]);
+
+  const liveTimetable = useMemo(
+    () => (termMeta?.isLessonScheduleActive ? timetable : []),
+    [timetable, termMeta?.isLessonScheduleActive],
+  );
+
+  const { data: examTimetableResponse } = useGetPublishedExamTimetableQuery(
+    { schoolId: schoolId!, termId: termId },
+    { skip: !schoolId || !termId || !termMeta?.isExamScheduleActive },
+  );
+
+  const allExamSlots = (examTimetableResponse?.data || []) as ExamTimetableSlot[];
+  const examTimetable = useMemo(() => {
+    if (!termMeta?.isExamScheduleActive || !teacherId) return [];
+    return allExamSlots.filter((s) => !s.teacherId || s.teacherId === teacherId);
+  }, [allExamSlots, termMeta?.isExamScheduleActive, teacherId]);
   
   // Step 7: Identify Form Classes
   const formClasses = useMemo(() => {
@@ -233,11 +304,10 @@ export function useTeacherDashboard(): TeacherDashboardData {
       id: activeSession.id,
       name: activeSession.name,
     } : null,
-    activeTerm: activeTerm ? {
-      id: activeTerm.id,
-      name: activeTerm.name,
-    } : null,
+    activeTerm: termMeta,
     timetable,
+    liveTimetable,
+    examTimetable,
     classes,
     formClass,
     formClasses,

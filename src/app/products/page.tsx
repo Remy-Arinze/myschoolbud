@@ -11,7 +11,7 @@ const products = [
   {
     id: 'core-platform',
     icon: '🏫',
-    name: 'Agora Core Platform',
+    name: 'School Bud Core Platform',
     tagline: 'The Foundation of Academic Trust',
     description: 'A complete multi-tenant infrastructure for schools. Manage students, classes, transfers, and records in an offline-first environment.',
     features: [
@@ -28,8 +28,8 @@ const products = [
   {
     id: 'agora-ai',
     icon: '🤖',
-    name: 'Agora AI',
-    tagline: "The Intelligent Education Assistant",
+    name: 'Lois',
+    tagline: "School Bud's intelligent education assistant",
     description: 'Instantly generate lesson plans, automatically evaluate written essays, and uncover deep insights into student performance using advanced AI.',
     features: [
       'Automated essay and assignment grading',
@@ -219,10 +219,10 @@ export default function ProductsPage() {
                 An Ecosystem that <br />Works in Sync
               </h2>
               <p className="text-lg text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] mb-6 leading-relaxed">
-                All our products are intrinsically woven into the Agora Core Platform. Data flows seamlessly without silos.
+                All our products are intrinsically woven into the School Bud Core Platform. Data flows seamlessly without silos.
               </p>
               <p className="text-lg text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] leading-relaxed">
-                When a student enters the gates with RollCall, their attendance immediately informs analytics. Agora AI leverages real-time understanding to craft perfect assessments and adapt to curriculum changes effortlessly.
+                When a student enters the gates with RollCall, their attendance immediately informs analytics. Lois leverages real-time understanding to craft perfect assessments and adapt to curriculum changes effortlessly.
                 <span className="block mt-4 font-semibold text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)]">One digital identity. Infinite synergies.</span>
               </p>
             </AnimateInView>
@@ -231,7 +231,7 @@ export default function ProductsPage() {
               {/* Abstract visualization of the ecosystem */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-48 h-48 bg-blue-600 rounded-full flex items-center justify-center shadow-[0_0_80px_rgba(37,99,235,0.4)] z-20 absolute">
-                  <span className="text-white font-bold text-2xl tracking-widest uppercase">Agora</span>
+                  <span className="text-white font-bold text-2xl tracking-widest uppercase">School Bud</span>
                 </div>
 
                 {/* Orbiting Elements */}
@@ -282,7 +282,7 @@ export default function ProductsPage() {
       {/* Footer */}
       <footer className="bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] py-12 border-t border-[var(--light-border)] dark:border-[var(--dark-border)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm">&copy; 2026 Agora. All rights reserved.</p>
+          <p className="text-sm">&copy; 2026 School Bud. All rights reserved.</p>
         </div>
       </footer>
     </div>

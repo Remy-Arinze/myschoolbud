@@ -11,6 +11,7 @@ interface Links {
   label: string;
   href: string;
   icon: React.JSX.Element | React.ReactNode;
+  badge?: string | number;
 }
 
 interface SidebarContextProps {
@@ -258,6 +259,11 @@ export const SidebarLink = ({
         >
           {link.label}
         </span>
+        {link.badge != null && link.badge !== '' && Number(link.badge) !== 0 && (
+          <span className="ml-0.5 inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full bg-[var(--agora-blue)] px-1.5 text-[10px] font-semibold text-white tabular-nums">
+            {typeof link.badge === 'number' && link.badge > 99 ? '99+' : link.badge}
+          </span>
+        )}
       </div>
       {isActive && (
         <span

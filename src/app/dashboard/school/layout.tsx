@@ -1,8 +1,11 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { ProtectedSchoolRoute } from '@/components/permissions/ProtectedSchoolRoute';
 import { SchoolBillingShell } from '@/components/billing/SchoolBillingShell';
+import { StaffDashboardShell } from '@/components/layout/StaffDashboardShell';
+import { useDashboardBodyClass } from '@/hooks/useDashboardBodyClass';
+import { DASHBOARD_BODY_CLASSES } from '@/lib/constants/dashboard-theme';
 
 /**
  * Layout for school admin pages
@@ -13,19 +16,13 @@ export default function SchoolAdminLayout({
 }: {
   children: ReactNode;
 }) {
-  useEffect(() => {
-    // Apply a specific class to the body for targeting CSS variables for glassmorphism
-    document.body.classList.add('school-dashboard-active');
-    return () => {
-      document.body.classList.remove('school-dashboard-active');
-    };
-  }, []);
+  useDashboardBodyClass(DASHBOARD_BODY_CLASSES.staff);
 
   return (
     <ProtectedSchoolRoute>
-      <SchoolBillingShell />
-      {children}
+      <StaffDashboardShell header={<SchoolBillingShell />}>
+        {children}
+      </StaffDashboardShell>
     </ProtectedSchoolRoute>
   );
 }
-

@@ -236,7 +236,13 @@ export function CurriculumSetupModal({
                   )}
                   style={{ fontSize: 'var(--text-tiny)' }}
                   onClick={handleSetup}
-                  disabled={isSubmitting || isUploadingDoc || (activeTab === 'CUSTOM' && (!file && selectedSourceIds.length === 0)) || creditsRemaining < 50}
+                  disabled={
+                    isSubmitting ||
+                    isUploadingDoc ||
+                    (activeTab === 'CUSTOM' &&
+                      ((!file && selectedSourceIds.length === 0) || creditsRemaining < 50)) ||
+                    (activeTab === 'AGORA' && !selectedAgoraId)
+                  }
                 >
                   {isSubmitting || isUploadingDoc ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -275,7 +281,7 @@ export function CurriculumSetupModal({
                 style={{ fontSize: 'var(--text-tiny)' }}
               >
                 {tab === 'AGORA' && <BookOpen className="h-3.5 w-3.5" />}
-                {tab === 'AGORA' ? 'Standard' : 'Custom'}
+                {tab === 'AGORA' ? 'Bud library' : 'Custom'}
               </button>
             ))}
           </div>
@@ -292,7 +298,7 @@ export function CurriculumSetupModal({
                       Select Master Curriculum
                     </h3>
                     <p className="text-light-text-muted dark:text-dark-text-muted font-bold font-heading" style={{ fontSize: 'var(--text-small)' }}>
-                      Pick a pre-verified template from the Agora database.
+                      Pick a pre-verified template from the Bud library.
                     </p>
                   </div>
                   <div className="relative w-64">
@@ -314,7 +320,7 @@ export function CurriculumSetupModal({
                       <div className="absolute inset-0 h-10 w-10 rounded-full border-4 border-blue-600/10" />
                     </div>
                     <div className="text-center">
-                      <p className="font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-[0.1em] text-[10px]">Consulting Agora Library</p>
+                      <p className="font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-[0.1em] text-[10px]">Consulting Bud library</p>
                       <p className="text-light-text-muted dark:text-dark-text-muted font-bold text-[9px] mt-1">Lois is retrieving pre-verified templates...</p>
                     </div>
                   </div>

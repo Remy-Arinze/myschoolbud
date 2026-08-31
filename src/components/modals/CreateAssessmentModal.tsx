@@ -14,7 +14,7 @@ import {
 } from '@/lib/store/api/schoolAdminApi';
 import { useGenerateAssessmentMutation } from '@/lib/store/api/aiApi';
 import { toast } from 'react-hot-toast';
-import { Trash2, Plus, Sparkles, Loader2, BookOpen, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { Trash2, Plus, Sparkles, Loader2, BookOpen, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react';
 
 interface CreateAssessmentModalProps {
     isOpen: boolean;
@@ -49,6 +49,13 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
     const [dueDate, setDueDate] = useState('');
     const [maxScore, setMaxScore] = useState(100);
     const [questions, setQuestions] = useState<Question[]>([]);
+    const [isTimed, setIsTimed] = useState(false);
+    const [duration, setDuration] = useState(30);
+    const [autoSubmitOnTimeout, setAutoSubmitOnTimeout] = useState(true);
+    const [allowLateSubmissionAfterDue, setAllowLateSubmissionAfterDue] = useState(false);
+    const [allowLateSubmissionAfterTimer, setAllowLateSubmissionAfterTimer] = useState(false);
+    const [lateDuePenaltyPoints, setLateDuePenaltyPoints] = useState(0);
+    const [lateTimerPenaltyPoints, setLateTimerPenaltyPoints] = useState(0);
 
     // AI Generation state
     const [useAi, setUseAi] = useState(false);
@@ -183,6 +190,13 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
                     termId,
                     dueDate,
                     maxScore,
+                    isTimed,
+                    duration: isTimed ? duration : undefined,
+                    autoSubmitOnTimeout,
+                    allowLateSubmissionAfterDue,
+                    allowLateSubmissionAfterTimer,
+                    lateDuePenaltyPoints: allowLateSubmissionAfterDue ? lateDuePenaltyPoints : 0,
+                    lateTimerPenaltyPoints: allowLateSubmissionAfterTimer ? lateTimerPenaltyPoints : 0,
                     questions: questions.map(q => ({
                         ...q,
                         options: q.type === 'MULTIPLE_CHOICE' ? q.options : undefined
@@ -286,7 +300,86 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
                             value={dueDate}
                             onChange={(e) => setDueDate(e.target.value)}
                         />
+                        <label className="mt-2 flex items-center gap-2 text-xs text-light-text-secondary cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={allowLateSubmissionAfterDue}
+                                onChange={(e) => setAllowLateSubmissionAfterDue(e.target.checked)}
+                                className="rounded border-light-border"
+                            />
+                            Allow submissions after due date (flagged late for grading)
+                        </label>
+                        {allowLateSubmissionAfterDue && (
+                            <Input
+                                type="number"
+                                min={0}
+                                className="mt-2"
+                                placeholder="Late penalty points"
+                                value={lateDuePenaltyPoints}
+                                onChange={(e) => setLateDuePenaltyPoints(Math.max(0, Number(e.target.value) || 0))}
+                            />
+                        )}
                     </div>
+                </div>
+
+                <div className="p-4 border border-light-border dark:border-dark-border rounded-xl space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-orange-500" />
+                            <h3 className="font-bold text-sm">Timed Exam</h3>
+                        </div>
+                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={isTimed}
+                                onChange={(e) => setIsTimed(e.target.checked)}
+                                className="rounded border-light-border"
+                            />
+                            Enable timer
+                        </label>
+                    </div>
+                    {isTimed && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-1">
+                            <div>
+                                <label className="block text-xs font-semibold mb-1">Duration (minutes)</label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    value={duration}
+                                    onChange={(e) => setDuration(Number(e.target.value) || 30)}
+                                />
+                            </div>
+                            <div className="space-y-2 text-xs">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={autoSubmitOnTimeout}
+                                        onChange={(e) => setAutoSubmitOnTimeout(e.target.checked)}
+                                        className="rounded border-light-border"
+                                    />
+                                    Auto-submit when time runs out
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={allowLateSubmissionAfterTimer}
+                                        onChange={(e) => setAllowLateSubmissionAfterTimer(e.target.checked)}
+                                        className="rounded border-light-border"
+                                    />
+                                    Allow manual submit after timer expires
+                                </label>
+                                {allowLateSubmissionAfterTimer && (
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        placeholder="Late timer penalty points"
+                                        value={lateTimerPenaltyPoints}
+                                        onChange={(e) => setLateTimerPenaltyPoints(Math.max(0, Number(e.target.value) || 0))}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* AI Helper Toggle */}

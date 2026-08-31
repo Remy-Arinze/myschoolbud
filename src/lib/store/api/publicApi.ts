@@ -96,6 +96,13 @@ export const publicApi = createApi({
       query: (id) => `/public/schools/${id}`,
       transformResponse: (response: ResponseDto<any>) => response.data,
     }),
+    getAdmissionConfig: builder.query<
+      { applicationsOpen: boolean; applicationDeadline?: string; formFields?: unknown[]; documentRequirements?: unknown[] },
+      string
+    >({
+      query: (schoolId) => `/public/schools/${schoolId}/admission-config`,
+      transformResponse: (response: ResponseDto<any>) => response.data,
+    }),
     submitAdmissionApplication: builder.mutation<ResponseDto<any>, { schoolId: string; application: any }>({
       query: ({ schoolId, application }) => ({
         url: `/public/schools/${schoolId}/apply`,
