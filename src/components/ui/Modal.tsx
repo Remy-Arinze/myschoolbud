@@ -13,7 +13,7 @@ interface ModalProps {
   title?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl';
   showCloseButton?: boolean;
   className?: string;
   contentClassName?: string;
@@ -38,6 +38,7 @@ export function Modal({
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
     '2xl': 'max-w-5xl',
+    '4xl': 'max-w-7xl',
   };
 
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -137,8 +138,9 @@ interface ConfirmModalProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: 'danger' | 'warning';
+  variant?: 'danger' | 'warning' | 'primary';
   isLoading?: boolean;
+  children?: ReactNode;
 }
 
 export function ConfirmModal({
@@ -151,26 +153,30 @@ export function ConfirmModal({
   cancelText = 'Cancel',
   variant = 'danger',
   isLoading = false,
+  children,
 }: ConfirmModalProps) {
   const handleConfirm = async () => {
     await onConfirm();
     onClose();
   };
 
-  const confirmButtonVariant = variant === 'warning' ? 'primary' : variant;
+  const confirmButtonVariant = variant === 'danger' ? 'danger' : 'primary';
+  const toneClass =
+    variant === 'warning'
+      ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+      : variant === 'primary'
+        ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+        : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <div className="space-y-4">
-        <div className={`p-4 rounded-lg ${
-          variant === 'warning'
-            ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
-            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-        }`}>
+        <div className={`p-4 rounded-lg ${toneClass}`}>
           <p className="text-sm font-medium leading-relaxed whitespace-pre-line">
             {message}
           </p>
         </div>
+        {children}
         <div className="flex items-center justify-end gap-3 pt-4">
           <Button variant="ghost" onClick={onClose} disabled={isLoading} className="rounded-xl">
             {cancelText}

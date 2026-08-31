@@ -21,6 +21,7 @@ import {
 import { 
   useGetMyClassesQuery, 
   useGetMyTeacherSchoolQuery,
+  useGetMyTeacherProfileQuery,
   useGetClassAttendanceSummaryQuery 
 } from '@/lib/store/api/schoolAdminApi';
 import Link from 'next/link';
@@ -35,11 +36,13 @@ export default function RollCallOverviewPage() {
   });
 
   const { data: schoolResponse } = useGetMyTeacherSchoolQuery();
+  const { data: teacherResponse } = useGetMyTeacherProfileQuery();
   const schoolId = schoolResponse?.data?.id;
+  const teacherId = teacherResponse?.data?.id;
 
   const { data: classesResponse, isLoading: isLoadingClasses } = useGetMyClassesQuery(
-    { schoolId: schoolId! },
-    { skip: !schoolId }
+    { schoolId: schoolId!, teacherId: teacherId! },
+    { skip: !schoolId || !teacherId }
   );
 
   const classes = classesResponse?.data || [];

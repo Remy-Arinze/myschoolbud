@@ -109,7 +109,7 @@ export function ExamTimetablesTab() {
   const { data: roomsResponse } = useGetRoomsQuery({ schoolId: schoolId! }, { skip: !schoolId });
   const rooms = roomsResponse?.data || [];
 
-  const { data: staffResponse } = useGetStaffListQuery({ schoolId: schoolId! }, { skip: !schoolId });
+  const { data: staffResponse } = useGetStaffListQuery({ limit: 100 }, { skip: !schoolId });
   const teachers = (staffResponse?.data?.items || []).filter((s) => s.type === 'teacher');
 
   const [createSlot, { isLoading: isCreating }] = useCreateExamTimetableSlotMutation();

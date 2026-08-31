@@ -30,7 +30,7 @@ import {
   isInstructionalDay,
 } from '@/lib/calendar/instructionalDays';
 import { isTermOperationallyActive } from '@/lib/academic/termSession';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Create date-fns localizer
@@ -279,7 +279,7 @@ export default function StudentCalendarPage() {
       });
     });
 
-    const holidayRanges = holidayRangesFromEvents(events);
+    const holidayRanges = holidayRangesFromEvents(events ?? []);
     const halfTermRanges = allSessions.flatMap((session: AcademicSession) =>
       session.terms
         .map((term: Term) => buildHalfTermRange(term.halfTermStart, term.halfTermEnd))

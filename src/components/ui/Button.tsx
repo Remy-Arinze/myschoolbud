@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'accent' | 'white';
-  size?: 'sm' | 'md' | 'lg' | 'icon';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
   fullWidth?: boolean;
   bgColor?: string; // Optional custom background color (hex or tailwind class)
@@ -85,6 +85,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizes = {
+      xs: 'px-2 py-1 text-[11px] leading-tight',
       sm: 'px-3 py-2 text-[13px] leading-tight',
       md: 'px-4 py-2.5 text-base leading-tight',
       lg: 'px-6 py-3 text-lg leading-tight',
@@ -129,6 +130,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         style?: React.CSSProperties;
         onClick?: (event: React.MouseEvent) => void;
         tabIndex?: number;
+        ref?: React.Ref<HTMLButtonElement>;
       }>;
 
       return cloneElement(childElement, {
@@ -150,7 +152,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           props.onClick?.(event as React.MouseEvent<HTMLButtonElement>);
           childElement.props.onClick?.(event);
         },
-      });
+      } as never);
     }
 
     return (

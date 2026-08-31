@@ -13,7 +13,6 @@ import { useCurrentAdminPermissions } from '@/hooks/usePermissions';
 import toast from 'react-hot-toast';
 import { Loader2, Search, User, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isPrincipalRole } from '@/hooks/usePermissions'; // Assuming it's exported here too or I'll use the hook
 
 interface StudentAssignToClassModalProps {
   isOpen: boolean;
@@ -58,7 +57,7 @@ export function StudentAssignToClassModal({
     return students.filter(s => s.enrollment?.classArmId !== targetClassArmId);
   }, [students, targetClassArmId]);
 
-  const isLevelChange = selectedStudent && selectedStudent.enrollment?.classLevel !== targetLevelName;
+  const isLevelChange = !!selectedStudent && selectedStudent.enrollment?.classLevel !== targetLevelName;
   const isRestricted = isLevelChange && !isPrincipal;
 
   const handleAssign = async () => {

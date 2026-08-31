@@ -50,7 +50,8 @@ import { getPromotionExamples } from '@/lib/utils/terminology';
 
 type Step = 1 | 2 | 3 | 4;
 
-const getSchoolTypeLabel = (type: string) => {
+const getSchoolTypeLabel = (type?: string | null) => {
+  if (!type) return 'your school';
   switch (type) {
     case 'PRIMARY':
       return 'Primary School';
@@ -63,11 +64,11 @@ const getSchoolTypeLabel = (type: string) => {
   }
 };
 
-const getTermLabel = (schoolType?: string) => {
+const getTermLabel = (schoolType?: string | null) => {
   return schoolType === 'TERTIARY' ? 'Semester' : 'Term';
 };
 
-const getTermCount = (schoolType?: string) => {
+const getTermCount = (schoolType?: string | null) => {
   return schoolType === 'TERTIARY' ? 2 : 3;
 };
 
@@ -105,7 +106,7 @@ export default function SessionWizardPage() {
   const schoolId = schoolResponse?.data?.id;
   const { currentType, isMixed } = useSchoolType();
 
-  const { data: activeSessionResponse, refetch: refetchActiveSession } = useGetActiveSessionQuery(
+  const { data: activeSessionResponse, isLoading: isLoadingActiveSession, refetch: refetchActiveSession } = useGetActiveSessionQuery(
     { schoolId: schoolId!, schoolType: currentType || undefined },
     { skip: !schoolId || !currentType }
   );
@@ -183,12 +184,12 @@ export default function SessionWizardPage() {
 
   // Show info modal once when page loads if no active session
   useEffect(() => {
-    if (activeSessionResponse && !activeSessionResponse.isLoading) {
+    if (!isLoadingActiveSession && activeSessionResponse) {
       if (!activeSession?.session && !infoDismissedRef.current) {
         setShowInfoModal(true);
       }
     }
-  }, [activeSessionResponse, activeSession]);
+  }, [isLoadingActiveSession, activeSessionResponse, activeSession]);
 
   const applySuggestedSessionDates = (start: string) => {
     if (!start) return;
@@ -414,7 +415,7 @@ export default function SessionWizardPage() {
       return;
     }
     try {
-      await endSession({ schoolId, schoolType: currentType }).unwrap();
+      await endSession({ schoolId, schoolType: currentType || undefined }).unwrap();
       await refetchActiveSession();
       setShowEndSessionModal(false);
       toast.success(
@@ -431,7 +432,7 @@ export default function SessionWizardPage() {
       return;
     }
     try {
-      await endTerm({ schoolId, schoolType: currentType }).unwrap();
+      await endTerm({ schoolId, schoolType: currentType || undefined }).unwrap();
       await refetchActiveSession();
       setShowEndTermModal(false);
       toast.success(
@@ -472,7 +473,7 @@ export default function SessionWizardPage() {
           startDate,
           endDate,
           type: sessionType,
-          schoolType: currentType,
+          schoolType: currentType || undefined,
           ...(sessionType === 'NEW_TERM' && selectedTermId && { termId: selectedTermId }),
           ...(sessionType === 'NEW_SESSION' && {
             startingTermNumber,

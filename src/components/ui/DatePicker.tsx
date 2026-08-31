@@ -385,7 +385,7 @@ function DropdownPortal({
 
   return createPortal(
     <div
-      ref={dropdownRef}
+      ref={dropdownRef as React.Ref<HTMLDivElement>}
       style={{
         position: 'fixed',
         top: `${coords.top}px`,

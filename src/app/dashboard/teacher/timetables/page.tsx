@@ -186,7 +186,7 @@ export default function TeacherTimetablesPage() {
           <TeacherTimetableGrid
             timetable={timetable}
             schoolType={schoolType}
-            isLoading={isLoading}
+            isLoading={!!isLoading}
             allTerms={allTerms}
             selectedTermId={currentTermId}
             onTermChange={setSelectedTermId}

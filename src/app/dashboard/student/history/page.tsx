@@ -210,7 +210,24 @@ export default function StudentHistoryPage() {
                 </CardContent>
               </Card>
             ) : (
-              gradesBySchool.map((schoolData, schoolIndex) => {
+              gradesBySchool.map((schoolData: {
+                school: { id: string; name: string };
+                endDate?: string;
+                startDate?: string;
+                grades: Array<{
+                  key: string;
+                  academicYear: string;
+                  term: string;
+                  averageScore: number;
+                  grades: Array<{
+                    id?: string;
+                    subject?: string;
+                    score?: number;
+                    maxScore?: number;
+                    [key: string]: unknown;
+                  }>;
+                }>;
+              }, schoolIndex: number) => {
                 const isExpanded = expandedSchool === schoolData.school.id;
                 const isCurrentSchool = !schoolData.endDate;
 

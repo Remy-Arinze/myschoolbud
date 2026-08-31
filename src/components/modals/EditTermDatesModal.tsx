@@ -115,7 +115,7 @@ function DateSection({
 }) {
     return (
         <div
-            ref={sectionRef}
+            ref={sectionRef as React.Ref<HTMLDivElement>}
             className="rounded-xl bg-light-surface dark:bg-dark-bg border border-light-border dark:border-dark-border p-4 overflow-visible scroll-mt-4"
         >
             <div className="flex items-start justify-between gap-3 mb-3">

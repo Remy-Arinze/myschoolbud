@@ -69,7 +69,13 @@ export function PlanFormModal({ isOpen, onClose, plan }: PlanFormModalProps) {
                 maxTeachers: plan.maxTeachers ?? 10,
                 maxAdmins: plan.maxAdmins ?? 5,
                 aiCredits: plan.aiCredits ?? 0,
-                features: plan.features?.length > 0 ? plan.features : [{ text: '', included: true, isGlowing: false }],
+                features: plan.features?.length > 0
+                    ? plan.features.map((f) => ({
+                        text: f.text,
+                        included: f.included,
+                        isGlowing: f.isGlowing ?? false,
+                    }))
+                    : [{ text: '', included: true, isGlowing: false }],
             });
         } else {
             setFormData({

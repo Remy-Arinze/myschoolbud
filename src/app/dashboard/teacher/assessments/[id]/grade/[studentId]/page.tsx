@@ -156,11 +156,11 @@ export default function GradeAssessmentPage() {
         maxScore: Number(assessment?.maxScore || 0),
     });
     const suggestedLateDue = suggestedLateDueDeduction(
-        submission?.isLateDue,
+        !!submission?.isLateDue,
         assessment?.lateDuePenaltyPoints,
     );
     const suggestedLateTimer = suggestedLateTimerDeduction(
-        submission?.isLateTimer,
+        !!submission?.isLateTimer,
         assessment?.lateTimerPenaltyPoints,
     );
 

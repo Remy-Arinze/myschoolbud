@@ -19,7 +19,7 @@ export default function OverviewPage() {
   const { user } = useAuth();
 
   // Get user's first name for welcome message
-  const userName = user?.firstName || user?.name?.split(' ')[0] || 'there';
+  const userName = user?.firstName || 'there';
 
   const isLoading = schoolsLoading || analyticsLoading;
 

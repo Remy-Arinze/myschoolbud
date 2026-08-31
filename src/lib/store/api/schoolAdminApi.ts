@@ -588,7 +588,7 @@ export interface BulkGenerateCurriculumDto {
   classLevelId: string;
   termId: string;
   subjectIds: string[];
-  teacherId: string;
+  teacherId?: string;
 }
 
 export interface UpdateCurriculumDto {
@@ -735,6 +735,7 @@ export interface Student {
   lastName: string;
   middleName: string | null;
   dateOfBirth: string;
+  gender?: string | null;
   profileLocked: boolean;
   profileImage: string | null;
   nationality?: string | null;
@@ -758,11 +759,24 @@ export interface StudentWithEnrollment extends Student {
     phone: string | null;
     accountStatus: 'SHADOW' | 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
   };
+  email?: string | null;
+  phone?: string | null;
+  attendance?: number;
+  averageScore?: number;
+  classes?: Array<{
+    id: string;
+    subject?: string;
+    code?: string;
+    name?: string;
+    score?: number;
+  }>;
   enrollment?: {
     id: string;
     classLevel: string;
     academicYear: string;
     enrollmentDate: string;
+    classArmId?: string | null;
+    classArmName?: string | null;
     school: {
       id: string;
       name: string;

@@ -107,7 +107,9 @@ export function useSubscription(): SubscriptionManagement {
    */
   const getPriceForTier = useCallback((tier: SubscriptionTier, isYearly: boolean): number | null => {
     if (!pricing) return null;
+    if (tier === SubscriptionTier.CUSTOM) return null;
     const plan = pricing[tier];
+    if (!plan) return null;
     return isYearly ? plan.yearly : plan.monthly;
   }, [pricing]);
 

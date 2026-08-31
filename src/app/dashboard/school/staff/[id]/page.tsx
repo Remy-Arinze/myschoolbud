@@ -58,6 +58,13 @@ const RESOURCE_LABELS: Record<PermissionResource, string> = {
   ADMISSIONS: 'Admissions',
   SESSIONS: 'Sessions',
   EVENTS: 'Events',
+  GRADES: 'Grades',
+  CURRICULUM: 'Curriculum',
+  SCHEME_OF_WORK: 'Scheme of Work',
+  RESOURCES: 'Resources',
+  TRANSFERS: 'Transfers',
+  INTEGRATIONS: 'Integrations',
+  SETTINGS: 'Settings',
 };
 
 const TYPE_LABELS: Record<PermissionType, string> = {

@@ -475,7 +475,7 @@ export function useAutoGenerateWithTeachers({
       totalPeriods: number;
     }>();
     
-    const subjectMissingTeacher = new Map<string, { id: string; name: string; count: number }>();
+    const subjectMissingTeacher = new Map<string, { id: string; name: string; periodCount: number }>();
     const usedSubjects = new Set<string>();
     
     let assignedWithTeacher = 0;
@@ -517,10 +517,10 @@ export function useAutoGenerateWithTeachers({
           subjectMissingTeacher.set(period.subjectId, {
             id: period.subjectId,
             name: period.subjectName || 'Unknown',
-            count: 0,
+            periodCount: 0,
           });
         }
-        subjectMissingTeacher.get(period.subjectId)!.count++;
+        subjectMissingTeacher.get(period.subjectId)!.periodCount++;
       }
     });
 
@@ -565,7 +565,7 @@ export function useAutoGenerateWithTeachers({
     });
 
     subjectMissingTeacher.forEach((subject) => {
-      warnings.push(`"${subject.name}" has ${subject.count} periods without a teacher`);
+      warnings.push(`"${subject.name}" has ${subject.periodCount} periods without a teacher`);
     });
 
     return {

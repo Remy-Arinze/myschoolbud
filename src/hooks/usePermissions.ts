@@ -13,6 +13,7 @@ import {
 import { isPrincipalRole } from '@/lib/constants/roles';
 
 export { PermissionResource, PermissionType };
+export { isPrincipalRole };
 
 /**
  * Hook to get the current admin's permissions and check access

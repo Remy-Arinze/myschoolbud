@@ -20,6 +20,7 @@ import {
   Loader2,
   AlertCircle,
   Award,
+  Sparkles,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';

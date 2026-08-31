@@ -100,7 +100,7 @@ export default function AddStaffPage() {
     data: subjectsResponse,
     isLoading: isLoadingSubjects,
   } = useGetSubjectsQuery(
-    { schoolId: schoolId!, schoolType: currentType },
+    { schoolId: schoolId!, schoolType: currentType || undefined },
     { skip: !schoolId || !currentType }
   );
   const subjects = subjectsResponse?.data || [];

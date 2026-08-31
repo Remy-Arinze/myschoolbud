@@ -117,6 +117,11 @@ const RESOURCE_INFO: Record<PermissionResource, { label: string; description: st
     description: 'Configure and manage third-party integrations like Google Calendar and external systems.',
     icon: '🔗',
   },
+  SETTINGS: {
+    label: 'School Settings',
+    description: 'Manage school profile, academic calendar, permissions, and configuration.',
+    icon: '⚙️',
+  },
 };
 
 // Detailed permission type information

@@ -265,9 +265,9 @@ export default function StudentResourcesPage() {
                   </p>
                 </div>
               )
-            ) : personalResources.length > 0 ? (
+            ) : (personalResources?.length ?? 0) > 0 ? (
               <div className="space-y-3">
-                {personalResources.map((resource: any) => (
+                {personalResources?.map((resource: any) => (
                   <FadeInUp key={resource.id} from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.4} className="border border-light-border dark:border-dark-border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-[var(--dark-hover)] transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1 min-w-0">

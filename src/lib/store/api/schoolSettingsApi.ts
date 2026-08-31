@@ -96,7 +96,7 @@ export interface SchoolSettingsAggregate {
   timetablePolicy?: Record<string, unknown> | null;
   attendancePolicy?: Record<string, unknown> | null;
   notificationPolicy?: Record<string, unknown> | null;
-  feeCategories?: Array<Record<string, unknown>>;
+  feeCategories?: Array<{ id: string; name: string }>;
   financePolicy?: Record<string, unknown> | null;
   curriculumPolicy?: Record<string, unknown> | null;
   loisConfig?: Record<string, unknown> | null;
@@ -190,7 +190,10 @@ export const schoolSettingsApi = apiSlice.injectEndpoints({
       query: (id) => ({ url: `/school-admin/settings/curriculum/knowledge/${id}`, method: 'DELETE' }),
       invalidatesTags: ['SchoolSettings'],
     }),
-    getAuditLogs: builder.query<ResponseDto<{ profileAudits: unknown[]; studentAudits: unknown[] }>, void>({
+    getAuditLogs: builder.query<ResponseDto<{
+      profileAudits: Array<{ id: string; action?: string; event?: string; createdAt: string }>;
+      studentAudits: Array<{ id: string; action?: string; event?: string; createdAt: string }>;
+    }>, void>({
       query: () => '/school-admin/settings/audit-logs',
       providesTags: ['SchoolSettings'],
     }),

@@ -215,7 +215,7 @@ export default function TeacherStudentDetailPage() {
                           Gender
                         </p>
                         <p className="font-medium text-light-text-primary dark:text-dark-text-primary">
-                          {student.gender}
+                          {student.gender || 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -237,7 +237,7 @@ export default function TeacherStudentDetailPage() {
                             Email
                           </p>
                           <p className="font-medium text-light-text-primary dark:text-dark-text-primary">
-                            {student.email}
+                            {student.email || student.user?.email || 'N/A'}
                           </p>
                         </div>
                       </div>
@@ -248,7 +248,7 @@ export default function TeacherStudentDetailPage() {
                             Phone
                           </p>
                           <p className="font-medium text-light-text-primary dark:text-dark-text-primary">
-                            {student.phone}
+                            {student.phone || student.user?.phone || 'N/A'}
                           </p>
                         </div>
                       </div>
@@ -276,7 +276,7 @@ export default function TeacherStudentDetailPage() {
                               Attendance
                             </p>
                             <p className="text-lg font-bold text-light-text-primary dark:text-dark-text-primary">
-                              {student.attendance}%
+                              {student.attendance != null ? `${student.attendance}%` : 'N/A'}
                             </p>
                           </div>
                         </div>
@@ -291,7 +291,7 @@ export default function TeacherStudentDetailPage() {
                               Average Score
                             </p>
                             <p className="text-lg font-bold text-light-text-primary dark:text-dark-text-primary">
-                              {student.averageScore}%
+                              {student.averageScore != null ? `${student.averageScore}%` : 'N/A'}
                             </p>
                           </div>
                         </div>
@@ -308,7 +308,7 @@ export default function TeacherStudentDetailPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {student.classes.map((classItem) => (
+                      {(student.classes ?? []).map((classItem) => (
                         <div
                           key={classItem.id}
                           className="flex items-center justify-between p-3 bg-light-bg dark:bg-dark-surface rounded-lg"
@@ -460,7 +460,7 @@ export default function TeacherStudentDetailPage() {
                       <Calendar className="h-16 w-16 text-blue-600 dark:text-blue-400" />
                     </div>
                     <p className="font-bold text-light-text-primary dark:text-dark-text-primary mb-2" style={{ fontSize: 'var(--text-stat-value)' }}>
-                      {student.attendance}%
+                      {student.attendance != null ? `${student.attendance}%` : 'N/A'}
                     </p>
                     <p className="text-light-text-secondary dark:text-dark-text-secondary">
                       Overall Attendance Rate

@@ -12,6 +12,7 @@ export interface PricingResponse {
   FREE: PricingPlan;
   PRO: PricingPlan;
   PRO_PLUS: PricingPlan;
+  CUSTOM?: PricingPlan;
 }
 
 export interface InitializePaymentRequest {

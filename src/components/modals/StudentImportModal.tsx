@@ -53,7 +53,7 @@ export function StudentImportModal({ isOpen, onClose, schoolId }: StudentImportM
         if (result.data.errorCount === 0) {
           toast.success(`Successfully imported ${result.data.successCount} students`);
         } else {
-          toast.warning(`Imported ${result.data.successCount} students with ${result.data.errorCount} errors`);
+          toast(`Imported ${result.data.successCount} students with ${result.data.errorCount} errors`);
         }
       }
     } catch (error: any) {

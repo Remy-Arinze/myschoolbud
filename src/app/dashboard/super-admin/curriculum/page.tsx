@@ -188,6 +188,11 @@ export default function SuperAdminCurriculumPage() {
     const firstSubjectId = selected[0].subjectId || selected[0].subject?.id;
     const firstGradeLevel = selected[0].gradeLevel;
 
+    if (!firstSubjectId) {
+      toast.error('Selected sources are missing a subject. Please try again.');
+      return;
+    }
+
     const isMismatched = selected.some(s => {
       const sSubId = s.subjectId || s.subject?.id;
       return sSubId !== firstSubjectId || s.gradeLevel !== firstGradeLevel;
@@ -477,7 +482,7 @@ export default function SuperAdminCurriculumPage() {
                           <Trash className="w-4 h-4 mr-2" />
                           Delete
                         </Button>
-                        <Button variant="primary" size="sm" onClick={handleConsolidate} isLoading={isConsolidating} className="bg-blue-600 hover:bg-blue-700">
+                        <Button variant="primary" size="sm" onClick={() => handleConsolidate()} isLoading={isConsolidating} className="bg-blue-600 hover:bg-blue-700">
                           <Layers className="w-4 h-4 mr-2" />
                           Consolidate
                         </Button>
@@ -488,7 +493,7 @@ export default function SuperAdminCurriculumPage() {
                     {filteredSources.map((source: AgoraCurriculumSource) => (
                       <Card
                         key={source.id}
-                        onMouseDown={() => startLongPress(source.id, source.status === 'PARSED')}
+                        onMouseDown={() => startLongPress(source.id)}
                         onMouseUp={(e) => endLongPress(e, source.id)}
                         onMouseLeave={() => {
                           if (touchTimer.current) {
@@ -496,7 +501,7 @@ export default function SuperAdminCurriculumPage() {
                             touchTimer.current = null;
                           }
                         }}
-                        onTouchStart={() => startLongPress(source.id, source.status === 'PARSED')}
+                        onTouchStart={() => startLongPress(source.id)}
                         onTouchEnd={(e) => endLongPress(e, source.id)}
                         className={cn(
                           "group transition-all border hover:shadow-md relative cursor-pointer select-none",
@@ -1172,7 +1177,7 @@ function CurriculumPreviewModal({
       const getProgression = () => isJson ? data.progressionNotes : notes.split('# Progression Notes')[1]?.trim();
 
       const themes = getThemes();
-      const themesList = Array.isArray(themes) ? themes : themes?.split('\n').map(t => t.replace(/^- /, '').trim()).filter(Boolean);
+      const themesList = Array.isArray(themes) ? themes : themes?.split('\n').map((t: string) => t.replace(/^- /, '').trim()).filter(Boolean);
 
       return (
         <div className="space-y-10 max-w-4xl mx-auto">
@@ -1181,18 +1186,18 @@ function CurriculumPreviewModal({
             <div className="space-y-4">
               <div className="space-y-1">
                 <span className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em]">Subject</span>
-                <p className="text-lg font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight">{curriculum.subject?.name}</p>
+                <p className="text-lg font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight">{curriculum?.subject?.name}</p>
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] font-black uppercase text-amber-500 tracking-[0.2em]">Class</span>
-                <p className="text-lg font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight">{curriculum.gradeLevel?.replace('_', ' ')}</p>
+                <p className="text-lg font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight">{curriculum?.gradeLevel?.replace('_', ' ')}</p>
               </div>
             </div>
             <div className="space-y-4">
               <div className="space-y-1">
                 <span className="text-[10px] font-black uppercase text-purple-500 tracking-[0.2em]">Level</span>
                 <p className="text-lg font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight">
-                  {curriculum.gradeLevel?.startsWith('PRY') ? 'Primary' : curriculum.gradeLevel?.startsWith('JSS') ? 'Junior Secondary' : 'Senior Secondary'}
+                  {curriculum?.gradeLevel?.startsWith('PRY') ? 'Primary' : curriculum?.gradeLevel?.startsWith('JSS') ? 'Junior Secondary' : 'Senior Secondary'}
                 </p>
               </div>
               <div className="space-y-1">
@@ -1301,6 +1306,7 @@ function CurriculumPreviewModal({
   };
 
   const handleAddNewWeek = async () => {
+    if (!curriculum) return;
     try {
       const nextWeekNum = (curriculum.topics?.filter((t: any) => t.term === activeTerm).length || 0) + 1;
       const newTopic = await addTopic({

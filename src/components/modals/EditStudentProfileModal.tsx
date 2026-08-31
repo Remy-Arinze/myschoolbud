@@ -125,7 +125,7 @@ export function EditStudentProfileModal({
         onSuccess?.();
         onClose();
       } else if (!selectedImageFile) {
-        toast.info('No changes to save');
+        toast('No changes to save');
       } else {
         onSuccess?.();
         onClose();

@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
-import { useCurrentAdminPermissions, getRoutePermission, PermissionResource } from '@/hooks/usePermissions';
+import { useCurrentAdminPermissions, getRoutePermission, PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import { AccessDenied } from './PermissionGate';
 
 interface ProtectedSchoolRouteProps {
@@ -45,8 +45,8 @@ export function ProtectedSchoolRoute({ children, resource }: ProtectedSchoolRout
   const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
   
   // Determine the required permission
-  const routePermission = resource 
-    ? { resource, type: 'READ' as const } 
+  const routePermission = resource
+    ? { resource, type: PermissionType.READ }
     : getRoutePermission(pathname);
   
   useEffect(() => {

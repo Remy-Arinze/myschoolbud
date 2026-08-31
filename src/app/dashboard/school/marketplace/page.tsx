@@ -93,7 +93,7 @@ const allPlugins = [
   },
 ];
 
-type FilterCategory = 'all' | 'AI & Automation' | 'Attendance' | 'Finance' | 'Assessment';
+type FilterCategory = 'all' | 'Customization' | 'AI & Automation' | 'Attendance' | 'Finance' | 'Assessment';
 
 export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState('');

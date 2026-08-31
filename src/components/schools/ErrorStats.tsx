@@ -56,6 +56,7 @@ export function ErrorStats({ schoolId }: ErrorStatsProps) {
 
   // Prepare trend data for area chart
   const trendData = (stats.recentTrends || []).map((item: any) => ({
+    name: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     date: new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     errors: item.count || 0,
   }));

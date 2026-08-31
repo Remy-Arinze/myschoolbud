@@ -38,10 +38,7 @@ export function CreateClassModal({ isOpen, onClose, schoolId }: CreateClassModal
   const defaultAcademicYear = activeSession?.session?.name || '2024/2025';
 
   const { data: classLevelsResponse } = useGetClassLevelsQuery(
-    {
-      schoolId,
-      schoolType: isPrimaryOrSecondary ? (currentType as 'PRIMARY' | 'SECONDARY') : undefined,
-    },
+    { schoolId },
     { skip: !schoolId || !isPrimaryOrSecondary || !currentType }
   );
   const classLevels = classLevelsResponse?.data || [];

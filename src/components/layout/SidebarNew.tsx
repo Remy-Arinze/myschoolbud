@@ -124,6 +124,7 @@ export function SidebarNew({ hideMobileHeader }: { hideMobileHeader?: boolean })
             ) : (
               <Icon className="h-5 w-5 flex-shrink-0" />
             ),
+            badge: undefined,
           };
         });
 

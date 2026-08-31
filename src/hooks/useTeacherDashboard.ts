@@ -65,6 +65,9 @@ export interface TeacherDashboardData {
     examTimetablePublishedAt?: string;
   } | null;
 
+  /** Raw teacher timetable for the active term (unfiltered). */
+  timetable: TimetablePeriod[];
+
   /** Timetable filtered to when lesson schedule is active (hidden during published exam period). */
   liveTimetable: TimetablePeriod[];
 

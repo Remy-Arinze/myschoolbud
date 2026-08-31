@@ -139,6 +139,7 @@ export interface UpdateAdminDto {
   lastName?: string;
   phone?: string;
   role?: string;
+  profileImage?: string;
 }
 
 export interface UpdateTeacherDto {
@@ -147,6 +148,7 @@ export interface UpdateTeacherDto {
   phone?: string;
   subject?: string;
   isTemporary?: boolean;
+  profileImage?: string;
 }
 
 export interface UpdatePrincipalDto {

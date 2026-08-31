@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ToolbarProps } from 'react-big-calendar';
 import { Select } from '@/components/ui/Select';
 
-export function CustomToolbar<T = any>({ label, onNavigate, onView, view }: ToolbarProps<T>) {
+export function CustomToolbar<T extends object = object>({ label, onNavigate, onView, view }: ToolbarProps<T>) {
   const goToBack = () => {
     onNavigate('PREV');
   };

@@ -32,6 +32,7 @@ export function CreateCurriculumModal({
 }: CreateCurriculumModalProps) {
   const [items, setItems] = useState<CreateCurriculumItemDto[]>([
     {
+      weekNumber: 1,
       week: 1,
       topic: '',
       objectives: [''],
@@ -47,6 +48,7 @@ export function CreateCurriculumModal({
       // Reset form when modal opens
       setItems([
         {
+          weekNumber: 1,
           week: 1,
           topic: '',
           objectives: [''],
@@ -61,6 +63,7 @@ export function CreateCurriculumModal({
     setItems([
       ...items,
       {
+        weekNumber: items.length + 1,
         week: items.length + 1,
         topic: '',
         objectives: [''],
@@ -75,6 +78,7 @@ export function CreateCurriculumModal({
       const newItems = items.filter((_, i) => i !== index);
       // Re-number weeks
       newItems.forEach((item, i) => {
+        item.weekNumber = i + 1;
         item.week = i + 1;
         item.order = i;
       });
@@ -138,14 +142,20 @@ export function CreateCurriculumModal({
       return;
     }
 
+    if (!termId) {
+      toast.error('Please select a term before creating a curriculum');
+      return;
+    }
+
     // Filter out empty objectives and resources
     const curriculumData: CreateCurriculumDto = {
       classId,
       subject: subject || undefined,
       academicYear,
-      termId: termId || undefined,
+      termId,
       items: items.map((item) => ({
-        week: item.week,
+        weekNumber: item.weekNumber ?? item.week ?? 0,
+        week: item.week ?? item.weekNumber,
         topic: item.topic.trim(),
         objectives: item.objectives.filter((obj) => obj.trim()).map((obj) => obj.trim()),
         resources: item.resources.filter((res) => res.trim()).map((res) => res.trim()),
@@ -185,7 +195,7 @@ export function CreateCurriculumModal({
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary">
-                  Week {item.week}
+                  Week {item.week ?? item.weekNumber}
                 </h3>
                 {items.length > 1 && (
                   <Button

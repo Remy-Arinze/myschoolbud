@@ -15,7 +15,7 @@ import { usePathname } from 'next/navigation';
 
 export function Navbar() {
   const { user, getDashboardPath } = useAuth();
-  const { open } = useSidebar();
+  const { open, setOpen } = useSidebar();
   const userRole = useSelector((state: RootState) => state.auth.user?.role);
   const pathname = usePathname();
 

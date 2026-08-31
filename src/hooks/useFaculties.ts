@@ -127,7 +127,7 @@ export function useFaculties({ schoolId, skip = false }: UseFacultiesOptions): U
         if (result.data.created > 0) {
           toast.success(result.message || `Created ${result.data.created} faculties`);
         } else {
-          toast.info(result.message || 'All default faculties already exist');
+          toast(result.message || 'All default faculties already exist');
         }
         return result.data;
       } catch (error: any) {

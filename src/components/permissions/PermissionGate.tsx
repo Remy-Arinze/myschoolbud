@@ -133,6 +133,7 @@ function AccessDenied({ resource }: { resource: PermissionResource }) {
     [PermissionResource.RESOURCES]: 'Resources',
     [PermissionResource.TRANSFERS]: 'Transfers',
     [PermissionResource.INTEGRATIONS]: 'Integrations',
+    [PermissionResource.SETTINGS]: 'School Settings',
   };
 
   return (

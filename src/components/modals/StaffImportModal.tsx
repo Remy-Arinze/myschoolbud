@@ -62,7 +62,7 @@ export function StaffImportModal({ isOpen, onClose, schoolId }: StaffImportModal
         if (result.data.errorCount === 0) {
           toast.success(`Successfully imported ${result.data.successCount} staff members`);
         } else {
-          toast.warning(`Imported ${result.data.successCount} staff members with ${result.data.errorCount} errors`);
+          toast(`Imported ${result.data.successCount} staff members with ${result.data.errorCount} errors`);
         }
       }
     } catch (error: any) {
@@ -132,7 +132,7 @@ admin,Peter,Williams,peter.w@school.com,+2348012345681,Administrator,,,`;
                       </ul>
                     </div>
                     <div>
-                      <strong className="text-blue-900 dark:text-blue-100">For {terminology.staffPlural} (Optional fields):</strong>
+                      <strong className="text-blue-900 dark:text-blue-100">For {terminology.staff} (Optional fields):</strong>
                       <ul className="list-disc list-inside ml-2 text-blue-800 dark:text-blue-200">
                         <li><code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">subject</code> - {isPrimary ? 'Class Arm name (e.g. "Primary 1A")' : 'Subject name (must match an existing subject, e.g. "Mathematics")'}</li>
                         <li><code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">employeeId</code> - Employee ID</li>
