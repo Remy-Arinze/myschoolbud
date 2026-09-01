@@ -22,7 +22,6 @@ const nextConfig = {
     const connectSources = [
       "'self'",
       'http://localhost:4000',
-      'https://api.agora-schools.com',
       // OpenObserve RUM & logs
       'https://console-observe.agora-schools.com',
     ];
