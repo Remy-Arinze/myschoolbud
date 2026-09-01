@@ -23,7 +23,7 @@ const TIMETABLE_CELL_CLASSES = Array.from({ length: 20 }).map((_, i) => {
   if ([2, 5, 8, 11, 14, 17].includes(i)) return 'bg-agora-blue/20';
   if ([3, 7, 13, 19].includes(i)) return 'bg-agora-success/15';
   if ([6, 12].includes(i)) return 'bg-agora-accent/15';
-  return 'bg-white/[0.04]';
+  return 'bg-gray-100 dark:bg-white/[0.04]';
 });
 
 // Grid dimensions: 5 cols × 4 rows, cell 32×20, gap 6
@@ -396,10 +396,10 @@ export default function HomeContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
 
             {/* 1. Curriculum Engine — Featured (spans 2 cols) */}
-            <AnimateInView delay={0.05} className="md:col-span-2 bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 md:p-9 relative group overflow-hidden hover:border-white/[0.1] transition-all duration-500">
+            <AnimateInView delay={0.05} className="md:col-span-2 bg-white dark:bg-white/[0.04] border border-blue-100 dark:border-white/[0.06] rounded-3xl p-7 md:p-9 relative group overflow-hidden hover:border-blue-200 dark:hover:border-white/[0.1] transition-all duration-500">
               <div className="relative z-10">
-                <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-                  <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-9 h-9 bg-agora-blue/10 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+                  <svg className="w-[18px] h-[18px] text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
@@ -409,7 +409,7 @@ export default function HomeContent() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {['Vetted Curriculums', 'NERDC Ready', 'Custom Upload', 'AI-Powered Plans'].map((tag) => (
-                    <span key={tag} className="px-3 py-1 text-[10px] font-medium text-white/50 bg-white/[0.04] rounded-full border border-white/[0.06]">
+                    <span key={tag} className="px-3 py-1 text-[10px] font-medium text-agora-blue dark:text-white/60 bg-agora-blue/10 dark:bg-white/[0.04] rounded-full border border-blue-100 dark:border-white/[0.06]">
                       {tag}
                     </span>
                   ))}
@@ -418,9 +418,9 @@ export default function HomeContent() {
             </AnimateInView>
 
             {/* 2. Scheme of Work */}
-            <AnimateInView delay={0.1} className="bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 hover:border-white/[0.1] transition-all duration-500 group">
-              <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-                <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <AnimateInView delay={0.1} className="bg-white dark:bg-white/[0.04] border border-blue-100 dark:border-white/[0.06] rounded-3xl p-7 hover:border-blue-200 dark:hover:border-white/[0.1] transition-all duration-500 group">
+              <div className="w-9 h-9 bg-agora-blue/10 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+                <svg className="w-[18px] h-[18px] text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
               </div>
@@ -431,9 +431,9 @@ export default function HomeContent() {
             </AnimateInView>
 
             {/* 3. Smart Assessments */}
-            <AnimateInView delay={0.15} className="bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 hover:border-white/[0.1] transition-all duration-500 group">
-              <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-                <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <AnimateInView delay={0.15} className="bg-white dark:bg-white/[0.04] border border-blue-100 dark:border-white/[0.06] rounded-3xl p-7 hover:border-blue-200 dark:hover:border-white/[0.1] transition-all duration-500 group">
+              <div className="w-9 h-9 bg-agora-blue/10 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+                <svg className="w-[18px] h-[18px] text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
@@ -444,9 +444,9 @@ export default function HomeContent() {
             </AnimateInView>
 
             {/* 4. AI-Powered Grading */}
-            <AnimateInView delay={0.2} className="bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 hover:border-white/[0.1] transition-all duration-500 group">
-              <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-                <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <AnimateInView delay={0.2} className="bg-white dark:bg-white/[0.04] border border-blue-100 dark:border-white/[0.06] rounded-3xl p-7 hover:border-blue-200 dark:hover:border-white/[0.1] transition-all duration-500 group">
+              <div className="w-9 h-9 bg-agora-blue/10 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+                <svg className="w-[18px] h-[18px] text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </div>
@@ -457,9 +457,9 @@ export default function HomeContent() {
             </AnimateInView>
 
             {/* 5. Student Transfers */}
-            <AnimateInView delay={0.25} className="bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 hover:border-white/[0.1] transition-all duration-500 group">
-              <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-                <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <AnimateInView delay={0.25} className="bg-white dark:bg-white/[0.04] border border-blue-100 dark:border-white/[0.06] rounded-3xl p-7 hover:border-blue-200 dark:hover:border-white/[0.1] transition-all duration-500 group">
+              <div className="w-9 h-9 bg-agora-blue/10 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+                <svg className="w-[18px] h-[18px] text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
               </div>
@@ -470,9 +470,9 @@ export default function HomeContent() {
             </AnimateInView>
 
             {/* 6. Attendance Tracking */}
-            <AnimateInView delay={0.3} className="bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 hover:border-white/[0.1] transition-all duration-500 group">
-              <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-                <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <AnimateInView delay={0.3} className="bg-white dark:bg-white/[0.04] border border-blue-100 dark:border-white/[0.06] rounded-3xl p-7 hover:border-blue-200 dark:hover:border-white/[0.1] transition-all duration-500 group">
+              <div className="w-9 h-9 bg-agora-blue/10 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+                <svg className="w-[18px] h-[18px] text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -483,11 +483,11 @@ export default function HomeContent() {
             </AnimateInView>
 
             {/* 7. Timetable Generation — Featured (spans 2 cols) */}
-            <AnimateInView delay={0.35} className="md:col-span-2 bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 md:p-9 relative group overflow-hidden hover:border-white/[0.1] transition-all duration-500">
+            <AnimateInView delay={0.35} className="md:col-span-2 bg-white dark:bg-white/[0.04] border border-blue-100 dark:border-white/[0.06] rounded-3xl p-7 md:p-9 relative group overflow-hidden hover:border-blue-200 dark:hover:border-white/[0.1] transition-all duration-500">
               <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
                 <div className="flex-1">
-                  <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-                    <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-9 h-9 bg-agora-blue/10 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+                    <svg className="w-[18px] h-[18px] text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
@@ -502,9 +502,9 @@ export default function HomeContent() {
             </AnimateInView>
 
             {/* 8. Session & Term Management */}
-            <AnimateInView delay={0.4} className="bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 hover:border-white/[0.1] transition-all duration-500 group">
-              <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-                <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <AnimateInView delay={0.4} className="bg-white dark:bg-white/[0.04] border border-blue-100 dark:border-white/[0.06] rounded-3xl p-7 hover:border-blue-200 dark:hover:border-white/[0.1] transition-all duration-500 group">
+              <div className="w-9 h-9 bg-agora-blue/10 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+                <svg className="w-[18px] h-[18px] text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
@@ -515,9 +515,9 @@ export default function HomeContent() {
             </AnimateInView>
 
             {/* 9. Teacher & Student Dashboards */}
-            <AnimateInView delay={0.45} className="bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 hover:border-white/[0.1] transition-all duration-500 group">
-              <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
-                <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <AnimateInView delay={0.45} className="bg-white dark:bg-white/[0.04] border border-blue-100 dark:border-white/[0.06] rounded-3xl p-7 hover:border-blue-200 dark:hover:border-white/[0.1] transition-all duration-500 group">
+              <div className="w-9 h-9 bg-agora-blue/10 rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
+                <svg className="w-[18px] h-[18px] text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm10 0a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6z" />
                 </svg>
               </div>
@@ -699,3 +699,4 @@ export default function HomeContent() {
     </>
   );
 }
+
