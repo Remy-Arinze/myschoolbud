@@ -35,7 +35,7 @@ const coreFeatures = [
     description: 'Complete student lifecycle management from admission to graduation.',
   },
   {
-    icon: <Users className="w-6 h-6 text-indigo-500" />,
+    icon: <Users className="w-6 h-6 text-agora-blue" />,
     title: 'Teacher Portal',
     description: 'Streamlined tools for attendance, grading, and classroom management.',
   },
@@ -45,7 +45,7 @@ const coreFeatures = [
     description: 'Real-time insights into school performance and student progress.',
   },
   {
-    icon: <RefreshCw className="w-6 h-6 text-purple-500" />,
+    icon: <RefreshCw className="w-6 h-6 text-agora-blue" />,
     title: 'Seamless Transfers',
     description: 'One-click student transfers with complete academic history.',
   },
@@ -57,7 +57,7 @@ const coreFeatures = [
 ];
 
 const milestones = [
-  { year: '2024', title: 'Founded', description: 'School Bud was born from the vision of creating a unified digital identity for every African student.' },
+  { year: '2024', title: 'Founded', description: 'Myschoolbud was born from the vision of creating a unified digital identity for every African student.' },
   { year: '2024', title: 'First Schools', description: 'Launched pilot program with select schools in Lagos, Nigeria.' },
   { year: '2025', title: 'Expansion', description: 'Growing our network across Nigeria and preparing for Pan-African expansion.' },
 ];
@@ -70,7 +70,7 @@ export default function AboutPage() {
       {/* Background Glows (Same as landing page) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/5 dark:bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute top-1/2 left-0 -translate-x-1/2 w-[600px] h-[600px] bg-indigo-600/5 dark:bg-indigo-600/10 rounded-full blur-[140px]" />
+        <div className="absolute top-1/2 left-0 -translate-x-1/2 w-[600px] h-[600px] bg-agora-blue/5 dark:bg-agora-blue/10 rounded-full blur-[140px]" />
         <div className="absolute bottom-0 right-0 translate-y-1/2 w-[800px] h-[800px] bg-agora-blue/5 dark:bg-agora-blue/10 rounded-full blur-[160px]" />
       </div>
 
@@ -79,7 +79,7 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <FadeInUp from={{ opacity: 0, y: 30 }} to={{ opacity: 1, y: 0 }} duration={0.8} className="text-center max-w-4xl mx-auto">
             <h1 className="text-3xl md:text-5xl font-bold text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] mb-6 font-heading leading-tight tracking-tight">
-              About <span className="text-agora-blue">School Bud</span>
+              About <span className="text-agora-blue">Myschoolbud</span>
             </h1>
             <p
               className="text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] leading-relaxed max-w-2xl mx-auto"
@@ -122,8 +122,8 @@ export default function AboutPage() {
 
             <AnimateInView from={{ opacity: 0, x: 30 }} to={{ opacity: 1, x: 0 }} duration={0.8}>
               <div className="flex flex-col h-full bg-white/50 dark:bg-white/5 backdrop-blur-sm p-10 rounded-[2.5rem] border border-[var(--light-border)] dark:border-white/10 shadow-sm hover:shadow-xl transition-all duration-500 group">
-                <div className="w-14 h-14 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                  <Eye className="w-6 h-6 text-indigo-500" />
+                <div className="w-14 h-14 bg-agora-blue/10 dark:bg-agora-blue/20 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                  <Eye className="w-6 h-6 text-agora-blue" />
                 </div>
                 <h2
                   className="font-bold text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] mb-4 font-heading tracking-tight"
@@ -137,7 +137,7 @@ export default function AboutPage() {
                 >
                   An Africa where educational achievements are universally trusted, credits transfer instantly between borders, and every learner holds the key to their own future.
                 </p>
-                <div className="mt-auto flex items-center gap-2 text-indigo-500 font-semibold" style={{ fontSize: 'var(--text-small)' }}>
+                <div className="mt-auto flex items-center gap-2 text-agora-blue font-semibold" style={{ fontSize: 'var(--text-small)' }}>
                   <span>Explore our Vision</span>
                   <ChevronRight className="w-3 h-3" />
                 </div>
@@ -323,7 +323,7 @@ export default function AboutPage() {
               className="text-blue-50 mb-10 leading-relaxed"
               style={{ fontSize: 'var(--text-page-subtitle)' }}
             >
-              Join the schools and institutions already building the School Bud ecosystem.
+              Join the schools and institutions already building the Myschoolbud ecosystem.
             </p>
             <Link
               href="/auth/login"
@@ -338,7 +338,7 @@ export default function AboutPage() {
       {/* Footer */}
       <footer className="bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] py-20 border-t border-[var(--light-border)] dark:border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm font-medium tracking-wide">&copy; 2026 School Bud. All rights reserved.</p>
+          <p className="text-sm font-medium tracking-wide">&copy; 2026 Myschoolbud. All rights reserved.</p>
         </div>
       </footer>
     </div>

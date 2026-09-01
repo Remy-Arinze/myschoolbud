@@ -23,11 +23,11 @@ const config: Config = {
       },
       colors: {
         // Agora Brand Colors
-        'agora-blue': '#2490FD',
+        'agora-blue': 'var(--agora-blue)',
         'agora-success': 'var(--agora-success)',
         'agora-text': '#02173D',
         'agora-accent': '#FF532A',
-        'agora-lois': '#6366f1',
+        'agora-lois': 'var(--agora-blue)',
 
         // Light Mode - using CSS variables from globals.css
         'light-bg': 'var(--light-bg)',

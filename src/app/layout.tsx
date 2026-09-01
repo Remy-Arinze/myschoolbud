@@ -18,16 +18,16 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.agora-schools.com'),
   title: {
-    default: 'School Bud | Global Student Identity Ledger & School Management System',
-    template: '%s | School Bud'
+    default: 'Myschoolbud | Global Student Identity Ledger & School Management System',
+    template: '%s | Myschoolbud'
   },
-  description: 'School Bud creates a borderless academic identity for every student, turning static paper trails into a living, portable digital profile secured by a global student ledger.',
-  applicationName: 'School Bud',
+  description: 'Myschoolbud creates a borderless academic identity for every student, turning static paper trails into a living, portable digital profile secured by a global student ledger.',
+  applicationName: 'Myschoolbud',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'School Bud',
+    title: 'Myschoolbud',
   },
   keywords: [
     'Digital Student Identity',
@@ -40,11 +40,11 @@ export const metadata: Metadata = {
     'Student Data Portability',
     'Immutable Academic Records',
     'Blockchain Education Registry',
-    'School Bud',
+    'Myschoolbud',
   ],
-  authors: [{ name: 'School Bud Team' }],
-  creator: 'School Bud',
-  publisher: 'School Bud',
+  authors: [{ name: 'Myschoolbud Team' }],
+  creator: 'Myschoolbud',
+  publisher: 'Myschoolbud',
   alternates: {
     canonical: '/',
   },
@@ -52,21 +52,21 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://www.agora-schools.com',
-    siteName: 'School Bud',
-    title: 'School Bud - The Digital Chain-of-Trust for Education',
+    siteName: 'Myschoolbud',
+    title: 'Myschoolbud - The Digital Chain-of-Trust for Education',
     description: 'A borderless academic identity for every student. Secured, portable, and immutable records on a global ledger.',
     images: [
       {
         url: '/assets/logos/agora_main.png',
         width: 1200,
         height: 630,
-        alt: 'School Bud - Digital Education Identity',
+        alt: 'Myschoolbud - Digital Education Identity',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'School Bud - Digital Education Identity',
+    title: 'Myschoolbud - Digital Education Identity',
     description: 'Transforming traditional transcripts into a lifelong asset. Verified, immutable, and instantly accessible student data.',
     images: ['/assets/logos/agora_main.png'],
   },
@@ -122,10 +122,10 @@ export default function RootLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Organization',
-              name: 'School Bud',
+              name: 'Myschoolbud',
               url: 'https://www.agora-schools.com',
               logo: 'https://www.agora-schools.com/assets/logos/agora_main.png',
-              description: 'School Bud creates a borderless academic identity for every student, anchoring educational history in a global student ledger.',
+              description: 'Myschoolbud creates a borderless academic identity for every student, anchoring educational history in a global student ledger.',
               sameAs: [
                 'https://twitter.com/agora_edu',
                 'https://linkedin.com/company/agora-edu'
@@ -140,10 +140,10 @@ export default function RootLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Service',
-              name: 'School Bud Student Identity Ledger',
+              name: 'Myschoolbud Student Identity Ledger',
               provider: {
                 '@type': 'Organization',
-                name: 'School Bud'
+                name: 'Myschoolbud'
               },
               description: 'A unified management system that turns static paper trails into a living, portable digital profile for students.',
               areaServed: 'Global',

@@ -1116,7 +1116,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="fixed right-0 top-0 bottom-0 w-80 md:w-96 bg-light-card/95 dark:bg-[#0D0D0F]/95 backdrop-blur-2xl border-l border-light-border/50 dark:border-white/[0.08] z-[101] shadow-[ -20px_0_50px_rgba(0,0,0,0.3)] flex flex-col"
+              className="fixed right-0 top-0 bottom-0 w-80 md:w-96 bg-light-card/95 dark:bg-[var(--dark-bg)]/95 backdrop-blur-2xl border-l border-light-border/50 dark:border-white/[0.08] z-[101] shadow-[ -20px_0_50px_rgba(0,0,0,0.3)] flex flex-col"
             >
               {/* Drawer Header */}
               <div className="p-6 md:p-8 border-b border-light-border/50 dark:border-white/[0.08] flex items-center justify-between">

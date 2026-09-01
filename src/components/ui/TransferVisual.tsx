@@ -80,7 +80,7 @@ export const TransferVisual = () => {
         { label: 'Verified ID', color: 'bg-agora-accent' },
         { label: 'Financial Clearance', color: 'bg-agora-success' },
         { label: 'Health Profile', color: 'bg-[var(--dark-text-secondary)]' },
-        { label: 'Attendance History', color: 'bg-indigo-400' },
+        { label: 'Attendance History', color: 'bg-agora-blue/70' },
     ];
 
     return (
@@ -94,14 +94,7 @@ export const TransferVisual = () => {
                     {/* Background Path */}
                     <path d="M 150 0 L 150 120 L 270 120 L 270 280 L 150 280 L 150 400" fill="none" stroke="var(--dark-border)" strokeWidth="2" strokeLinejoin="round" />
                     {/* Glowing Active Path */}
-                    <path ref={lineRef} d="M 150 0 L 150 120 L 270 120 L 270 280 L 150 280 L 150 400" fill="none" stroke="url(#glowGradient)" strokeWidth="2" strokeLinejoin="round" />
-                    <defs>
-                        <linearGradient id="glowGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#2490FD" />
-                            <stop offset="50%" stopColor="#FF532A" />
-                            <stop offset="100%" stopColor="#22C55E" />
-                        </linearGradient>
-                    </defs>
+                    <path ref={lineRef} d="M 150 0 L 150 120 L 270 120 L 270 280 L 150 280 L 150 400" fill="none" stroke="var(--agora-blue)" strokeWidth="2" strokeLinejoin="round" />
                 </svg>
 
                 {/* Static Origin Node */}
@@ -150,14 +143,11 @@ export const TransferVisual = () => {
                             </div>
 
                             {/* Connection detail line */}
-                            <div className="w-4 md:w-8 h-[1px] bg-gradient-to-r from-[var(--dark-border)] to-transparent" />
+                            <div className="w-4 md:w-8 h-[1px] bg-[var(--dark-border)]" />
                         </div>
                     ))}
                 </div>
             </div>
-
-            {/* Background Atmosphere */}
-            <div className="absolute inset-0 bg-radial-gradient from-agora-blue/5 to-transparent pointer-events-none" />
 
             <style jsx>{`
                 .data-packet:nth-child(even) {

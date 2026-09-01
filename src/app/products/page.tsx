@@ -11,7 +11,7 @@ const products = [
   {
     id: 'core-platform',
     icon: '🏫',
-    name: 'School Bud Core Platform',
+    name: 'Myschoolbud Core Platform',
     tagline: 'The Foundation of Academic Trust',
     description: 'A complete multi-tenant infrastructure for schools. Manage students, classes, transfers, and records in an offline-first environment.',
     features: [
@@ -29,7 +29,7 @@ const products = [
     id: 'agora-ai',
     icon: '🤖',
     name: 'Lois',
-    tagline: "School Bud's intelligent education assistant",
+    tagline: "Myschoolbud's intelligent education assistant",
     description: 'Instantly generate lesson plans, automatically evaluate written essays, and uncover deep insights into student performance using advanced AI.',
     features: [
       'Automated essay and assignment grading',
@@ -39,7 +39,7 @@ const products = [
       'Cohort performance analytics',
       'Deep actionable insights for educators',
     ],
-    accent: 'indigo',
+    accent: 'blue',
     status: 'Live',
   },
   {
@@ -100,14 +100,14 @@ export default function ProductsPage() {
         {/* Floating Particles/Shapes for Depth */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-agora-blue/10 rounded-full blur-3xl animate-pulse delay-1000" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
           <FadeInUp from={{ opacity: 0, y: 30 }} to={{ opacity: 1, y: 0 }} duration={0.8} className="text-center max-w-4xl mx-auto">
             <h1 className="text-5xl md:text-7xl font-bold text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] mb-6 tracking-tight leading-tight font-heading">
               Powerful tools.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--agora-blue)] to-indigo-400">Infinite possibilities.</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--agora-blue)] to-sky-400">Infinite possibilities.</span>
             </h1>
             <p className="text-xl text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] leading-relaxed max-w-2xl mx-auto">
               A meticulously crafted suite designed to transform every aspect of school management. From AI-powered assistants to bulletproof core infrastructure.
@@ -133,7 +133,7 @@ export default function ProductsPage() {
             {products.map((product, idx) => {
               const accentMap: Record<string, string> = {
                 blue: "text-blue-500 from-blue-500/20 to-blue-600/5 bg-blue-500/10 border-blue-500/20",
-                indigo: "text-indigo-500 from-indigo-500/20 to-indigo-600/5 bg-indigo-500/10 border-indigo-500/20",
+                indigo: "text-agora-blue from-agora-blue/20 to-agora-blue/5 bg-agora-blue/10 border-agora-blue/20",
                 emerald: "text-emerald-500 from-emerald-500/20 to-emerald-600/5 bg-emerald-500/10 border-emerald-500/20",
                 amber: "text-amber-500 from-amber-500/20 to-amber-600/5 bg-amber-500/10 border-amber-500/20",
                 cyan: "text-cyan-500 from-cyan-500/20 to-cyan-600/5 bg-cyan-500/10 border-cyan-500/20",
@@ -219,7 +219,7 @@ export default function ProductsPage() {
                 An Ecosystem that <br />Works in Sync
               </h2>
               <p className="text-lg text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] mb-6 leading-relaxed">
-                All our products are intrinsically woven into the School Bud Core Platform. Data flows seamlessly without silos.
+                All our products are intrinsically woven into the Myschoolbud Core Platform. Data flows seamlessly without silos.
               </p>
               <p className="text-lg text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] leading-relaxed">
                 When a student enters the gates with RollCall, their attendance immediately informs analytics. Lois leverages real-time understanding to craft perfect assessments and adapt to curriculum changes effortlessly.
@@ -231,7 +231,7 @@ export default function ProductsPage() {
               {/* Abstract visualization of the ecosystem */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-48 h-48 bg-blue-600 rounded-full flex items-center justify-center shadow-[0_0_80px_rgba(37,99,235,0.4)] z-20 absolute">
-                  <span className="text-white font-bold text-2xl tracking-widest uppercase">School Bud</span>
+                  <span className="text-white font-bold text-2xl tracking-widest uppercase">Myschoolbud</span>
                 </div>
 
                 {/* Orbiting Elements */}
@@ -282,7 +282,7 @@ export default function ProductsPage() {
       {/* Footer */}
       <footer className="bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] py-12 border-t border-[var(--light-border)] dark:border-[var(--dark-border)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm">&copy; 2026 School Bud. All rights reserved.</p>
+          <p className="text-sm">&copy; 2026 Myschoolbud. All rights reserved.</p>
         </div>
       </footer>
     </div>

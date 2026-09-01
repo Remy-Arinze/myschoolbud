@@ -189,23 +189,19 @@ export default function HomeContent() {
       <LandingNavbar />
 
       <div className="min-h-screen bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] text-gray-900 dark:text-[var(--dark-text-primary)] transition-colors duration-300 overflow-x-hidden relative">
-      {/* Global Background Grid */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none z-0"
-        style={{ backgroundImage: 'radial-gradient(circle, var(--agora-blue) 1px, transparent 1px)', backgroundSize: '40px 40px' }}
-      />
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-32 flex flex-col items-center justify-center text-center px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto mt-12 md:mt-16 z-10">
           <FadeInUp from={{ opacity: 0, y: 30 }} to={{ opacity: 1, y: 0 }} delay={0.1} duration={0.8}>
-            <h1 className="text-5xl md:text-[4rem] font-bold text-[var(--dark-text-primary)] leading-tight mb-8 tracking-tight font-heading">
+            <h1 className="text-5xl md:text-[4rem] font-bold text-[var(--dark-text-primary)] leading-tight mb-5 tracking-tight font-heading">
               The way we manage schools can be smarter
             </h1>
           </FadeInUp>
 
           <FadeInUp from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} delay={0.3} duration={0.8}>
-            <p className="text-lg md:text-xl text-[var(--dark-text-secondary)] mb-12 max-w-2xl mx-auto leading-relaxed">
-              School Bud uses AI to generate curriculums, auto-grade assessments, build timetables, and predict student performance — so your teachers can focus on what matters most: teaching.
+            <p className="text-md md:text-lg text-[var(--dark-text-secondary)] mb-12 max-w-2xl mx-auto leading-relaxed">
+              Myschoolbud uses AI to generate curriculums, auto-grade assessments, build timetables, and predict student performance — so your teachers can focus on what matters most: teaching.
             </p>
           </FadeInUp>
 
@@ -239,131 +235,33 @@ export default function HomeContent() {
             <Image
               src="/smiling_students_banner.png"
               alt="Smiling students collaborating"
-              width={1920}
-              height={1080}
-              className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-1000"
+              width={1536}
+              height={864}
+              sizes="(max-width: 1152px) 100vw, 1152px"
+              className="w-full h-full object-cover object-[center_42%] hover:scale-[1.02] transition-transform duration-1000"
               priority
             />
-            {/* Subtle overlay for depth */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
           </div>
         </FadeInUp>
 
-        {/* Dashboard Mockup Perspective - Commented out for now
-        <FadeInUp from={{ opacity: 0, y: 50 }} to={{ opacity: 1, y: 0 }} delay={0.7} duration={1} className="w-full max-w-5xl mx-auto mt-24 relative z-10 px-4">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
-
-          <div
-            className="w-full rounded-xl border border-[var(--dark-border)] bg-[var(--dark-surface)] overflow-hidden relative mx-auto transition-transform duration-700 hover:scale-[1.07] mockup-perspective"
-            style={{
-              transformOrigin: "top center",
-              boxShadow: "0 25px 60px -12px rgba(0, 0, 0, 0.4), 0 0 40px 0 rgba(36, 144, 253, 0.1)"
-            }}
-          >
-            <div className="h-10 border-b border-white/5 bg-[#1b1b1c] flex items-center px-4 gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500/80" />
-              <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-              <div className="w-3 h-3 rounded-full bg-green-500/80" />
-              <div className="ml-auto w-32 h-4 bg-white/5 rounded-full" />
-            </div>
-
-            <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-4 gap-6 bg-[#1f1f22]">
-              <div className="hidden md:flex flex-col gap-4 border-r border-white/5 pr-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded bg-agora-blue/20 flex-shrink-0" />
-                  <div className="h-5 w-20 bg-white/10 rounded-md" />
-                </div>
-                {[...Array(6)].map((_, i) => (
-                  <div key={`nav-${i}`} className="flex items-center gap-3 py-1">
-                    <div className={`w-4 h-4 rounded-sm ${i === 1 ? 'bg-agora-blue' : 'bg-white/10'}`} />
-                    <div className={`h-3 w-full rounded-md ${i === 1 ? 'bg-white/20' : 'bg-white/5'}`} />
-                  </div>
-                ))}
-              </div>
-
-              <div className="md:col-span-3 flex flex-col gap-6">
-                <div className="flex justify-between items-center hidden sm:flex pb-2">
-                  <div className="h-6 w-48 bg-white/10 rounded-md" />
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-full bg-white/10" />
-                    <div className="w-8 h-8 rounded-full bg-white/10" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={`stat-${i}`} className="bg-white/5 rounded-xl p-4 border border-white/5">
-                      <div className="h-3 w-1/2 bg-white/10 rounded mb-3" />
-                      <div className="h-7 w-3/4 bg-white/20 rounded mb-2" />
-                      <div className="h-2 w-1/3 bg-agora-success/50 rounded" />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 bg-white/5 rounded-xl border border-white/5 h-[280px] p-5 relative overflow-hidden">
-                    <div className="h-4 w-32 bg-white/10 rounded-md mb-8" />
-                    <div className="absolute bottom-0 left-0 right-0 h-48 px-5 pb-5">
-                      <div className="w-full h-full border-b border-l border-white/10 relative">
-                        <div className="absolute top-1/4 left-0 right-0 h-px bg-white/5" />
-                        <div className="absolute top-2/4 left-0 right-0 h-px bg-white/5" />
-                        <div className="absolute top-3/4 left-0 right-0 h-px bg-white/5" />
-
-                        <svg className="absolute inset-0 w-full h-full text-agora-accent" preserveAspectRatio="none" viewBox="0 0 100 100">
-                          <path d="M0,80 Q10,70 20,75 T40,50 T60,65 T80,30 T100,45 L100,100 L0,100 Z" fill="url(#gradient)" opacity="0.3" />
-                          <path d="M0,80 Q10,70 20,75 T40,50 T60,65 T80,30 T100,45" fill="transparent" stroke="currentColor" strokeWidth="2.5" />
-                          <defs>
-                            <linearGradient id="gradient" x1="0" x2="0" y1="0" y2="1">
-                              <stop offset="0%" stopColor="currentColor" stopOpacity="0.8" />
-                              <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white/5 rounded-xl border border-white/5 p-5 flex flex-col h-[280px]">
-                    <div className="h-4 w-28 bg-white/10 rounded-md mb-6" />
-                    <div className="flex flex-col gap-4 flex-1">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={`list-${i}`} className="flex items-center gap-4">
-                          <div className={`w-2 h-2 rounded-full ${i % 2 === 0 ? 'bg-agora-success' : 'bg-agora-blue'}`} />
-                          <div className="flex-1">
-                            <div className="h-3 w-full bg-white/10 rounded mb-1.5" />
-                            <div className="h-2 w-1/2 bg-white/5 rounded" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </FadeInUp>
-        */}
+       
       </section>
 
-      {/* School Bud AI Section */}
+      {/* Myschoolbud AI Section */}
       <section data-navbar-light="true" className="py-24 relative">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
-        </div>
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <AnimateInView from={{ opacity: 0, x: -30 }} to={{ opacity: 1, x: 0 }}>
-              <div className="inline-flex items-center gap-2 text-agora-lois text-sm font-bold mb-6 uppercase tracking-wider">
+              <div className="inline-flex items-center gap-2 text-agora-blue text-sm font-bold mb-6 uppercase tracking-wider">
                 Introducing LOIS
               </div>
               <h2 className="text-3xl md:text-5xl font-bold text-[var(--dark-text-primary)] mb-6 leading-tight font-heading tracking-tight">
                 Empower Teachers <br className="hidden md:block" />
                 with AI
               </h2>
-              <p className="text-lg text-[var(--dark-text-secondary)] mb-10 leading-relaxed font-light">
+              <p className="text-md text-[var(--dark-text-secondary)] mb-10 leading-relaxed font-light">
                 LOIS is an orchestral intelligence layer designed to remove cognitive load from educators.
-                Transition from manual overhead to high-precision pedagogical oversight.
+                Transition from manual overhead to high-precision, clearer oversight.
               </p>
 
               <div className="grid grid-cols-1 gap-6">
@@ -372,7 +270,7 @@ export default function HomeContent() {
                     title: 'Generate assessments in seconds',
                     desc: 'AI-driven question banking that adapts to curriculum standards and difficulty levels instantly.',
                     icon: (
-                      <svg className="w-5 h-5 text-agora-lois" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                       </svg>
                     ),
@@ -381,16 +279,16 @@ export default function HomeContent() {
                     title: 'Auto-grade essay submissions',
                     desc: 'Deep linguistic analysis providing students with instant, high-fidelity feedback and rubric-based scores.',
                     icon: (
-                      <svg className="w-5 h-5 text-agora-lois" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     ),
                   },
                   {
                     title: 'Predict student performance trends',
-                    desc: 'Machine learning models that identify students at risk and forecast academic outcomes across cohorts.',
+                    desc: 'Lois can identify students at risk and forecast academic outcomes across cohorts.',
                     icon: (
-                      <svg className="w-5 h-5 text-agora-lois" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                       </svg>
                     ),
@@ -399,14 +297,14 @@ export default function HomeContent() {
                     title: 'Personalize learning paths',
                     desc: 'Students falling behind are automatically recommended personalized learning paths to get back on track.',
                     icon: (
-                      <svg className="w-5 h-5 text-agora-lois" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                     ),
                   }
                 ].map((item, idx) => (
-                  <div key={idx} className="flex gap-5 group p-4 rounded-2xl hover:bg-agora-lois/[0.03] dark:hover:bg-white/[0.02] transition-colors border border-transparent hover:border-agora-lois/20 dark:hover:border-white/5">
-                    <div className="w-12 h-12 rounded-xl bg-agora-lois/10 flex items-center justify-center shrink-0 border border-agora-lois/20 group-hover:scale-110 transition-transform duration-500">
+                  <div key={idx} className="flex gap-5 group p-4 rounded-2xl hover:bg-agora-blue/[0.03] dark:hover:bg-white/[0.02] transition-colors border border-transparent hover:border-agora-blue/20 dark:hover:border-white/5">
+                    <div className="w-12 h-12 rounded-xl bg-agora-blue/10 flex items-center justify-center shrink-0 border border-agora-blue/20 group-hover:scale-110 transition-transform duration-500">
                       {item.icon}
                     </div>
                     <div>
@@ -420,12 +318,19 @@ export default function HomeContent() {
               </div>
             </AnimateInView>
 
-            <AnimateInView from={{ opacity: 0, x: 30 }} to={{ opacity: 1, x: 0 }} delay={0.2} className="relative mt-12 lg:mt-0 px-4 md:px-0">
-              <div className="relative rounded-3xl overflow-hidden border border-[var(--dark-border)] bg-gradient-to-br from-[var(--dark-surface)]/20 to-transparent p-6 md:p-8 shadow-xl backdrop-blur-sm group">
-                <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-colors duration-500" />
-                <div className="relative z-10 flex flex-col gap-6">
+            <div className="relative mt-12 lg:mt-0 px-4 md:px-0">
+              <div className="relative rounded-3xl border border-[var(--dark-border)] bg-[var(--dark-surface)] p-6 md:p-8">
+                <AnimateInView
+                  stagger={0.18}
+                  from={{ opacity: 0, y: -96 }}
+                  to={{ opacity: 1, y: 0 }}
+                  duration={0.42}
+                  ease="power4.in"
+                  start="top 78%"
+                  className="relative z-10 flex flex-col gap-6"
+                >
                   {/* Mock UI for AI Grading */}
-                  <div className="bg-[var(--dark-surface)] rounded-xl p-4 border border-[var(--dark-border)] shadow-lg transform -rotate-1 hover:rotate-0 transition-transform duration-300">
+                  <div className="bg-[var(--dark-surface)] rounded-xl p-4 border border-[var(--dark-border)] shadow-lg -rotate-1 hover:rotate-0 transition-transform duration-300">
                     <div className="flex items-center gap-3 mb-3 border-b border-[var(--dark-border)] pb-3">
                       <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -433,11 +338,11 @@ export default function HomeContent() {
                         </svg>
                       </div>
                       <span className="text-sm font-medium text-[var(--dark-text-primary)]">English Essay Analysis</span>
-                      <span className="ml-auto text-xs text-blue-400 bg-blue-900/30 px-2 py-1 rounded-full">Graded in 1.2s</span>
+                      <span className="ml-auto text-xs text-agora-blue">Graded in 1.2s</span>
                     </div>
                     <div className="space-y-2">
                       <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div className="w-[85%] h-full bg-gradient-to-r from-blue-500 to-indigo-500" />
+                        <div className="w-[85%] h-full bg-agora-blue" />
                       </div>
                       <div className="flex justify-between text-xs text-[var(--dark-text-muted)]">
                         <span>Originality: 98%</span>
@@ -448,9 +353,9 @@ export default function HomeContent() {
                   </div>
 
                   {/* Mock UI for AI Generation */}
-                  <div className="bg-[var(--dark-surface)] rounded-xl p-4 border border-[var(--dark-border)] shadow-lg transform rotate-2 hover:rotate-0 transition-transform duration-300 ml-8">
+                  <div className="bg-[var(--dark-surface)] rounded-xl p-4 border border-[var(--dark-border)] shadow-lg rotate-2 hover:rotate-0 transition-transform duration-300 ml-8">
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-agora-lois/20 flex items-center justify-center text-agora-lois mt-1 shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-agora-blue/20 flex items-center justify-center text-agora-blue mt-1 shrink-0">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                         </svg>
@@ -463,9 +368,9 @@ export default function HomeContent() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </AnimateInView>
               </div>
-            </AnimateInView>
+            </div>
           </div>
         </div>
       </section>
@@ -475,14 +380,14 @@ export default function HomeContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
             <AnimateInView className="max-w-2xl px-4 md:px-0">
-              <span className="inline-block px-4 py-1.5 bg-agora-blue/10 text-agora-blue rounded-full text-[10px] md:text-xs font-bold mb-4 uppercase tracking-wider">
+              <span className="inline-block text-agora-blue text-[10px] md:text-xs font-bold mb-4 uppercase tracking-wider">
                 AI Does the Heavy Lifting
               </span>
               <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-[var(--dark-text-primary)] mb-6 font-heading tracking-tight leading-[1.1]">
                 Every Tool, Powered <br /> by Intelligence.
               </h2>
               <p className="text-base md:text-lg text-[var(--dark-text-secondary)] leading-relaxed font-light">
-                From AI-parsed curriculums to auto-graded assessments — School Bud doesn't just automate your school, it thinks alongside you.
+                From AI-parsed curriculums to auto-graded assessments — Myschoolbud doesn't just automate your school, it thinks alongside you.
               </p>
             </AnimateInView>
           </div>
@@ -491,18 +396,14 @@ export default function HomeContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
 
             {/* 1. Curriculum Engine — Featured (spans 2 cols) */}
-            <AnimateInView delay={0.05} className="md:col-span-2 bg-gradient-to-br from-white/[0.04] to-transparent border border-white/[0.06] rounded-3xl p-7 md:p-9 relative group overflow-hidden hover:border-white/[0.1] transition-all duration-500">
-              <div className="absolute top-0 right-0 -translate-y-1/3 translate-x-1/4 w-72 h-72 bg-agora-blue/8 rounded-full blur-[80px] pointer-events-none group-hover:bg-agora-blue/15 transition-colors duration-700" />
+            <AnimateInView delay={0.05} className="md:col-span-2 bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 md:p-9 relative group overflow-hidden hover:border-white/[0.1] transition-all duration-500">
               <div className="relative z-10">
                 <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
                   <svg className="w-[18px] h-[18px] text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
-                <div className="flex items-center gap-3 mb-3">
-                  <h3 className="text-xl md:text-2xl font-bold text-[var(--dark-text-primary)] font-heading">Curriculum Engine</h3>
-                  <span className="px-2 py-0.5 text-[9px] font-bold text-blue-400 bg-blue-500/10 rounded-full border border-blue-500/20">✦ AI</span>
-                </div>
+                <h3 className="text-xl md:text-2xl font-bold text-[var(--dark-text-primary)] mb-3 font-heading">Curriculum Engine</h3>
                 <p className="text-[var(--dark-text-secondary)] text-sm leading-relaxed font-light mb-6 max-w-lg">
                   Browse a library of vetted, standards-aligned curriculums — including the national NERDC framework — and adopt one for your school in a single click. Prefer your own? Upload your documents and let AI transform them into structured, week-by-week teaching plans instantly.
                 </p>
@@ -523,10 +424,7 @@ export default function HomeContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
               </div>
-              <div className="flex items-center gap-2 mb-2">
-                <h4 className="text-lg font-bold text-[var(--dark-text-primary)] font-heading">Scheme of Work</h4>
-                <span className="px-2 py-0.5 text-[9px] font-bold text-blue-400 bg-blue-500/10 rounded-full border border-blue-500/20">✦ AI</span>
-              </div>
+              <h4 className="text-lg font-bold text-[var(--dark-text-primary)] mb-2 font-heading">Scheme of Work</h4>
               <p className="text-[var(--dark-text-secondary)] text-sm leading-relaxed font-light">
                 AI-generated weekly teaching plans with topic tracking. Teachers mark delivery status in real-time.
               </p>
@@ -539,10 +437,7 @@ export default function HomeContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
-              <div className="flex items-center gap-2 mb-2">
-                <h4 className="text-lg font-bold text-[var(--dark-text-primary)] font-heading">Smart Assessments</h4>
-                <span className="px-2 py-0.5 text-[9px] font-bold text-blue-400 bg-blue-500/10 rounded-full border border-blue-500/20">✦ AI</span>
-              </div>
+              <h4 className="text-lg font-bold text-[var(--dark-text-primary)] mb-2 font-heading">Smart Assessments</h4>
               <p className="text-[var(--dark-text-secondary)] text-sm leading-relaxed font-light">
                 Create timed exams with integrity monitoring. AI auto-grades MCQs and short answers instantly.
               </p>
@@ -555,10 +450,7 @@ export default function HomeContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </div>
-              <div className="flex items-center gap-2 mb-2">
-                <h4 className="text-lg font-bold text-[var(--dark-text-primary)] font-heading">AI-Powered Grading</h4>
-                <span className="px-2 py-0.5 text-[9px] font-bold text-blue-400 bg-blue-500/10 rounded-full border border-blue-500/20">✦ AI</span>
-              </div>
+              <h4 className="text-lg font-bold text-[var(--dark-text-primary)] mb-2 font-heading">AI-Powered Grading</h4>
               <p className="text-[var(--dark-text-secondary)] text-sm leading-relaxed font-light">
                 Let AI handle the heavy lifting. It creates assessments, grades answers instantly, and gives teachers hours back in their day.
               </p>
@@ -591,8 +483,7 @@ export default function HomeContent() {
             </AnimateInView>
 
             {/* 7. Timetable Generation — Featured (spans 2 cols) */}
-            <AnimateInView delay={0.35} className="md:col-span-2 bg-gradient-to-br from-white/[0.04] to-transparent border border-white/[0.06] rounded-3xl p-7 md:p-9 relative group overflow-hidden hover:border-white/[0.1] transition-all duration-500">
-              <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/4 w-64 h-64 bg-agora-accent/8 rounded-full blur-[80px] pointer-events-none group-hover:bg-agora-accent/15 transition-colors duration-700" />
+            <AnimateInView delay={0.35} className="md:col-span-2 bg-[var(--dark-surface)]/20 border border-white/[0.06] rounded-3xl p-7 md:p-9 relative group overflow-hidden hover:border-white/[0.1] transition-all duration-500">
               <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
                 <div className="flex-1">
                   <div className="w-9 h-9 bg-white/[0.06] rounded-lg flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500">
@@ -651,7 +542,7 @@ export default function HomeContent() {
               Unified Data <br /> Infrastructure
             </h2>
             <p className="text-base md:text-xl text-[var(--dark-text-secondary)] max-w-2xl mx-auto leading-relaxed font-light">
-              School Bud removes the administrative walls between institutions. Transfer students, their grades, and their entire legacy across schools as fast as a single click securely.
+              Myschoolbud removes the administrative walls between institutions. Transfer students, their grades, and their entire legacy across schools as fast as a single click securely.
             </p>
           </AnimateInView>
 
@@ -661,10 +552,10 @@ export default function HomeContent() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <AnimateInView delay={0.1} className="p-6 md:p-8 rounded-2xl bg-[var(--dark-surface)]/20 border border-[var(--dark-border)] hover:border-agora-lois/20 transition-all duration-500 group relative overflow-hidden">
+            <AnimateInView delay={0.1} className="p-6 md:p-8 rounded-2xl bg-[var(--dark-surface)]/20 border border-[var(--dark-border)] hover:border-agora-blue/20 transition-all duration-500 group relative overflow-hidden">
               <div className="mb-6 md:mb-8">
-                <div className="w-12 h-12 rounded-xl bg-agora-lois/10 flex items-center justify-center shrink-0 border border-agora-lois/20 group-hover:scale-110 transition-transform duration-500">
-                  <svg className="w-5 h-5 text-agora-lois" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 rounded-xl bg-agora-blue/10 flex items-center justify-center shrink-0 border border-agora-blue/20 group-hover:scale-110 transition-transform duration-500">
+                  <svg className="w-5 h-5 text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
@@ -675,10 +566,10 @@ export default function HomeContent() {
               </p>
             </AnimateInView>
 
-            <AnimateInView delay={0.2} className="p-6 md:p-8 rounded-2xl bg-[var(--dark-surface)]/20 border border-[var(--dark-border)] hover:border-agora-lois/20 transition-all duration-500 group relative overflow-hidden">
+            <AnimateInView delay={0.2} className="p-6 md:p-8 rounded-2xl bg-[var(--dark-surface)]/20 border border-[var(--dark-border)] hover:border-agora-blue/20 transition-all duration-500 group relative overflow-hidden">
               <div className="mb-6 md:mb-8">
-                <div className="w-12 h-12 rounded-xl bg-agora-lois/10 flex items-center justify-center shrink-0 border border-agora-lois/20 group-hover:scale-110 transition-transform duration-500">
-                  <svg className="w-5 h-5 text-agora-lois" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 rounded-xl bg-agora-blue/10 flex items-center justify-center shrink-0 border border-agora-blue/20 group-hover:scale-110 transition-transform duration-500">
+                  <svg className="w-5 h-5 text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
@@ -689,10 +580,10 @@ export default function HomeContent() {
               </p>
             </AnimateInView>
 
-            <AnimateInView delay={0.3} className="p-6 md:p-8 rounded-2xl bg-[var(--dark-surface)]/20 border border-[var(--dark-border)] hover:border-agora-lois/20 transition-all duration-500 group relative overflow-hidden">
+            <AnimateInView delay={0.3} className="p-6 md:p-8 rounded-2xl bg-[var(--dark-surface)]/20 border border-[var(--dark-border)] hover:border-agora-blue/20 transition-all duration-500 group relative overflow-hidden">
               <div className="mb-6 md:mb-8">
-                <div className="w-12 h-12 rounded-xl bg-agora-lois/10 flex items-center justify-center shrink-0 border border-agora-lois/20 group-hover:scale-110 transition-transform duration-500">
-                  <svg className="w-5 h-5 text-agora-lois" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-12 h-12 rounded-xl bg-agora-blue/10 flex items-center justify-center shrink-0 border border-agora-blue/20 group-hover:scale-110 transition-transform duration-500">
+                  <svg className="w-5 h-5 text-agora-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16m-7 6h7" />
                   </svg>
                 </div>
@@ -709,10 +600,6 @@ export default function HomeContent() {
 
       {/* Pricing Plans Section */}
       <section id="pricing" data-navbar-light="true" className="py-24 relative">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-agora-blue/5 rounded-full blur-[120px] pointer-events-none" />
-        </div>
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <AnimateInView className="text-center mb-16">
             <span className="inline-block text-agora-blue text-[10px] font-mono mb-6 uppercase tracking-[0.3em]">
@@ -734,17 +621,13 @@ export default function HomeContent() {
 
       {/* Schools Network Section */}
       <section data-navbar-light="true" className="py-32 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[600px] bg-agora-blue/5 rounded-full blur-[160px] pointer-events-none opacity-50" />
-        </div>
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <AnimateInView className="text-center mb-20 px-4">
             <span className="inline-block text-agora-blue text-[10px] font-mono mb-6 uppercase tracking-[0.3em]">
               The_School_Bud_Network
             </span>
             <h2 className="text-4xl md:text-6xl font-bold text-[var(--dark-text-primary)] mb-8 font-heading tracking-tight leading-[1.1]">
-              Schools Are Already <br className="md:hidden" /> Using School Bud
+              Schools Are Already <br className="md:hidden" /> Using Myschoolbud
             </h2>
             <p className="text-base md:text-xl text-[var(--dark-text-secondary)] max-w-2xl mx-auto leading-relaxed font-light">
               Join the growing ecosystem of world-class institutions digitizing the future of African education.
@@ -772,7 +655,7 @@ export default function HomeContent() {
             <div className="col-span-1 md:col-span-1">
               <Image
                 src={theme === 'light' ? '/assets/logos/agora_word_blue.png' : '/assets/logos/agora_worded_white.png'}
-                alt="School Bud - Verified Academic History Logo"
+                alt="Myschoolbud - Verified Academic History Logo"
                 width={140}
                 height={38}
                 className="h-8 w-auto mb-8 opacity-90 transition-opacity"
@@ -805,7 +688,7 @@ export default function HomeContent() {
             </div>
           </div>
           <div className="mt-20 pt-8 border-t border-[var(--dark-border)] flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-sm text-[var(--dark-text-muted)] font-light">&copy; 2026 School Bud. All rights reserved.</p>
+            <p className="text-sm text-[var(--dark-text-muted)] font-light">&copy; 2026 Myschoolbud. All rights reserved.</p>
             <div className="flex gap-8">
               {/* Optional Social Icons */}
             </div>

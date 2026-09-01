@@ -158,7 +158,7 @@ export const MobileSidebar = ({
       {!hideMobileHeader && (
         <div
           className={cn(
-            "mobile-navbar h-[64px] px-4 py-4 flex flex-row md:hidden items-center justify-between bg-white dark:bg-[#000000] border-b border-gray-100 dark:border-white/10 fixed top-0 w-full z-40 transition-all duration-300"
+            "mobile-navbar h-[64px] px-4 py-4 flex flex-row md:hidden items-center justify-between bg-white dark:bg-[var(--dark-bg)] border-b border-gray-100 dark:border-white/10 fixed top-0 w-full z-40 transition-all duration-300"
           )}
           {...props}
         >

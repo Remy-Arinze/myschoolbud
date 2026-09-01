@@ -23,7 +23,7 @@ const ENTERPRISE_AI_CREDITS = 125_000;
 const ENTERPRISE_FEATURES: FeatureDto[] = [
   { text: 'Unlimited students', included: true },
   { text: 'Unlimited teachers & admin users', included: true },
-  { text: `${ENTERPRISE_AI_CREDITS.toLocaleString('en-NG')} School Bud AI credits / month`, included: true, isGlowing: true },
+  { text: `${ENTERPRISE_AI_CREDITS.toLocaleString('en-NG')} Myschoolbud AI credits / month`, included: true, isGlowing: true },
   { text: 'Full AI Suite — all LOIS features', included: true, isGlowing: true },
   { text: 'Multi-branch / campus support', included: true },
   { text: 'Custom integrations', included: true },
@@ -54,24 +54,24 @@ function isStaleCapacityFeature(text: string): boolean {
     /^(\d{1,7}|Unlimited)\s+students\b/i.test(t) ||
     /^(\d{1,7}|Unlimited)\s+teachers?\b/i.test(t) ||
     /^(\d{1,7}|Unlimited)\s+admin\b/i.test(t) ||
-    /^\d{1,7}\s+School Bud AI credits\b/i.test(t) ||
+    /^\d{1,7}\s+(Myschoolbud|School Bud) AI credits\b/i.test(t) ||
     /^\d{1,7}\s+Agora AI credits\b/i.test(t) ||
-    /^No School Bud AI\b/i.test(t) ||
+    /^No (Myschoolbud|School Bud) AI\b/i.test(t) ||
     /^No Agora AI\b/i.test(t) ||
-    /^Unlimited School Bud AI credits\b/i.test(t) ||
+    /^Unlimited (Myschoolbud|School Bud) AI credits\b/i.test(t) ||
     /^Unlimited Agora AI credits\b/i.test(t)
   );
 }
 
 function aiCreditsFeature(plan: SubscriptionPlanDto): FeatureDto {
   if (plan.aiCredits === -1) {
-    return { text: 'Unlimited School Bud AI credits / month', included: true, isGlowing: true };
+    return { text: 'Unlimited Myschoolbud AI credits / month', included: true, isGlowing: true };
   }
   if (plan.aiCredits === 0) {
-    return { text: 'School Bud AI Assistant & grading', included: false };
+    return { text: 'Myschoolbud AI Assistant & grading', included: false };
   }
   return {
-    text: `${plan.aiCredits.toLocaleString('en-NG')} School Bud AI credits / month`,
+    text: `${plan.aiCredits.toLocaleString('en-NG')} Myschoolbud AI credits / month`,
     included: true,
     isGlowing: true,
   };
@@ -307,10 +307,10 @@ export function PricingTable({ onSelectPlan, className = '' }: PricingTableProps
           to={{ opacity: 1, y: 0 }}
           duration={0.5}
           delay={plans.length * 0.1}
-          className="relative flex flex-col h-full rounded-3xl border border-amber-300/60 dark:border-amber-600/40 bg-gradient-to-b from-amber-50/60 to-white dark:from-amber-950/20 dark:to-dark-surface transition-all duration-500"
+          className="relative flex flex-col h-full rounded-3xl border border-amber-300/60 dark:border-amber-600/40 bg-amber-50 dark:bg-dark-surface transition-all duration-500"
         >
           <div className="absolute -top-4 inset-x-0 flex justify-center">
-            <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold uppercase tracking-wider shadow-md">
+            <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-amber-500 text-white font-bold uppercase tracking-wider shadow-md">
               <Building2 className="w-3.5 h-3.5" />
               <span style={{ fontSize: 'var(--text-small)' }}>Enterprise</span>
             </div>
@@ -357,7 +357,7 @@ export function PricingTable({ onSelectPlan, className = '' }: PricingTableProps
             <div className="space-y-3">
               <a
                 href={ENTERPRISE_MAILTO}
-                className="w-full py-4 px-6 rounded-xl font-bold transition-all duration-300 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border border-transparent text-center block"
+                className="w-full py-4 px-6 rounded-xl font-bold transition-all duration-300 bg-amber-500 hover:bg-amber-600 text-white border border-transparent text-center block"
                 style={{ fontSize: 'var(--text-body)' }}
               >
                 Contact Sales

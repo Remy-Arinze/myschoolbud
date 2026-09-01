@@ -38,7 +38,7 @@
     --font-heading: 'Bricolage Grotesque', system-ui, sans-serif;
     --font-sans: 'Poppins', system-ui, sans-serif;
     /* Agora Brand Colors */
-    --agora-blue: #2490FD;
+    --agora-blue: #007FFF;
     /* Main accent blue */
     --agora-success: #059669;
     /* emerald-600 for better contrast in light mode */
@@ -86,8 +86,8 @@
     --light-bg: #f3fbff;
     --light-card: #f3fbff;
     --light-surface: #f8fafc;
-    --light-text-primary: #111827;
-    --light-text-secondary: #4b5563;
+    --light-text-primary: #000000;
+    --light-text-secondary: #000000;
     --light-text-muted: #9ca3af;
     --light-border: #dddddd;
     --light-hover: #f9fafb;
@@ -124,7 +124,7 @@
     /* Dark Mode Colors - PRAX IQ inspired dark theme */
     --agora-success: #36FE96;
     /* Neon green for dark mode */
-    --dark-bg: #101011;
+    --dark-bg: #1C1C1D;
     --dark-card: #2a2a2a;
     --dark-surface: #1f1f22;
     --dark-border: #232327;
@@ -140,6 +140,14 @@
   }
 
   /* Border colors are applied via Tailwind classes, not globally */
+
+  html {
+    background-color: var(--light-bg);
+  }
+
+  html.dark {
+    background-color: var(--dark-bg);
+  }
 
   body {
     background-color: var(--light-bg);
@@ -308,7 +316,7 @@
   .dark body.staff-dashboard-active .dashboard-content .rounded-lg,
   .dark body.staff-dashboard-active .dashboard-content .border,
   .dark body.staff-dashboard-active .dashboard-content [class*="bg-"] {
-    background-color: #0a0a0b !important;
+    background-color: var(--dark-surface) !important;
     border-color: #1a1a1c !important;
     backdrop-filter: none !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
@@ -350,7 +358,7 @@
   }
 
   .dark body.student-dashboard-active .mobile-sidebar-drawer {
-    background-color: #0b0b0e !important;
+    background-color: var(--dark-bg) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
     box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5) !important;
   }
@@ -384,7 +392,7 @@
   }
 
   .dark body.student-dashboard-active {
-    background-color: #0b0b0e !important;
+    background-color: var(--dark-bg) !important;
   }
 
   .dark body.student-dashboard-active .sidebar-link-active {
@@ -417,7 +425,7 @@
   }
 
   .dark body.student-dashboard-active .mobile-navbar {
-    background-color: #0b0b0e !important;
+    background-color: var(--dark-bg) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
 

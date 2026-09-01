@@ -48,8 +48,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       primary: cn(
         'text-white focus:ring-agora-blue disabled:grayscale disabled:opacity-70',
         isFlat
-          ? 'bg-[#2490FD] hover:bg-[#1a7ae6]'
-          : '!bg-gradient-to-b from-[#2490FD] to-[#1a7ae6] !opacity-100 hover:from-[#2a9fff] hover:to-[#2490FD] shadow-[0_4px_0_#0f4a8a] hover:shadow-[0_6px_0_#0f4a8a] active:shadow-[0_2px_0_#0f4a8a] active:translate-y-[2px] border-t border-[#3ba0ff]/50 disabled:from-gray-400 disabled:to-gray-500 disabled:shadow-none disabled:border-t-gray-400/30'
+          ? 'bg-[var(--agora-blue)] hover:brightness-90'
+          : '!bg-[var(--agora-blue)] !opacity-100 hover:brightness-110 shadow-[0_4px_0_#0f4a8a] hover:shadow-[0_6px_0_#0f4a8a] active:shadow-[0_2px_0_#0f4a8a] active:translate-y-[2px] border-t border-white/30 disabled:bg-gray-400 disabled:shadow-none disabled:border-t-gray-400/30'
       ),
       accent: cn(
         'text-white focus:ring-agora-accent disabled:grayscale disabled:opacity-70',

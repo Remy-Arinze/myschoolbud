@@ -46,7 +46,7 @@ export default function GlobalError({
               *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
               body {
                 font-family: 'Montserrat', 'Poppins', system-ui, -apple-system, sans-serif;
-                background: #101011;
+                background: #1C1C1D;
                 color: #ffffff;
                 min-height: 100vh;
                 display: flex;

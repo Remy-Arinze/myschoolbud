@@ -142,7 +142,7 @@ export function LandingNavbar() {
                         <Link href="/" className="flex items-center" onClick={() => setMobileMenuOpen(false)}>
                             <Image
                                 src="/assets/logos/agora_main.png"
-                                alt="School Bud - Digital Education Identity Logo"
+                                alt="Myschoolbud - Digital Education Identity Logo"
                                 width={120}
                                 height={32}
                                 className="h-8 w-auto flex-shrink-0 transition-opacity duration-300"

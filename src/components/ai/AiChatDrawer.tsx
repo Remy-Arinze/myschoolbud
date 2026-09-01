@@ -36,7 +36,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({ schoolId, isOpen, on
       <div
         className={cn(
           "fixed right-0 bottom-0 z-[100] transition-all duration-700 cubic-bezier(0.4, 0, 0.2, 1) transform flex flex-col overflow-hidden rounded-t-[3rem] lg:rounded-tr-none lg:rounded-l-[3rem] border-l border-t",
-          "bg-white dark:bg-[#0A0A0B] backdrop-blur-2xl border-gray-200/50 dark:border-white/10 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.1)] dark:shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.8)]",
+          "bg-white dark:bg-[var(--dark-bg)] backdrop-blur-2xl border-gray-200/50 dark:border-white/10 shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.1)] dark:shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.8)]",
           isOpen ? "translate-y-0 lg:translate-x-0" : "translate-y-full lg:translate-x-full lg:translate-y-0",
           isMaximized
             ? "w-screen h-screen rounded-none"
