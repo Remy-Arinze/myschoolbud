@@ -4,12 +4,15 @@ import React from 'react';
 import { Sparkles, BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { LoisInsightBadge } from './LoisInboxCard';
+
 interface FloatingAiCtaProps {
   onClick: () => void;
   className?: string;
+  schoolId?: string;
 }
 
-export const FloatingAiCta: React.FC<FloatingAiCtaProps> = ({ onClick, className }) => {
+export const FloatingAiCta: React.FC<FloatingAiCtaProps> = ({ onClick, className, schoolId }) => {
   return (
     <button
       onClick={onClick}
@@ -40,6 +43,7 @@ export const FloatingAiCta: React.FC<FloatingAiCtaProps> = ({ onClick, className
         <span className="font-heading text-sm font-semibold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
           Ask Lois
         </span>
+        {schoolId ? <LoisInsightBadge schoolId={schoolId} /> : null}
 
         <div className="ml-0.5 p-1 rounded-md bg-white/5 border border-white/10 group-hover:bg-indigo-500/10 group-hover:border-indigo-500/20 transition-all">
             <BrainCircuit size={10} className="text-white/40 group-hover:text-indigo-400" />

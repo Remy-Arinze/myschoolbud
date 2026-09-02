@@ -16,7 +16,7 @@ import { useSchoolSetupProgress } from '@/hooks/useSchoolSetupProgress';
  * Quiet overview checklist — sits above stats without competing with the welcome header.
  * New schools see the full foundation list; later terms only surface term-scoped todos
  * (timetable, curriculum, midterm/exam dates, holidays).
- * Collapses to a slim progress row; dismissible; reopen via restore link when hidden.
+ * Starts collapsed as a slim progress row so it does not own Overview; dismissible.
  */
 export function SchoolSetupChecklist() {
   const {
@@ -122,19 +122,19 @@ export function SchoolSetupChecklist() {
                   {completedCount}/{totalCount}
                 </span>
               </div>
-              <div className="mt-1.5 h-1 w-full max-w-[220px] rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
+              <div className="mt-1.5 h-1.5 w-full max-w-[220px] rounded-full bg-[var(--agora-blue)]/30 dark:bg-white/20 overflow-hidden ring-1 ring-inset ring-[var(--agora-blue)]/25 dark:ring-white/15">
                 <div
                   className="h-full rounded-full bg-[var(--agora-blue)] transition-all duration-500"
                   style={{ width: `${percent}%` }}
                 />
               </div>
               {collapsed && nextStep && (
-                <p
-                  className="mt-1.5 text-light-text-secondary dark:text-dark-text-secondary truncate"
+                <div
+                  className="mt-1.5 font-medium text-[var(--agora-blue)] truncate"
                   style={{ fontSize: 'var(--text-small)' }}
                 >
                   Next: {nextStep.title}
-                </p>
+                </div>
               )}
             </div>
             <span className="shrink-0 text-light-text-muted group-hover:text-light-text-secondary transition-colors">

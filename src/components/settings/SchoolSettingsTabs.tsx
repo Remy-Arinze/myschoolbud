@@ -71,33 +71,29 @@ interface SchoolSettingsTabsProps {
 
 export function SchoolSettingsTabs({ activeTab, className }: SchoolSettingsTabsProps) {
   return (
-    <div className={cn('mb-6 border-b border-light-border dark:border-dark-border', className)}>
-      <div className="flex space-x-1 overflow-x-auto">
-        {TABS.map((tab) => (
-          <Fragment key={tab.key}>
-            <Link
-              href={tab.href}
-              className={cn(
-                'flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-3 font-semibold transition-colors',
-                activeTab === tab.key
-                  ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                  : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary',
+    <nav className={cn('mb-6', className)} aria-label="Settings sections">
+      <div className="settings-section-tabs">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <Fragment key={tab.key}>
+              <Link
+                href={tab.href}
+                aria-current={isActive ? 'page' : undefined}
+                className="settings-section-tab"
+                style={{ fontSize: 'var(--text-body)' }}
+              >
+                {tab.icon}
+                {tab.label}
+              </Link>
+              {tab.dividerAfter && (
+                <div className="settings-section-tab-divider" aria-hidden />
               )}
-              style={{ fontSize: 'var(--text-body)' }}
-            >
-              {tab.icon}
-              {tab.label}
-            </Link>
-            {tab.dividerAfter && (
-              <div
-                className="mx-1 w-px shrink-0 self-center h-5 bg-light-border dark:bg-dark-border"
-                aria-hidden
-              />
-            )}
-          </Fragment>
-        ))}
+            </Fragment>
+          );
+        })}
       </div>
-    </div>
+    </nav>
   );
 }
 

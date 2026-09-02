@@ -47,6 +47,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import { SaveAssessmentEditor } from './SaveAssessmentEditor';
 import { inlineAssistantErrorNote, toastTextFromStreamError } from '@/lib/ai-chat-errors';
+import { useLoisWorkspaceOptional, type LoisPageContext, type LoisSource } from './LoisWorkspace';
+import Link from 'next/link';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,15 +58,17 @@ interface Message {
   timestamp: string;
   isStreaming?: boolean;
   toolEvents?: ToolEvent[];
+  sources?: LoisSource[];
 }
 
 interface ToolEvent {
-  type: 'thinking' | 'tool_start' | 'tool_result';
+  type: 'thinking' | 'tool_start' | 'tool_result' | 'sources';
   toolName?: string;
   toolDisplayName?: string;
   args?: Record<string, any>;
   result?: any;
   message?: string;
+  sources?: LoisSource[];
 }
 
 // ─── Tool Result Renderers ────────────────────────────────────────────────────
@@ -432,7 +436,7 @@ interface AgoraChatProps {
   schoolId: string;
   initialConversationId?: string;
   variant?: 'default' | 'minimal';
-  pageContext?: string;
+  pageContext?: string | LoisPageContext;
 }
 
 export const AgoraChat: React.FC<AgoraChatProps> = ({
@@ -448,6 +452,12 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
     skip: user?.role !== 'TEACHER'
   });
   const firstName = profileResponse?.data?.firstName || user?.firstName || 'Teacher';
+  const workspace = useLoisWorkspaceOptional();
+  const structuredFocus: LoisPageContext | null =
+    pageContext && typeof pageContext === 'object'
+      ? pageContext
+      : workspace?.focus ?? null;
+  const pathHint = typeof pageContext === 'string' ? pageContext : structuredFocus?.path || '';
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
@@ -466,10 +476,24 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
 
   useEffect(() => {
     if (!initialConversationId) {
-      let greetingDesc = "How can I help you with your lessons, curriculum, or assessments today?";
-      if (pageContext?.includes('/students')) greetingDesc = "I see you're looking at your students. Want me to analyze their performance or generate a progress report?";
-      else if (pageContext?.includes('/classes')) greetingDesc = "I see you're managing a class. Do you need a generated quiz, timetable check, or subject overview?";
-      else if (pageContext?.includes('/assessments')) greetingDesc = "Working on assessments? I can build a new test or grade existing submissions.";
+      let greetingDesc = "How can I help you with this school today?";
+      if (structuredFocus?.type === 'student') {
+        greetingDesc = `You're with ${structuredFocus.label}. I can pull published grades, attendance, or draft a parent note.`;
+      } else if (structuredFocus?.type === 'class') {
+        greetingDesc = `You're looking at ${structuredFocus.label}. I can check performance, the timetable, or the scheme of work.`;
+      } else if (structuredFocus?.type === 'scheme') {
+        greetingDesc = `You're on the scheme of work for ${structuredFocus.label}. Ask what's planned or what's overdue.`;
+      } else if (structuredFocus?.type === 'timetable') {
+        greetingDesc = `You're on the timetable. I can tell you what's on right now for a class.`;
+      } else if (structuredFocus?.type === 'school') {
+        greetingDesc = `I can summarise the school, explain what I noticed, or look up a student.`;
+      } else if (pathHint.includes('/students')) {
+        greetingDesc = "I see you're looking at students. Want a performance check or a progress summary?";
+      } else if (pathHint.includes('/classes') || pathHint.includes('/levels')) {
+        greetingDesc = "I see you're managing a class. Need performance, timetable, or a quiz?";
+      } else if (pathHint.includes('/assessments')) {
+        greetingDesc = "Working on assessments? I can build a new test or grade existing submissions.";
+      }
 
       setMessages([
         {
@@ -482,10 +506,10 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       handleSelectConversation(initialConversationId, 'Existing Chat');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialConversationId, schoolId, firstName]);
+  }, [initialConversationId, schoolId, firstName, structuredFocus?.type, structuredFocus?.label]);
 
-  // Sync URL with current conversation ID
   useEffect(() => {
+    if (variant === 'minimal') return;
     const url = new URL(window.location.href);
     if (currentConversationId) {
       url.searchParams.set('id', currentConversationId);
@@ -493,7 +517,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       url.searchParams.delete('id');
     }
     window.history.replaceState(null, '', url.pathname + url.search);
-  }, [currentConversationId]);
+  }, [currentConversationId, variant]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -542,11 +566,6 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       .slice(1) // skip welcome message
       .map(({ role, content }) => ({ role, content }));
     chatHistory.push({ role: 'user', content: currentInput });
-
-    // Inject invisible page context manually if present
-    if (pageContext) {
-      chatHistory.unshift({ role: 'system', content: `[Context: ${pageContext}]` });
-    }
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -637,7 +656,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               return updated;
             });
           },
-          onDone: (data) => {
+            onDone: (data) => {
             if (!currentConversationId && data.conversationId) {
               setCurrentConversationId(data.conversationId);
             }
@@ -645,7 +664,11 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               const updated = [...prev];
               const last = updated[updated.length - 1];
               if (last && last.role === 'assistant') {
-                updated[updated.length - 1] = { ...last, isStreaming: false };
+                updated[updated.length - 1] = {
+                  ...last,
+                  isStreaming: false,
+                  sources: data.sources?.length ? data.sources : last.sources,
+                };
               }
               return updated;
             });
@@ -673,7 +696,8 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
         },
         currentConversationId || undefined,
         abortController.signal,
-        token || undefined
+        token || undefined,
+        structuredFocus || undefined
       );
     } catch (error: unknown) {
       const err = error as { name?: string };
@@ -693,7 +717,16 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
         });
       }
     }
-  }, [inputValue, isStreaming, messages, schoolId, currentConversationId, token]);
+  }, [inputValue, isStreaming, messages, schoolId, currentConversationId, token, structuredFocus]);
+
+  useEffect(() => {
+    if (variant !== 'minimal' || !workspace?.seedPrompt) return;
+    const seed = workspace.consumeSeedPrompt();
+    if (seed) {
+      void handleSendMessage(seed);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace?.seedPrompt, variant]);
 
   const handleStopStreaming = () => {
     abortControllerRef.current?.abort();
@@ -798,7 +831,14 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
             </>
           )}
           {variant === 'minimal' && (
-            <span className="text-[12px] font-bold uppercase tracking-widest text-[#111827] dark:text-blue-400" style={{ fontFamily: 'var(--font-heading)' }}>Lois</span>
+            <div className="flex flex-col">
+              <span className="text-[12px] font-bold uppercase tracking-widest text-[#111827] dark:text-blue-400" style={{ fontFamily: 'var(--font-heading)' }}>Lois</span>
+              {structuredFocus?.label ? (
+                <span className="text-[10px] text-light-text-secondary dark:text-white/40 font-medium normal-case tracking-normal">
+                  {structuredFocus.label}
+                </span>
+              ) : null}
+            </div>
           )}
         </div>
 
@@ -875,10 +915,40 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                     }
                   ];
 
-                  const isStudentsContext = pageContext?.includes('/students');
-                  const isClassesContext = pageContext?.includes('/classes');
+                  const isStudentsContext =
+                    structuredFocus?.type === 'student' || pathHint.includes('/students');
+                  const isClassesContext =
+                    structuredFocus?.type === 'class' ||
+                    pathHint.includes('/classes') ||
+                    pathHint.includes('/levels');
+                  const isSchoolContext = structuredFocus?.type === 'school';
 
-                  const contextualOptions = isStudentsContext ? [
+                  const studentName = structuredFocus?.type === 'student' ? structuredFocus.label : 'this student';
+                  const className = structuredFocus?.type === 'class' ? structuredFocus.label : 'this class';
+
+                  const contextualOptions = isStudentsContext && structuredFocus?.type === 'student' ? [
+                    {
+                      title: "Analyze Grades",
+                      desc: "Review recent academic performance",
+                      icon: "📊",
+                      color: "bg-indigo-500/10 dark:bg-indigo-500/20",
+                      prompt: `Show me the recent performance and grades for ${studentName}`
+                    },
+                    {
+                      title: "Attendance",
+                      desc: "Recent presence",
+                      icon: "📋",
+                      color: "bg-emerald-500/10 dark:bg-emerald-500/20",
+                      prompt: `Summarise attendance for ${studentName}`
+                    },
+                    {
+                      title: "Draft parent note",
+                      desc: "Preview only — not sent",
+                      icon: "✉️",
+                      color: "bg-purple-500/10 dark:bg-purple-500/20",
+                      prompt: `Draft a supportive parent update about ${studentName}'s progress. Do not send it.`
+                    }
+                  ] : isStudentsContext ? [
                     {
                       title: "Analyze Grades",
                       desc: "Review recent academic performance",
@@ -891,14 +961,14 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                       desc: "Write a progress update to parents",
                       icon: "✉️",
                       color: "bg-purple-500/10 dark:bg-purple-500/20",
-                      prompt: "Draft an email to this student's parents regarding their performance"
+                      prompt: "Draft an email to this student's parents regarding their performance. Do not send it."
                     },
                     {
-                      title: "Behavioral Log",
-                      desc: "Check recent teacher notes",
+                      title: "List at-risk",
+                      desc: "Students below threshold",
                       icon: "📋",
                       color: "bg-emerald-500/10 dark:bg-emerald-500/20",
-                      prompt: "What are the latest behavioral notes active for this student?"
+                      prompt: "Who is below the academic risk threshold right now?"
                     }
                   ] : isClassesContext ? [
                     {
@@ -906,25 +976,49 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                       desc: "Check the schedule for this class",
                       icon: "⏰",
                       color: "bg-amber-500/10 dark:bg-amber-500/20",
-                      prompt: "What is going on in this class right now?"
+                      prompt: `What is going on in ${className} right now?`
                     },
                     {
-                      title: "Class Quiz",
-                      desc: "Generate a quiz for this class",
-                      icon: "📝",
+                      title: "Class performance",
+                      desc: "Published grade averages",
+                      icon: "📊",
                       color: "bg-purple-500/10 dark:bg-purple-500/20",
-                      prompt: "Generate a 5-question pop quiz for this class"
+                      prompt: `How is ${className} performing this term?`
                     },
                     {
-                      title: "Subject Teachers",
-                      desc: "List educators for this class",
+                      title: "Scheme of work",
+                      desc: "Planned vs delivered",
                       icon: "👨‍🏫",
                       color: "bg-blue-500/10 dark:bg-blue-500/20",
-                      prompt: "Who are the subject teachers assigned to this class?"
+                      prompt: `What does the scheme of work look like for ${className}?`
+                    }
+                  ] : isSchoolContext ? [
+                    {
+                      title: "What Lois noticed",
+                      desc: "Background insights",
+                      icon: "📊",
+                      color: "bg-indigo-500/10 dark:bg-indigo-500/20",
+                      prompt: "What issues have you already noticed for this school?"
+                    },
+                    {
+                      title: "At-risk students",
+                      desc: "Below 45% this term",
+                      icon: "🎯",
+                      color: "bg-emerald-500/10 dark:bg-emerald-500/20",
+                      prompt: "Who is below the academic risk threshold this term?"
+                    },
+                    {
+                      title: "School snapshot",
+                      desc: "Live counts",
+                      icon: "⏰",
+                      color: "bg-purple-500/10 dark:bg-purple-500/20",
+                      prompt: "Give me the current school statistics."
                     }
                   ] : defaultOptions;
 
-                  const displayOptions = (pageContext && (isStudentsContext || isClassesContext)) ? contextualOptions : defaultOptions;
+                  const displayOptions = (structuredFocus || pathHint) && (isStudentsContext || isClassesContext || isSchoolContext)
+                    ? contextualOptions
+                    : defaultOptions;
 
                   return displayOptions.map((card, i) => (
                     <button
@@ -975,7 +1069,9 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                       {msg.role === 'assistant' && msg.toolEvents && msg.toolEvents.length > 0 && (
                         <div className="w-full space-y-2 mb-2">
                           {msg.toolEvents.map((event, eventIdx) => (
+                            event.type === 'sources' ? null : (
                             <ToolCard key={eventIdx} event={event} schoolId={schoolId} variant={variant} conversationId={currentConversationId} />
+                            )
                           ))}
                         </div>
                       )}
@@ -1001,6 +1097,29 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                               )}
                             </div>
                           </div>
+                        </div>
+                      )}
+
+                      {msg.role === 'assistant' && !msg.isStreaming && msg.sources && msg.sources.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 px-1">
+                          {msg.sources.map((source, si) =>
+                            source.href ? (
+                              <Link
+                                key={`${source.label}-${si}`}
+                                href={source.href}
+                                className="px-2 py-0.5 rounded-full border border-light-border dark:border-white/10 text-[10px] font-medium text-light-text-secondary dark:text-white/50 hover:text-indigo-600 dark:hover:text-indigo-300"
+                              >
+                                {source.label}
+                              </Link>
+                            ) : (
+                              <span
+                                key={`${source.label}-${si}`}
+                                className="px-2 py-0.5 rounded-full border border-light-border dark:border-white/10 text-[10px] font-medium text-light-text-secondary dark:text-white/50"
+                              >
+                                {source.label}
+                              </span>
+                            )
+                          )}
                         </div>
                       )}
 

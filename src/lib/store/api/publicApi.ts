@@ -113,5 +113,5 @@ export const publicApi = createApi({
   }),
 });
 
-export const { useGetPublicSchoolsQuery, useGetPlatformStatsQuery, useRegisterSchoolMutation, useGetPublicSchoolQuery, useSubmitAdmissionApplicationMutation } = publicApi;
+export const { useGetPublicSchoolsQuery, useGetPlatformStatsQuery, useRegisterSchoolMutation, useGetPublicSchoolQuery, useGetAdmissionConfigQuery, useSubmitAdmissionApplicationMutation } = publicApi;
 

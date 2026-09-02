@@ -10,21 +10,22 @@ import type { RootState } from '@/lib/store/store';
 import { cn } from '@/lib/utils';
 import { GlobalAiAssistant } from '@/components/ai/GlobalAiAssistant';
 import { NotificationProvider } from '@/components/notifications/NotificationProvider';
+import { LoisWorkspaceProvider, useLoisWorkspaceOptional } from '@/components/ai/LoisWorkspace';
 
 function MainContent({ children, showNavbar, userRole }: { children: React.ReactNode, showNavbar: boolean, userRole?: string }) {
   const ambientBg =
     userRole === 'TEACHER' || userRole === 'STUDENT' || userRole === 'SCHOOL_ADMIN';
+  const workspace = useLoisWorkspaceOptional();
+  const dockedOpen = userRole === 'SCHOOL_ADMIN' && workspace?.isOpen;
 
   return (
     <main
       className={cn(
         "flex-1 min-h-screen transition-all duration-300 scrollbar-hide overflow-y-auto overflow-x-hidden w-full",
         ambientBg ? "bg-transparent" : "bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]",
-        // Leave 250px on desktop for the fixed sidebar
         "md:ml-[250px]",
-        // Leave padding on top if Navbar or mobile header is present
+        dockedOpen && "lg:mr-[400px]",
         showNavbar ? "pt-[80px] md:pt-[100px]" : "pt-[80px] md:pt-8",
-        // Generous bottom padding for scrolling
         "px-4 pb-20 md:px-8"
       )}
     >
@@ -36,7 +37,6 @@ function MainContent({ children, showNavbar, userRole }: { children: React.React
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const userRole = useSelector((state: RootState) => state.auth.user?.role);
 
-  // Hide navbar for SUPER_ADMIN, SCHOOL_ADMIN, TEACHER, and STUDENT
   const showNavbar = userRole !== 'SUPER_ADMIN' && userRole !== 'SCHOOL_ADMIN' && userRole !== 'TEACHER' && userRole !== 'STUDENT';
 
   const ambientBg =
@@ -44,15 +44,17 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   return (
     <NotificationProvider>
-      <div className={cn(
-        "min-h-screen transition-colors duration-200 flex overflow-hidden w-full relative",
-        ambientBg ? "bg-transparent" : "bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]"
-      )}>
-        {showNavbar && <Navbar />}
-        <SidebarNew hideMobileHeader={showNavbar} />
-        <MainContent showNavbar={showNavbar} userRole={userRole}>{children}</MainContent>
-        <GlobalAiAssistant />
-      </div>
+      <LoisWorkspaceProvider>
+        <div className={cn(
+          "min-h-screen transition-colors duration-200 flex overflow-hidden w-full relative",
+          ambientBg ? "bg-transparent" : "bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]"
+        )}>
+          {showNavbar && <Navbar />}
+          <SidebarNew hideMobileHeader={showNavbar} />
+          <MainContent showNavbar={showNavbar} userRole={userRole}>{children}</MainContent>
+          <GlobalAiAssistant />
+        </div>
+      </LoisWorkspaceProvider>
     </NotificationProvider>
   );
 }

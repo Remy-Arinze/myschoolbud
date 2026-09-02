@@ -107,6 +107,33 @@ export function getScheduleForSchoolType(
   }
 }
 
+function isSchedulePeriod(value: unknown): value is SchedulePeriod {
+  if (!value || typeof value !== 'object') return false;
+  const p = value as Record<string, unknown>;
+  return typeof p.startTime === 'string' && typeof p.endTime === 'string';
+}
+
+/**
+ * Use the school's saved bell template when present; otherwise Nigerian defaults.
+ */
+export function getScheduleFromBellTemplates(
+  schoolType: 'PRIMARY' | 'SECONDARY' | 'TERTIARY' | null,
+  templates?: Array<{ schoolType: string; periods: unknown; isDefault?: boolean }> | null,
+): SchoolSchedule {
+  if (schoolType && templates?.length) {
+    const match =
+      templates.find((t) => t.schoolType === schoolType && t.isDefault !== false) ??
+      templates.find((t) => t.schoolType === schoolType);
+    const periods = Array.isArray(match?.periods)
+      ? match.periods.filter(isSchedulePeriod)
+      : [];
+    if (periods.length > 0) {
+      return { periods };
+    }
+  }
+  return getScheduleForSchoolType(schoolType);
+}
+
 /**
  * Get only lesson periods (excluding breaks, lunch, assembly)
  */

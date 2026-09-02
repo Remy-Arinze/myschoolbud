@@ -43,10 +43,13 @@ export interface RecentStudent {
 
 export interface SchoolDashboard {
   stats: DashboardStats;
+  recentStudents: RecentStudent[];
+}
+
+export interface SchoolDashboardCharts {
   growthTrends: GrowthTrendData[];
   studentDistribution: StudentDistributionData[];
   weeklyActivity: WeeklyActivityData[];
-  recentStudents: RecentStudent[];
 }
 
 export interface SchoolSetupProgress {
@@ -1708,6 +1711,15 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         if (schoolType) queryParams.append('schoolType', schoolType);
         const queryString = queryParams.toString();
         return `/school-admin/dashboard${queryString ? `?${queryString}` : ''}`;
+      },
+      providesTags: ['School'],
+    }),
+    getSchoolAdminDashboardCharts: builder.query<ResponseDto<SchoolDashboardCharts>, string | undefined>({
+      query: (schoolType) => {
+        const queryParams = new URLSearchParams();
+        if (schoolType) queryParams.append('schoolType', schoolType);
+        const queryString = queryParams.toString();
+        return `/school-admin/dashboard/charts${queryString ? `?${queryString}` : ''}`;
       },
       providesTags: ['School'],
     }),
@@ -4165,6 +4177,7 @@ export const {
   useRequestEditTokenMutation,
   useVerifyEditTokenMutation,
   useGetSchoolAdminDashboardQuery,
+  useGetSchoolAdminDashboardChartsQuery,
   useGetSetupProgressQuery,
   useGetStaffListQuery,
   useGetStaffMemberQuery,

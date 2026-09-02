@@ -28,8 +28,8 @@ import {
   type Term,
 } from '@/lib/store/api/schoolAdminApi';
 import { useSchoolType } from '@/hooks/useSchoolType';
+import { useWorkingDays } from '@/hooks/useRuntimePolicies';
 import {
-  DEFAULT_WORKING_DAYS,
   buildHalfTermRange,
   holidayRangesFromEvents,
   isInstructionalDay,
@@ -99,6 +99,7 @@ export default function CalendarPage() {
   const { data: schoolResponse } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
   const { currentType } = useSchoolType();
+  const workingDays = useWorkingDays();
 
   const [importHolidays, { isLoading: isImportingHolidays }] = useImportNigerianHolidaysMutation();
 
@@ -373,7 +374,7 @@ export default function CalendarPage() {
           dates.forEach((date) => {
             if (
               !isInstructionalDay(date, {
-                workingDays: DEFAULT_WORKING_DAYS,
+                workingDays,
                 termRange,
                 nonInstructionalRanges,
               })
@@ -411,7 +412,7 @@ export default function CalendarPage() {
     }
 
     return combined;
-  }, [events, timetablesByClass, dateRange, activeSession, schoolId, allSessions]);
+  }, [events, timetablesByClass, dateRange, activeSession, schoolId, allSessions, workingDays]);
 
   // F3: Derive sidebar events from already-fetched events — no extra request needed
   const sidebarEvents = useMemo(() => {

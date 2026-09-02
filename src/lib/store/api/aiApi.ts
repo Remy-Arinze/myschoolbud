@@ -294,6 +294,27 @@ export const aiApi = apiSlice.injectEndpoints({
             query: (id) => ({ url: `/admin/lois/skills/${id}`, method: 'DELETE' }),
             invalidatesTags: ['LoisSkills'],
         }),
+
+        getLoisInsights: builder.query<
+            {
+                success: boolean;
+                data: {
+                    id: string;
+                    type: string;
+                    severity: string;
+                    title: string;
+                    summary: string;
+                    href: string | null;
+                    askPrompt: string | null;
+                    createdAt: string;
+                }[];
+            },
+            { schoolId: string; limit?: number }
+        >({
+            query: ({ schoolId, limit }) =>
+                `/schools/${schoolId}/ai/insights${limit ? `?limit=${limit}` : ''}`,
+            providesTags: ['LoisInsights'],
+        }),
     }),
 });
 
@@ -329,6 +350,7 @@ export const {
     useAdminUpdateSkillMutation,
     useAdminToggleSkillMutation,
     useAdminDeleteSkillMutation,
+    useGetLoisInsightsQuery,
 } = aiApi;
 
 // ─── SSE Streaming Types ──────────────────────────────────────────────────────
@@ -348,6 +370,14 @@ export interface SSEToolResultEvent {
 export interface SSEDoneEvent {
     conversationId?: string;
     usage?: any;
+    sources?: Array<{
+        kind: 'tool' | 'rag';
+        tool?: string;
+        type?: string;
+        label: string;
+        href?: string;
+        relevance?: number;
+    }>;
 }
 
 export type SSEEventType = 'token' | 'tool_start' | 'tool_result' | 'done' | 'error' | 'thinking' | 'conversation_id';
@@ -372,7 +402,8 @@ export async function streamAiChat(
     callbacks: SSECallbacks,
     conversationId?: string,
     abortSignal?: AbortSignal,
-    token?: string
+    token?: string,
+    pageContext?: Record<string, unknown> | null,
 ): Promise<void> {
     const envUrl = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL;
     const baseUrl = envUrl || 'http://localhost:4000';
@@ -400,7 +431,7 @@ export async function streamAiChat(
             'Content-Type': 'application/json',
             ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
-        body: JSON.stringify({ messages, conversationId }),
+        body: JSON.stringify({ messages, conversationId, pageContext: pageContext || undefined }),
         signal: abortSignal,
     });
 

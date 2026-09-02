@@ -16,6 +16,7 @@ import {
 } from '@/lib/store/api/schoolAdminApi';
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { getTerminology } from '@/lib/utils/terminology';
+import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import toast from 'react-hot-toast';
 
 interface CreateClassModalProps {
@@ -26,7 +27,8 @@ interface CreateClassModalProps {
 
 export function CreateClassModal({ isOpen, onClose, schoolId }: CreateClassModalProps) {
   const { currentType } = useSchoolType();
-  const terminology = getTerminology(currentType);
+  const { policies } = useRuntimePolicies();
+  const terminology = getTerminology(currentType, policies.terminologyOverrides);
   const isTertiary = currentType === 'TERTIARY';
   const isPrimaryOrSecondary = currentType === 'PRIMARY' || currentType === 'SECONDARY';
 
@@ -249,11 +251,33 @@ export function CreateClassModal({ isOpen, onClose, schoolId }: CreateClassModal
 
                 <div>
                   <Label htmlFor="armName">Arm / Section *</Label>
+                  {policies.defaultClassArmNames.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {policies.defaultClassArmNames.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => setArmName(name)}
+                          className={`rounded-full border px-3 py-1 text-sm ${
+                            armName === name
+                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                              : 'border-light-border dark:border-dark-border'
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <Input
                     id="armName"
                     value={armName}
                     onChange={(e) => setArmName(e.target.value)}
-                    placeholder="e.g., A, B, Gold, Blue"
+                    placeholder={
+                      policies.defaultClassArmNames.length
+                        ? `e.g., ${policies.defaultClassArmNames.join(', ')}`
+                        : 'e.g., A, B, Gold, Blue'
+                    }
                     className={errors.armName ? 'border-red-500' : ''}
                   />
                   {errors.armName && (

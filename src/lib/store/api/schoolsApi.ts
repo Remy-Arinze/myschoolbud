@@ -68,6 +68,47 @@ export interface School {
     id: string;
     role: string;
   };
+  runtimePolicies?: RuntimePolicies;
+}
+
+export interface RuntimePolicies {
+  workingDays: string[];
+  terminologyOverrides?: Record<string, string> | null;
+  facultyStructureVisible: boolean;
+  teacherScope: 'ASSIGNED_ONLY' | 'ALL_SCHOOL';
+  subjectRegistryMode: 'AGORA_DEFAULT' | 'AGORA_PLUS_CUSTOM' | 'CUSTOM_ONLY';
+  defaultClassArmNames: string[];
+  classLevelNamingMode: 'STANDARD' | 'CUSTOM';
+  attendanceStatusOptions: string[];
+  grading: {
+    gradeScaleType: 'PERCENTAGE' | 'A1_F9' | 'CUSTOM';
+    passMark: number;
+    defaultCaWeight: number;
+    defaultExamWeight: number;
+    templatesMode: 'SCHOOL_TEMPLATES' | 'TEACHER_DISCRETION';
+    defaultAllowLateSubmissionAfterDue: boolean;
+    defaultAllowLateSubmissionAfterTimer: boolean;
+    defaultLateDuePenalty: number;
+    defaultLateTimerPenalty: number;
+    defaultIntegrityEnabled: boolean;
+    defaultViolationThreshold: number;
+    defaultPointsPerViolation: number;
+    templates?: Array<{
+      id: string;
+      name: string;
+      gradeType: string;
+      maxScore: number;
+      weight?: number | null;
+      sequence?: number | null;
+    }>;
+  };
+  timetable: {
+    defaultPeriodLengthMinutes: number;
+    maxPeriodsPerTeacherPerDay: number;
+    roomCapacityWarningEnabled: boolean;
+    examBlackoutEnabled: boolean;
+  };
+  bellScheduleTemplates: Array<{ schoolType: string; periods: unknown; isDefault: boolean }>;
 }
 
 export interface CreateSchoolDto {

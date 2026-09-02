@@ -1,8 +1,9 @@
 import { useMemo, useCallback } from 'react';
-import { getScheduleForSchoolType, type SchedulePeriod } from '@/lib/utils/nigerianSchoolSchedule';
+import { getScheduleFromBellTemplates, type SchedulePeriod } from '@/lib/utils/nigerianSchoolSchedule';
 import type { TimetablePeriod, DayOfWeek } from '@/lib/store/api/schoolAdminApi';
+import { DEFAULT_WORKING_DAYS } from '@/lib/calendar/instructionalDays';
 
-const DAYS: DayOfWeek[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
+const FALLBACK_DAYS: DayOfWeek[] = [...DEFAULT_WORKING_DAYS];
 
 // Core subjects that should appear more frequently
 const CORE_SUBJECTS = ['english', 'mathematics', 'math', 'basic science', 'science'];
@@ -31,6 +32,8 @@ interface UseAutoGenerateTimetableOptions {
   existingPeriods: TimetablePeriod[];
   maxSameSubjectPerDay?: number; // Default: 2
   freePeriodsPerDay?: number; // Default: 1-2
+  workingDays?: DayOfWeek[];
+  bellScheduleTemplates?: Array<{ schoolType: string; periods: unknown; isDefault?: boolean }>;
 }
 
 interface UseAutoGenerateTimetableReturn {
@@ -53,9 +56,15 @@ export function useAutoGenerateTimetable({
   existingPeriods,
   maxSameSubjectPerDay = 2,
   freePeriodsPerDay = 1,
+  workingDays,
+  bellScheduleTemplates,
 }: UseAutoGenerateTimetableOptions): UseAutoGenerateTimetableReturn {
   
-  const schedule = useMemo(() => getScheduleForSchoolType(schoolType), [schoolType]);
+  const DAYS = workingDays?.length ? workingDays : FALLBACK_DAYS;
+  const schedule = useMemo(
+    () => getScheduleFromBellTemplates(schoolType, bellScheduleTemplates),
+    [schoolType, bellScheduleTemplates],
+  );
   
   const items = useMemo(() => {
     return schoolType === 'TERTIARY' ? courses : subjects;
@@ -330,7 +339,7 @@ export function useAutoGenerateTimetable({
       if (dayOrder !== 0) return dayOrder;
       return a.startTime.localeCompare(b.startTime);
     });
-  }, [schedule, items, schoolType, existingPeriods, maxSameSubjectPerDay, freePeriodsPerDay]);
+  }, [schedule, items, schoolType, existingPeriods, maxSameSubjectPerDay, freePeriodsPerDay, DAYS]);
 
   return {
     generateTimetable,

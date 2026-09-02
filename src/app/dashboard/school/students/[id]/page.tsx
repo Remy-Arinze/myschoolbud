@@ -41,6 +41,7 @@ import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import toast from 'react-hot-toast';
+import { LoisFocus } from '@/components/ai/LoisFocus';
 
 type TabType = 'profile' | 'health' | 'grades' | 'transcript';
 
@@ -501,6 +502,17 @@ export default function StudentDetailPage() {
   return (
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
       <div className="w-full">
+        {schoolId && (
+          <LoisFocus
+            context={{
+              type: 'student',
+              schoolId,
+              studentId,
+              label: `${student.firstName} ${student.lastName}`.trim(),
+              path: `/dashboard/school/students/${studentId}`,
+            }}
+          />
+        )}
         {/* Header */}
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-8">
           <BackButton fallbackUrl="/dashboard/school/students" className="mb-4" />

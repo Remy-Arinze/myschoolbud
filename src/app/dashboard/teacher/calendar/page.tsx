@@ -30,12 +30,12 @@ import {
   type Term,
 } from '@/lib/store/api/schoolAdminApi';
 import {
-  DEFAULT_WORKING_DAYS,
   buildHalfTermRange,
   holidayRangesFromEvents,
   isInstructionalDay,
 } from '@/lib/calendar/instructionalDays';
 import { useSchoolType } from '@/hooks/useSchoolType';
+import { useWorkingDays } from '@/hooks/useRuntimePolicies';
 import toast from 'react-hot-toast';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -88,6 +88,7 @@ export default function TeacherCalendarPage() {
   const schoolId = schoolResponse?.data?.id;
   const teacherId = teacherResponse?.data?.id; // Database ID
   const { currentType } = useSchoolType();
+  const workingDays = useWorkingDays();
 
   const { data: activeSessionResponse, isLoading: isLoadingActiveSession, error: activeSessionError } = useGetActiveSessionQuery(
     { schoolId: schoolId! },
@@ -344,7 +345,7 @@ export default function TeacherCalendarPage() {
         dates.forEach((date) => {
           if (
             !isInstructionalDay(date, {
-              workingDays: DEFAULT_WORKING_DAYS,
+              workingDays,
               termRange,
               nonInstructionalRanges,
             })
@@ -399,7 +400,7 @@ export default function TeacherCalendarPage() {
     }
 
     return combined;
-  }, [events, timetable, dateRange, activeSession, schoolId, allSessions, currentType]);
+  }, [events, timetable, dateRange, activeSession, schoolId, allSessions, currentType, workingDays]);
 
   // Filter events for the selected date
   const dayEvents = useMemo(() => {

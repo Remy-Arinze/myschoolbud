@@ -44,6 +44,7 @@ import { BackButton } from '@/components/ui/BackButton';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
 import toast from 'react-hot-toast';
 import { isPrincipalRole } from '@/lib/constants/roles';
+import { LoisFocus } from '@/components/ai/LoisFocus';
 
 const RESOURCE_LABELS: Record<PermissionResource, string> = {
   OVERVIEW: 'Dashboard Overview',
@@ -233,6 +234,17 @@ export default function StaffDetailPage() {
   return (
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
       <div className="w-full">
+        {schoolId && (
+          <LoisFocus
+            context={{
+              type: 'staff',
+              schoolId,
+              teacherId: isTeacher ? staffId : undefined,
+              label: `${staff.firstName} ${staff.lastName}`.trim(),
+              path: `/dashboard/school/staff/${staffId}`,
+            }}
+          />
+        )}
         {/* Header */}
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-8">
           <BackButton fallbackUrl="/dashboard/school/staff" className="mb-4" />

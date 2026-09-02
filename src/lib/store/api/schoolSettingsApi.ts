@@ -129,66 +129,66 @@ export const schoolSettingsApi = apiSlice.injectEndpoints({
         method: 'PATCH',
         body,
       }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     createHolidayPreset: builder.mutation<ResponseDto<unknown>, Record<string, unknown>>({
       query: (body) => ({ url: '/school-admin/settings/calendar/holidays', method: 'POST', body }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     deleteHolidayPreset: builder.mutation<void, string>({
       query: (id) => ({ url: `/school-admin/settings/calendar/holidays/${id}`, method: 'DELETE' }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     applyHolidayPreset: builder.mutation<ResponseDto<unknown>, string>({
       query: (id) => ({ url: `/school-admin/settings/calendar/holidays/${id}/apply`, method: 'POST' }),
-      invalidatesTags: ['SchoolSettings', 'Event'],
+      invalidatesTags: ['SchoolSettings', 'Event', 'School'],
     }),
     createRoleTemplate: builder.mutation<ResponseDto<unknown>, Record<string, unknown>>({
       query: (body) => ({ url: '/school-admin/settings/permissions/role-templates', method: 'POST', body }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     deleteRoleTemplate: builder.mutation<void, string>({
       query: (id) => ({ url: `/school-admin/settings/permissions/role-templates/${id}`, method: 'DELETE' }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     applyRoleTemplate: builder.mutation<ResponseDto<unknown>, { templateId: string; adminId: string }>({
       query: ({ templateId, adminId }) => ({
         url: `/school-admin/settings/permissions/role-templates/${templateId}/apply/${adminId}`,
         method: 'POST',
       }),
-      invalidatesTags: ['SchoolSettings', 'Permission'],
+      invalidatesTags: ['SchoolSettings', 'Permission', 'School'],
     }),
     createAssessmentTemplate: builder.mutation<ResponseDto<AssessmentTemplate>, Record<string, unknown>>({
       query: (body) => ({ url: '/school-admin/settings/grading/templates', method: 'POST', body }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     updateAssessmentTemplate: builder.mutation<ResponseDto<AssessmentTemplate>, { id: string; body: Record<string, unknown> }>({
       query: ({ id, body }) => ({ url: `/school-admin/settings/grading/templates/${id}`, method: 'PATCH', body }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     deleteAssessmentTemplate: builder.mutation<void, string>({
       query: (id) => ({ url: `/school-admin/settings/grading/templates/${id}`, method: 'DELETE' }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     createFeeCategory: builder.mutation<ResponseDto<unknown>, Record<string, unknown>>({
       query: (body) => ({ url: '/school-admin/settings/finance/categories', method: 'POST', body }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     createFeeSchedule: builder.mutation<ResponseDto<unknown>, Record<string, unknown>>({
       query: (body) => ({ url: '/school-admin/settings/finance/schedules', method: 'POST', body }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     generateFeesFromSchedule: builder.mutation<ResponseDto<{ count: number }>, string>({
       query: (id) => ({ url: `/school-admin/settings/finance/schedules/${id}/generate`, method: 'POST' }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     createKnowledgeDocument: builder.mutation<ResponseDto<unknown>, { title: string; content: string }>({
       query: (body) => ({ url: '/school-admin/settings/curriculum/knowledge', method: 'POST', body }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     deleteKnowledgeDocument: builder.mutation<void, string>({
       query: (id) => ({ url: `/school-admin/settings/curriculum/knowledge/${id}`, method: 'DELETE' }),
-      invalidatesTags: ['SchoolSettings'],
+      invalidatesTags: ['SchoolSettings', 'School'],
     }),
     getAuditLogs: builder.query<ResponseDto<{
       profileAudits: Array<{ id: string; action?: string; event?: string; createdAt: string }>;

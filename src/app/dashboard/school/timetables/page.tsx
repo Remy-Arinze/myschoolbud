@@ -25,6 +25,7 @@ import {
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
+import { LoisFocus } from '@/components/ai/LoisFocus';
 import {
   useGetMySchoolQuery,
   useGetActiveSessionQuery,
@@ -53,10 +54,11 @@ import { TimetableBuilder, type TimetableSlot } from '@/components/timetable/Tim
 import { EditableTimetableTable } from '@/components/timetable/EditableTimetableTable';
 import { TeacherSelectionPopup } from '@/components/timetable/TeacherSelectionPopup';
 import { TimetablePreviewModal } from '@/components/timetable/TimetablePreviewModal';
-import { getScheduleForSchoolType } from '@/lib/utils/nigerianSchoolSchedule';
+import { getScheduleFromBellTemplates } from '@/lib/utils/nigerianSchoolSchedule';
 import { ConfirmModal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { useAutoGenerateWithTeachers, type GeneratedPeriodWithTeacher } from '@/hooks/useAutoGenerateWithTeachers';
+import { useRuntimePolicies, useWorkingDays } from '@/hooks/useRuntimePolicies';
 import toast from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -96,6 +98,8 @@ export default function TimetablesPage() {
   const { data: schoolResponse, isLoading: isLoadingSchool } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
   const { currentType } = useSchoolType();
+  const { policies } = useRuntimePolicies();
+  const workingDays = useWorkingDays();
 
   const { data: activeSessionResponse, isLoading: isLoadingActiveSession } = useGetActiveSessionQuery(
     { schoolId: schoolId!, schoolType: currentType || undefined },
@@ -253,8 +257,8 @@ export default function TimetablesPage() {
     // This is a synchronous check, so we'll validate in the UI instead
 
     // Use Nigerian school schedule based on school type
-    const schedule = getScheduleForSchoolType(currentType);
-    const DAYS: DayOfWeek[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
+    const schedule = getScheduleFromBellTemplates(currentType, policies.bellScheduleTemplates);
+    const DAYS = workingDays.length ? workingDays : (['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'] as DayOfWeek[]);
     const periods = schedule.periods
       .filter((p) => p.type === 'LESSON')
       .flatMap((period) =>
@@ -335,6 +339,18 @@ export default function TimetablesPage() {
             endTime: slot.periodData.endTime,
           },
         }).unwrap();
+        if (
+          policies.timetable.roomCapacityWarningEnabled &&
+          slot.periodData.roomId
+        ) {
+          const room = rooms.find((r) => r.id === slot.periodData?.roomId);
+          const cls = classes.find((c) => c.id === selectedClassId);
+          if (room?.capacity && cls && cls.studentsCount > room.capacity) {
+            toast(`Room ${room.name} holds ${room.capacity} but this class has ${cls.studentsCount} students.`, {
+              icon: '⚠️',
+            });
+          }
+        }
         toast.success('Period updated successfully');
       } else {
         // Check if the selected class has a classArmId (ClassArm-based class)
@@ -694,6 +710,9 @@ export default function TimetablesPage() {
       teachers: s.teachers,
     })),
     existingPeriods: timetable,
+    workingDays,
+    bellScheduleTemplates: policies.bellScheduleTemplates,
+    maxPeriodsPerTeacherPerDay: policies.timetable.maxPeriodsPerTeacherPerDay,
   });
 
   const handleDeleteTimetable = async () => {
@@ -777,6 +796,16 @@ export default function TimetablesPage() {
   return (
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
       <div className="w-full">
+        {schoolId && (
+          <LoisFocus
+            context={{
+              type: 'timetable',
+              schoolId,
+              label: 'Timetable',
+              path: '/dashboard/school/timetables',
+            }}
+          />
+        )}
         {/* Header */}
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

@@ -4,7 +4,9 @@ import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import { useSchoolType } from '@/hooks/useSchoolType';
-import { getTerminology, Terminology } from '@/lib/utils/terminology';
+import { Terminology } from '@/lib/utils/terminology';
+import { useTerminology } from '@/hooks/useTerminology';
+import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import { useCurrentAdminPermissions, PermissionResource } from '@/hooks/usePermissions';
 import { useTeacherDashboard } from '@/hooks/useTeacherDashboard';
 import {
@@ -60,7 +62,8 @@ export function useSidebarConfig(): {
 } {
   const user = useSelector((state: RootState) => state.auth.user);
   const { currentType } = useSchoolType();
-  const terminology = getTerminology(user?.role === 'SCHOOL_ADMIN' ? currentType : null);
+  const terminology = useTerminology();
+  const { policies } = useRuntimePolicies();
   
   // For teachers, we need to know if they are a form teacher
   const { formClasses } = useTeacherDashboard();
@@ -99,7 +102,7 @@ export function useSidebarConfig(): {
       ];
 
       // Add Faculties for tertiary (before Departments/Classes)
-      if (currentType === 'TERTIARY') {
+      if (currentType === 'TERTIARY' && policies.facultyStructureVisible !== false) {
         baseItems.push({
           label: 'Faculties',
           href: '/dashboard/school/faculties',
@@ -183,7 +186,7 @@ export function useSidebarConfig(): {
     }
 
     return [];
-  }, [user, currentType, terminology, formClasses]);
+  }, [user, currentType, terminology, formClasses, policies.facultyStructureVisible]);
 
   return {
     sections,

@@ -338,8 +338,9 @@ export default function StaffPage() {
         </FadeInUp>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           <StatCard
+            compact
             title="Total Staff"
             value={stats.total}
             icon={
@@ -347,6 +348,7 @@ export default function StaffPage() {
             }
           />
           <StatCard
+            compact
             title="Active Staff"
             value={stats.active}
             change="+12%"
@@ -356,6 +358,7 @@ export default function StaffPage() {
             }
           />
           <StatCard
+            compact
             title="Pending Staff"
             value={stats.pending}
             icon={
@@ -363,6 +366,7 @@ export default function StaffPage() {
             }
           />
           <StatCard
+            compact
             title="Suspended Staff"
             value={stats.suspended}
             icon={

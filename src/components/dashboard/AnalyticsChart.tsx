@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Loader2 } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -32,6 +33,7 @@ interface AnalyticsChartProps {
   type?: 'line' | 'bar' | 'area' | 'pie' | 'donut' | 'horizontal';
   dataKeys: string[];
   colors?: string[];
+  isLoading?: boolean;
 }
 
 export function AnalyticsChart({
@@ -41,6 +43,7 @@ export function AnalyticsChart({
   type = 'line',
   dataKeys,
   colors = ['#3b82f6', '#10b981', '#f59e0b'],
+  isLoading = false,
 }: AnalyticsChartProps) {
   const chartConfig = {
     text: {
@@ -287,9 +290,15 @@ export function AnalyticsChart({
       </CardHeader>
       <CardContent className="overflow-hidden">
         <div className="w-full" style={{ minHeight: '260px', maxHeight: '260px' }}>
-          <ResponsiveContainer width="100%" height={260}>
-            {renderChart()}
-          </ResponsiveContainer>
+          {isLoading ? (
+            <div className="flex h-[260px] items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              {renderChart()}
+            </ResponsiveContainer>
+          )}
         </div>
       </CardContent>
     </Card>

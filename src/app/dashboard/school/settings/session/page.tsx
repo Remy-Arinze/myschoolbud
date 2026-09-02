@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Alert } from '@/components/ui/Alert';
-import { SessionWizardInfoModal } from '@/components/modals';
-import { SchoolSettingsTabs } from '@/components/settings/SchoolSettingsTabs';
+import { SessionWizardInfoModal, isSessionWizardIntroHidden } from '@/components/modals';
 import { SessionTermDatesPanel } from '@/components/settings/SessionTermDatesPanel';
 import { parseTermEditFocus } from '@/components/settings/termsSessionHelpers';
 import { FadeInUp } from '@/components/ui/FadeInUp';
@@ -182,10 +181,10 @@ export default function SessionWizardPage() {
     });
   }, [sessions]);
 
-  // Show info modal once when page loads if no active session
+  // Show info modal once when page loads if no active session (unless user hid it)
   useEffect(() => {
     if (!isLoadingActiveSession && activeSessionResponse) {
-      if (!activeSession?.session && !infoDismissedRef.current) {
+      if (!activeSession?.session && !infoDismissedRef.current && !isSessionWizardIntroHidden()) {
         setShowInfoModal(true);
       }
     }
@@ -524,8 +523,6 @@ export default function SessionWizardPage() {
       />
 
       <div className="w-full max-w-6xl mx-auto p-6">
-        <SchoolSettingsTabs activeTab="calendar" className="mb-8" />
-
         {/* Header */}
         <FadeInUp
           from={{ opacity: 0, y: -20 }}
@@ -539,6 +536,14 @@ export default function SessionWizardPage() {
           <p className="text-light-text-secondary dark:text-dark-text-secondary">
             {wizardSubtitle}
           </p>
+          <button
+            type="button"
+            onClick={() => setShowInfoModal(true)}
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            <Info className="h-4 w-4" />
+            How this works
+          </button>
         </FadeInUp>
 
         {/* Progress Steps */}

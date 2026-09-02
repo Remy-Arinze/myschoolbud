@@ -65,6 +65,7 @@ import {
   type AgoraSubject,
 } from '@/lib/store/api/schoolAdminApi';
 import { useSchoolType } from '@/hooks/useSchoolType';
+import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import { useAutoGenerateSubjects } from '@/hooks/useAutoGenerateSubjects';
 import { getTerminology } from '@/lib/utils/terminology';
 import toast from 'react-hot-toast';
@@ -98,6 +99,8 @@ export default function SubjectsPage() {
   const schoolId = schoolResponse?.data?.id;
   const { currentType } = useSchoolType();
   const terminology = getTerminology(currentType);
+  const { policies } = useRuntimePolicies();
+  const allowAgoraGenerate = policies.subjectRegistryMode !== 'CUSTOM_ONLY';
 
   // Deep-link from setup checklist: /subjects?action=add
   useEffect(() => {
@@ -445,7 +448,7 @@ export default function SubjectsPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {canAutoGenerate && (
+              {canAutoGenerate && allowAgoraGenerate && (
                 <PermissionGate resource={PermissionResource.SUBJECTS} type={PermissionType.WRITE}>
                   <AutoGenerateButton
                     onClick={openConfirmModal}
@@ -1312,6 +1315,9 @@ function SubjectModal({
   const [isAgoraStandard, setIsAgoraStandard] = useState(subject?.isAgoraStandard || false);
   const [category, setCategory] = useState(subject?.category || '');
   const [showWarning, setShowWarning] = useState(false);
+  const { policies } = useRuntimePolicies();
+  const customOnly = policies.subjectRegistryMode === 'CUSTOM_ONLY';
+  const agoraOnly = policies.subjectRegistryMode === 'AGORA_DEFAULT';
   const [pendingData, setPendingData] = useState<any>(null);
   const [isArmsExpanded, setIsArmsExpanded] = useState(false);
 
@@ -1570,22 +1576,43 @@ function SubjectModal({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Combobox
-                label={`${currentType === 'TERTIARY' ? 'Course' : 'Subject'} Name *`}
-                placeholder="Search Bud library subjects..."
-                options={comboboxOptions}
-                value={agoraSubjectId}
-                onSelect={handleSelectAgora}
-                onSearchChange={setName}
-                isLoading={isLoadingAgora}
-                disabled={isLoadingAgora || isLoading}
-                required
-              />
-              {!isAgoraStandard && name && (
+              {customOnly ? (
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-light-text-primary dark:text-dark-text-primary">
+                    {currentType === 'TERTIARY' ? 'Course' : 'Subject'} Name *
+                  </label>
+                  <Input
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setIsAgoraStandard(false);
+                      setAgoraSubjectId('');
+                    }}
+                    placeholder="e.g., Mathematics"
+                    required
+                  />
+                </div>
+              ) : (
+                <Combobox
+                  label={`${currentType === 'TERTIARY' ? 'Course' : 'Subject'} Name *`}
+                  placeholder="Search Bud library subjects..."
+                  options={comboboxOptions}
+                  value={agoraSubjectId}
+                  onSelect={handleSelectAgora}
+                  onSearchChange={setName}
+                  isLoading={isLoadingAgora}
+                  disabled={isLoadingAgora || isLoading}
+                  required
+                />
+              )}
+              {!customOnly && !isAgoraStandard && name && !agoraOnly && (
                 <div className="mt-1 flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   <span className="text-[10px] font-medium">Matching Bud library subject not found — will be created as Custom</span>
                 </div>
+              )}
+              {agoraOnly && !isAgoraStandard && name && (
+                <p className="mt-1 text-xs text-red-500">This school only allows national curriculum subjects. Pick a match from the list.</p>
               )}
             </div>
 

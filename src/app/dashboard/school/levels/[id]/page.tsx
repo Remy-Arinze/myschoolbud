@@ -43,6 +43,7 @@ import {
   type LevelResource,
 } from '@/lib/store/api/schoolAdminApi';
 import { useSchoolType } from '@/hooks/useSchoolType';
+import { LoisFocus } from '@/components/ai/LoisFocus';
 
 type TabType = 'students' | 'courses' | 'timetable' | 'curriculum' | 'resources';
 
@@ -169,6 +170,16 @@ export default function LevelDetailPage() {
   return (
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
       <div className="w-full">
+        {schoolId && (
+          <LoisFocus
+            context={{
+              type: 'generic',
+              schoolId,
+              label: level.name || 'Class',
+              path: `/dashboard/school/levels/${levelId}`,
+            }}
+          />
+        )}
         {/* Header */}
         <div className="mb-6">
           <BackButton fallbackUrl={`/dashboard/school/departments/${level.departmentId}`} />

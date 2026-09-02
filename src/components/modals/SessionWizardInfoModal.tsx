@@ -1,10 +1,33 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { Info, BookOpen, Calendar, Users, GraduationCap } from 'lucide-react';
 import type { SchoolType } from '@/lib/store/api/schoolAdminApi';
 import { getPromotionExamples } from '@/lib/utils/terminology';
+
+const HIDE_INTRO_KEY = 'agora_session_wizard_hide_intro';
+
+export function isSessionWizardIntroHidden(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(HIDE_INTRO_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setSessionWizardIntroHidden(hidden: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (hidden) localStorage.setItem(HIDE_INTRO_KEY, '1');
+    else localStorage.removeItem(HIDE_INTRO_KEY);
+  } catch {
+    // ignore quota / private mode
+  }
+}
 
 interface SessionWizardInfoModalProps {
   isOpen: boolean;
@@ -14,11 +37,21 @@ interface SessionWizardInfoModalProps {
 
 export function SessionWizardInfoModal({ isOpen, onClose, schoolType = null }: SessionWizardInfoModalProps) {
   const promotionExamples = getPromotionExamples(schoolType);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) setDontShowAgain(isSessionWizardIntroHidden());
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setSessionWizardIntroHidden(dontShowAgain);
+    onClose();
+  };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Welcome to the Session Wizard"
       size="lg"
     >
@@ -105,8 +138,15 @@ export function SessionWizardInfoModal({ isOpen, onClose, schoolType = null }: S
           </div>
         </div>
 
-        <div className="flex justify-end pt-4">
-          <Button variant="primary" onClick={onClose}>
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4 pt-4">
+          <label className="flex items-center gap-2 text-sm text-light-text-secondary dark:text-dark-text-secondary cursor-pointer select-none">
+            <Checkbox
+              checked={dontShowAgain}
+              onCheckedChange={(checked) => setDontShowAgain(!!checked)}
+            />
+            Don&apos;t show this again
+          </label>
+          <Button variant="primary" onClick={handleClose}>
             Got it, let&apos;s start
           </Button>
         </div>

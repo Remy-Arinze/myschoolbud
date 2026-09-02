@@ -13,7 +13,7 @@ import {
     type CurriculumItem
 } from '@/lib/store/api/schoolAdminApi';
 import { useGenerateAssessmentMutation } from '@/lib/store/api/aiApi';
-import { toast } from 'react-hot-toast';
+import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import { Trash2, Plus, Sparkles, Loader2, BookOpen, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react';
 
 interface CreateAssessmentModalProps {
@@ -56,6 +56,14 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
     const [allowLateSubmissionAfterTimer, setAllowLateSubmissionAfterTimer] = useState(false);
     const [lateDuePenaltyPoints, setLateDuePenaltyPoints] = useState(0);
     const [lateTimerPenaltyPoints, setLateTimerPenaltyPoints] = useState(0);
+    const [hasIntegrity, setHasIntegrity] = useState(false);
+    const [violationThreshold, setViolationThreshold] = useState(1);
+    const [pointsPerViolation, setPointsPerViolation] = useState(0);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const { policies } = useRuntimePolicies();
+    const templates = policies.grading.templates ?? [];
+    const requireTemplate =
+        policies.grading.templatesMode === 'SCHOOL_TEMPLATES' && templates.length > 0;
 
     // AI Generation state
     const [useAi, setUseAi] = useState(false);
@@ -82,6 +90,19 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
         if (activeTermId) setTermId(activeTermId);
         if (subjectId) setSelectedSubjectId(subjectId);
     }, [activeTermId, subjectId, isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const g = policies.grading;
+        setAllowLateSubmissionAfterDue(g.defaultAllowLateSubmissionAfterDue);
+        setAllowLateSubmissionAfterTimer(g.defaultAllowLateSubmissionAfterTimer);
+        setLateDuePenaltyPoints(g.defaultLateDuePenalty);
+        setLateTimerPenaltyPoints(g.defaultLateTimerPenalty);
+        setHasIntegrity(g.defaultIntegrityEnabled);
+        setViolationThreshold(g.defaultViolationThreshold);
+        setPointsPerViolation(g.defaultPointsPerViolation);
+        setSelectedTemplateId('');
+    }, [isOpen, policies.grading]);
 
     // Reset selected weeks when subject or term changes
     useEffect(() => {
@@ -168,6 +189,11 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (requireTemplate && !selectedTemplateId) {
+            toast.error('Please pick a school assessment template');
+            return;
+        }
+
         if (!selectedSubjectId) {
             toast.error('Please select a subject');
             return;
@@ -197,6 +223,9 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
                     allowLateSubmissionAfterTimer,
                     lateDuePenaltyPoints: allowLateSubmissionAfterDue ? lateDuePenaltyPoints : 0,
                     lateTimerPenaltyPoints: allowLateSubmissionAfterTimer ? lateTimerPenaltyPoints : 0,
+                    hasIntegrity,
+                    violationThreshold,
+                    pointsPerViolation: hasIntegrity ? pointsPerViolation : 0,
                     questions: questions.map(q => ({
                         ...q,
                         options: q.type === 'MULTIPLE_CHOICE' ? q.options : undefined
@@ -234,6 +263,37 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
                             required
                         />
                     </div>
+
+                    {templates.length > 0 && policies.grading.templatesMode === 'SCHOOL_TEMPLATES' && (
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold mb-1">
+                            School template{requireTemplate ? ' *' : ''}
+                        </label>
+                        <select
+                            value={selectedTemplateId}
+                            required={requireTemplate}
+                            onChange={(e) => {
+                                const id = e.target.value;
+                                setSelectedTemplateId(id);
+                                const tpl = templates.find((t) => t.id === id);
+                                if (!tpl) return;
+                                setMaxScore(tpl.maxScore);
+                                if (tpl.gradeType === 'EXAM') setType('EXAM');
+                                else if (tpl.gradeType === 'ASSIGNMENT') setType('ASSIGNMENT');
+                                else setType('QUIZ');
+                                if (!title) setTitle(tpl.name);
+                            }}
+                            className="w-full h-10 rounded-md border border-light-border dark:border-dark-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Select template</option>
+                            {templates.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                    {t.name} ({t.gradeType}, {t.maxScore} pts)
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-semibold mb-1">Subject</label>

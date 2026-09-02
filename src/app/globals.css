@@ -84,21 +84,21 @@
 
     /* Light Mode Colors */
     --light-bg: #f3fbff;
-    --light-card: #f3fbff;
+    --light-card: #e8f3f8;
     --light-surface: #f8fafc;
     --light-text-primary: #000000;
     --light-text-secondary: #000000;
     --light-text-muted: #9ca3af;
-    --light-border: #dddddd;
-    --light-hover: #f9fafb;
-    /* Selected sidebar item — solid white for contrast on pale dashboards */
-    --light-sidebar-active: #ffffff;
+    --light-border: #dde8ec;
+    --light-hover: #e5e7eb;
+    /* Selected sidebar item — agora-blue tint so the active route reads on pale dashboards */
+    --light-sidebar-active: color-mix(in srgb, var(--agora-blue) 16%, white);
 
     /* Staff dashboard (teacher + school admin) — shared theme tokens */
     --dashboard-sidebar-border: rgba(36, 144, 253, 0.12);
     --dashboard-sidebar-active-border: rgba(36, 144, 253, 0.35);
     --dashboard-sidebar-active-shadow: 0 1px 2px rgba(2, 23, 61, 0.06), inset 3px 0 0 0 var(--agora-blue);
-    --dashboard-nav-hover-bg: rgba(255, 255, 255, 0.65);
+    --dashboard-nav-hover-bg: #e5e7eb;
     --dashboard-mobile-nav-border: rgba(36, 144, 253, 0.12);
     --dashboard-mobile-nav-shadow: 0 1px 2px rgba(2, 23, 61, 0.04);
     --dashboard-drawer-shadow: 20px 0 50px rgba(0, 0, 0, 0.1);
@@ -133,6 +133,8 @@
     --dark-text-secondary: #9ca3af;
     --dark-text-muted: #6b7280;
     --dark-hover: #1a202e;
+    --dark-sidebar-active: rgba(36, 144, 253, 0.16);
+    --dark-sidebar-active-border: rgba(36, 144, 253, 0.45);
 
     --input-field-bg: var(--dark-input);
     --avatar-placeholder-bg: #374151;
@@ -267,10 +269,10 @@
   }
 
   .dark body.staff-dashboard-active .sidebar-link-active {
-    background-color: rgba(36, 144, 253, 0.16) !important;
+    background-color: var(--dark-sidebar-active) !important;
     color: var(--dark-text-primary) !important;
     font-weight: 600 !important;
-    border: 1px solid rgba(36, 144, 253, 0.45) !important;
+    border: 1px solid var(--dark-sidebar-active-border) !important;
     box-shadow: inset 3px 0 0 0 var(--agora-blue) !important;
   }
 
@@ -313,13 +315,12 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
 
-  .dark body.staff-dashboard-active .dashboard-content .rounded-lg,
-  .dark body.staff-dashboard-active .dashboard-content .border,
-  .dark body.staff-dashboard-active .dashboard-content [class*="bg-"] {
+  .dark body.staff-dashboard-active .dashboard-content .rounded-lg:not(button),
+  .dark body.staff-dashboard-active .dashboard-content .border:not(button),
+  .dark body.staff-dashboard-active .dashboard-content [class*="bg-"]:not(button) {
     background-color: var(--dark-surface) !important;
     border-color: #1a1a1c !important;
     backdrop-filter: none !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
   }
 
   .dark body.staff-dashboard-active .dashboard-content h1,
@@ -330,6 +331,91 @@
 
   .dark body.staff-dashboard-active .dashboard-content p {
     color: var(--dark-text-muted) !important;
+  }
+
+  /* School admin settings tabs — one-line scroll; selected uses sidebar active fill */
+  .settings-section-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.125rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .settings-section-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-section-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    font-weight: 500;
+    color: #4b5563;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+  }
+
+  .settings-section-tab:hover {
+    background-color: var(--dashboard-nav-hover-bg);
+    color: var(--agora-text);
+  }
+
+  .settings-section-tab:focus-visible {
+    outline: 2px solid var(--agora-blue);
+    outline-offset: 2px;
+  }
+
+  .settings-section-tab[aria-current='page'] {
+    font-weight: 600;
+    color: var(--agora-text);
+    background-color: var(--light-sidebar-active);
+    border-color: var(--dashboard-sidebar-active-border);
+  }
+
+  .settings-section-tab[aria-current='page']:hover {
+    background-color: var(--light-sidebar-active);
+    color: var(--agora-text);
+  }
+
+  .settings-section-tab-divider {
+    width: 1px;
+    height: 1rem;
+    margin: 0 0.375rem;
+    flex-shrink: 0;
+    background-color: var(--light-border);
+  }
+
+  .dark .settings-section-tab {
+    color: var(--dark-text-secondary);
+  }
+
+  .dark .settings-section-tab:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--dark-text-primary);
+  }
+
+  .dark .settings-section-tab[aria-current='page'] {
+    color: var(--dark-text-primary);
+    background-color: var(--dark-sidebar-active);
+    border-color: var(--dark-sidebar-active-border);
+  }
+
+  .dark .settings-section-tab[aria-current='page']:hover {
+    background-color: var(--dark-sidebar-active);
+    color: var(--dark-text-primary);
+  }
+
+  .dark .settings-section-tab-divider {
+    background-color: rgba(255, 255, 255, 0.12);
   }
 
   /* --- Student Dashboard Theme --- */
@@ -637,6 +723,38 @@
   .date-picker-dropdown .rdp-day_disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+
+  /* Overview “Start Session” nudge — press once every 15s for new schools */
+  @keyframes overview-cta-press {
+    0%,
+    7%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    2.6% {
+      transform: translateY(3px) scale(0.94);
+    }
+    4.8% {
+      transform: translateY(0) scale(1.03);
+    }
+  }
+
+  .overview-cta-nudge {
+    display: inline-flex;
+    animation: overview-cta-press 15s cubic-bezier(0.33, 1, 0.68, 1) infinite;
+    transform-origin: center center;
+  }
+
+  .overview-cta-nudge:hover,
+  .overview-cta-nudge:focus-within {
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .overview-cta-nudge {
+      animation: none;
+    }
   }
 
   /* Continuous horizontal scroll animation (right to left) */

@@ -11,7 +11,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Pagination } from '@/components/ui/Pagination';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { FadeInUp } from '@/components/ui/FadeInUp';
-import { GraduationCap, Plus, FileSpreadsheet, Search, Grid3x3, List, MoreVertical, CheckCircle, Clock, Ban, Mail, Loader2, Users, ChevronDown, Copy } from 'lucide-react';
+import { GraduationCap, Plus, FileSpreadsheet, Search, Grid3x3, List, MoreVertical, CheckCircle, Clock, Ban, Mail, Loader2, Users, ChevronDown, Link2 } from 'lucide-react';
 import { useGetStudentsQuery, useGetMySchoolQuery, useResendPasswordResetForStudentMutation } from '@/lib/store/api/schoolAdminApi';
 import { Select } from '@/components/ui';
 import { useSchoolType } from '@/hooks/useSchoolType';
@@ -23,6 +23,7 @@ import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { LoisFocus } from '@/components/ai/LoisFocus';
 
 type ViewMode = 'grid' | 'list';
 type FilterType = 'all' | 'active' | 'pending' | 'suspended';
@@ -262,6 +263,16 @@ function StudentsPageContent() {
   return (
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
       <div className="w-full space-y-6">
+        {schoolId && (
+          <LoisFocus
+            context={{
+              type: 'generic',
+              schoolId,
+              label: 'Students',
+              path: '/dashboard/school/students',
+            }}
+          />
+        )}
         {/* Header Section */}
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -284,21 +295,23 @@ function StudentsPageContent() {
               </Button>
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
                 onClick={() => setShowRegistrationLinkModal(true)}
-                className="h-9"
+                className="h-9 w-9"
                 disabled={!schoolId}
+                aria-label="Copy registration link"
+                title="Copy registration link"
               >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Registration Link
+                <Link2 className="h-4 w-4" />
               </Button>
             </div>
           </PermissionGate>
         </FadeInUp>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           <StatCard
+            compact
             title="Total Students"
             value={stats.total}
             icon={
@@ -306,6 +319,7 @@ function StudentsPageContent() {
             }
           />
           <StatCard
+            compact
             title="Active Students"
             value={stats.active}
             change="+18%"
@@ -315,6 +329,7 @@ function StudentsPageContent() {
             }
           />
           <StatCard
+            compact
             title="Pending Students"
             value={stats.pending}
             icon={
@@ -322,6 +337,7 @@ function StudentsPageContent() {
             }
           />
           <StatCard
+            compact
             title="Suspended Students"
             value={stats.suspended}
             icon={

@@ -33,11 +33,11 @@ import {
   type DayOfWeek,
   type PeriodType,
 } from '@/lib/store/api/schoolAdminApi';
-import { getScheduleForSchoolType, getLessonPeriods, type SchedulePeriod } from '@/lib/utils/nigerianSchoolSchedule';
+import { getScheduleFromBellTemplates, getLessonPeriods } from '@/lib/utils/nigerianSchoolSchedule';
 import { useAutoGenerateTimetable } from '@/hooks/useAutoGenerateTimetable';
 import { useAutoGenerateWithTeachers } from '@/hooks/useAutoGenerateWithTeachers';
+import { useRuntimePolicies, useWorkingDays } from '@/hooks/useRuntimePolicies';
 
-const DAYS: DayOfWeek[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
 const DAY_LABELS: Record<DayOfWeek, string> = {
   MONDAY: 'Mon',
   TUESDAY: 'Tue',
@@ -271,6 +271,8 @@ export function TimetableBuilder({
   onTeacherSelectionNeeded,
   onEditPeriodTeacher,
 }: TimetableBuilderProps) {
+  const DAYS = useWorkingDays();
+  const { policies } = useRuntimePolicies();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showAutoGenerateModal, setShowAutoGenerateModal] = useState(false);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
@@ -284,6 +286,8 @@ export function TimetableBuilder({
     subjects: subjects.filter(s => s.type !== 'free').map(s => ({ id: s.id, name: s.name, code: s.code })),
     courses: courses.filter(c => c.type !== 'free').map(c => ({ id: c.id, name: c.name, code: c.code })),
     existingPeriods: timetable,
+    workingDays: DAYS,
+    bellScheduleTemplates: policies.bellScheduleTemplates,
   });
 
   // Enhanced auto-generate hook with teacher assignment (for SECONDARY)
@@ -298,6 +302,9 @@ export function TimetableBuilder({
       code: s.code 
     })),
     existingPeriods: timetable,
+    workingDays: DAYS,
+    bellScheduleTemplates: policies.bellScheduleTemplates,
+    maxPeriodsPerTeacherPerDay: policies.timetable.maxPeriodsPerTeacherPerDay,
   });
 
   // Use appropriate generator based on school type
@@ -326,7 +333,10 @@ export function TimetableBuilder({
     })
   );
 
-  const schedule = useMemo(() => getScheduleForSchoolType(schoolType), [schoolType]);
+  const schedule = useMemo(
+    () => getScheduleFromBellTemplates(schoolType, policies.bellScheduleTemplates),
+    [schoolType, policies.bellScheduleTemplates],
+  );
   const lessonPeriods = useMemo(() => getLessonPeriods(schedule), [schedule]);
 
   // Get items based on school type, including "Free Period"

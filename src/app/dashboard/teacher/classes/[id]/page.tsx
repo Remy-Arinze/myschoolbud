@@ -72,6 +72,7 @@ import toast from 'react-hot-toast';
 import { safeDownload } from '@/lib/utils/download';
 import { cn } from '@/lib/utils';
 import { useSchoolType } from '@/hooks/useSchoolType';
+import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import { getTerminology } from '@/lib/utils/terminology';
 import { AgoraAiTools } from '@/components/ai/AgoraAiTools';
 import { FloatingAiCta } from '@/components/ai/FloatingAiCta';
@@ -1744,6 +1745,10 @@ function RollCallView({
   classType: 'CLASS' | 'CLASS_ARM';
   students: StudentWithEnrollment[];
 }) {
+  const { policies } = useRuntimePolicies();
+  const statusOptions = policies.attendanceStatusOptions?.length
+    ? policies.attendanceStatusOptions
+    : ['PRESENT', 'LATE', 'ABSENT'];
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [scanCode, setScanCode] = useState('');
 
@@ -1967,42 +1972,55 @@ function RollCallView({
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleMarkAttendance(student.enrollment!.id, 'PRESENT')}
-                            className={cn(
-                              "p-2 rounded-full transition-all",
-                              status === 'PRESENT'
-                                ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                                : "text-light-text-muted dark:text-dark-text-muted hover:bg-gray-100 dark:hover:bg-dark-surface"
-                            )}
-                            title="Present"
-                          >
-                            <CheckCircle2 className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleMarkAttendance(student.enrollment!.id, 'LATE')}
-                            className={cn(
-                              "p-2 rounded-full transition-all",
-                              status === 'LATE'
-                                ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-                                : "text-light-text-muted dark:text-dark-text-muted hover:bg-gray-100 dark:hover:bg-dark-surface"
-                            )}
-                            title="Late"
-                          >
-                            <Clock className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => handleMarkAttendance(student.enrollment!.id, 'ABSENT')}
-                            className={cn(
-                              "p-2 rounded-full transition-all",
-                              status === 'ABSENT'
-                                ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                                : "text-light-text-muted dark:text-dark-text-muted hover:bg-gray-100 dark:hover:bg-dark-surface"
-                            )}
-                            title="Absent"
-                          >
-                            <XCircle className="h-5 w-5" />
-                          </button>
+                          {statusOptions.map((opt) => {
+                            const styles: Record<string, { active: string; icon: React.ReactNode; title: string }> = {
+                              PRESENT: {
+                                active: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+                                icon: <CheckCircle2 className="h-5 w-5" />,
+                                title: 'Present',
+                              },
+                              LATE: {
+                                active: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+                                icon: <Clock className="h-5 w-5" />,
+                                title: 'Late',
+                              },
+                              ABSENT: {
+                                active: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+                                icon: <XCircle className="h-5 w-5" />,
+                                title: 'Absent',
+                              },
+                              EXCUSED: {
+                                active: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+                                icon: <CheckSquare className="h-5 w-5" />,
+                                title: 'Excused',
+                              },
+                              SICK: {
+                                active: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+                                icon: <AlertCircle className="h-5 w-5" />,
+                                title: 'Sick',
+                              },
+                            };
+                            const meta = styles[opt] ?? {
+                              active: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
+                              icon: <CheckSquare className="h-5 w-5" />,
+                              title: opt.charAt(0) + opt.slice(1).toLowerCase(),
+                            };
+                            return (
+                              <button
+                                key={opt}
+                                onClick={() => handleMarkAttendance(student.enrollment!.id, opt)}
+                                className={cn(
+                                  'p-2 rounded-full transition-all',
+                                  status === opt
+                                    ? meta.active
+                                    : 'text-light-text-muted dark:text-dark-text-muted hover:bg-gray-100 dark:hover:bg-dark-surface'
+                                )}
+                                title={meta.title}
+                              >
+                                {meta.icon}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     );

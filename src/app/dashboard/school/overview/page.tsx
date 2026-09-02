@@ -7,13 +7,16 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { AnalyticsChart } from '@/components/dashboard/AnalyticsChart';
 import { SchoolSetupChecklist } from '@/components/dashboard/SchoolSetupChecklist';
+import { LoisInboxCard } from '@/components/ai/LoisInboxCard';
+import { LoisFocus } from '@/components/ai/LoisFocus';
+import { useSchoolSetupProgress } from '@/hooks/useSchoolSetupProgress';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import { GraduationCap, Users, BookOpen, UserPlus, Loader2, AlertCircle, Calendar, XCircle, Upload, Settings } from 'lucide-react';
 import { ImageCropModal } from '@/components/ui/ImageCropModal';
 import { useRouter } from 'next/navigation';
-import { useGetSchoolAdminDashboardQuery, useGetActiveSessionQuery, useGetMySchoolQuery, useEndTermMutation, useUploadSchoolLogoMutation } from '@/lib/store/api/schoolAdminApi';
+import { useGetSchoolAdminDashboardQuery, useGetSchoolAdminDashboardChartsQuery, useGetActiveSessionQuery, useGetMySchoolQuery, useEndTermMutation, useUploadSchoolLogoMutation } from '@/lib/store/api/schoolAdminApi';
 import type { SchoolAdmin } from '@/lib/store/api/schoolsApi';
 import { EndTermModal, EditTermDatesModal } from '@/components/modals';
 import type { Term } from '@/lib/store/api/schoolAdminApi';
@@ -106,16 +109,30 @@ export default function AdminOverviewPage() {
   const { user } = useAuth();
 
   // Get school type and terminology
-  const { currentType } = useSchoolType();
-
-  const { data, isLoading, error, refetch } = useGetSchoolAdminDashboardQuery(
-    currentType || undefined
-  );
-  const terminology = getTerminology(currentType);
+  const { currentType, availableTypes } = useSchoolType();
 
   // Get school and active session
   const { data: schoolResponse, refetch: refetchSchool, isLoading: isLoadingSchool } = useGetMySchoolQuery();
   const school = schoolResponse?.data;
+
+  // Wait until school type is known so we do not fetch unfiltered then refetch.
+  const typeReady = !!currentType || (!isLoadingSchool && availableTypes.length === 0);
+
+  const { data, isLoading, error, refetch } = useGetSchoolAdminDashboardQuery(
+    currentType || undefined,
+    { skip: !typeReady }
+  );
+  const {
+    data: chartsResponse,
+    isLoading: isLoadingCharts,
+    isError: chartsError,
+    refetch: refetchCharts,
+  } = useGetSchoolAdminDashboardChartsQuery(
+    currentType || undefined,
+    { skip: !typeReady }
+  );
+  const terminology = getTerminology(currentType);
+  const isSummaryLoading = isLoadingSchool || !typeReady || isLoading;
 
   // Get user's name for welcome message
   // If school_owner, show school name; if other principal, use principal's name; otherwise user's first name
@@ -155,13 +172,14 @@ export default function AdminOverviewPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { data: activeSessionResponse, refetch: refetchActiveSession, isLoading: isLoadingSession } = useGetActiveSessionQuery(
     { schoolId: schoolId!, schoolType: currentType || undefined },
-    { skip: !schoolId }
+    { skip: !schoolId || !typeReady }
   );
   const activeSession = activeSessionResponse?.data;
 
   const [endTerm, { isLoading: isEndingTerm }] = useEndTermMutation();
   const [showEndTermModal, setShowEndTermModal] = useState(false);
   const [editingTerm, setEditingTerm] = useState<Term | null>(null);
+  const { steps: setupSteps, isLoading: isLoadingSetup } = useSchoolSetupProgress();
 
   // Create preview URL when file is selected
   useEffect(() => {
@@ -258,6 +276,7 @@ export default function AdminOverviewPage() {
       setShowEndTermModal(false);
       refetchActiveSession();
       refetch();
+      refetchCharts();
     } catch (error: any) {
       const errorMessage = getErrorMessage(error);
       toast.error(errorMessage || `Failed to end ${terminology.periodSingular.toLowerCase()}`);
@@ -268,13 +287,24 @@ export default function AdminOverviewPage() {
   const isHeaderDestructive = buttonConfig.variant === 'danger';
   const HeaderActionIcon = buttonConfig.icon;
 
+  const firstSetupStep = setupSteps[0];
+  const shouldNudgeStartSession =
+    !isLoadingSetup &&
+    !isLoadingSession &&
+    !isLoadingSchool &&
+    !isEndingTerm &&
+    firstSetupStep?.id === 'session' &&
+    !firstSetupStep.done;
+
   // Extract dashboard data
   const dashboard = data?.data;
+  const charts = chartsResponse?.data;
   const stats = dashboard?.stats;
-  const growthTrends = dashboard?.growthTrends || [];
-  const studentDistribution = dashboard?.studentDistribution || [];
-  const weeklyActivity = dashboard?.weeklyActivity || [];
+  const growthTrends = charts?.growthTrends || [];
+  const studentDistribution = charts?.studentDistribution || [];
+  const weeklyActivity = charts?.weeklyActivity || [];
   const recentStudents = dashboard?.recentStudents || [];
+  const chartsPending = typeReady && !chartsError && (isLoadingCharts || !charts);
 
   return (
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
@@ -284,7 +314,7 @@ export default function AdminOverviewPage() {
           <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-4 w-full">
             <div className="order-1 flex-1 min-w-[200px]">
               <h1 className="font-medium lg:font-semibold text-xl lg:text-2xl text-light-text-primary dark:text-white leading-tight">
-                Welcome back, {userName}
+                Welcome, {userName}
               </h1>
 
               {hasActiveTerm && activeSession?.term ? (
@@ -437,32 +467,34 @@ export default function AdminOverviewPage() {
 
             <div className="order-3 lg:order-2 w-full lg:w-auto flex justify-start lg:justify-end">
               <PermissionGate resource={PermissionResource.SESSIONS} type={PermissionType.WRITE}>
-                <Button
-                  variant={isHeaderDestructive ? 'ghost' : buttonConfig.variant}
-                  isFlat={isHeaderDestructive}
-                  size="sm"
-                  onClick={buttonConfig.onClick}
-                  disabled={isEndingTerm || isLoadingSession || isLoadingSchool}
-                  className={cn(
-                    'flex items-center gap-2 whitespace-nowrap flex-shrink-0 px-2 py-2 min-w-[120px] transition-all',
-                    isHeaderDestructive &&
-                      'border border-red-600/45 dark:border-red-500/50 text-red-600 dark:text-red-400 bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] shadow-none hover:bg-red-500/10 dark:hover:bg-red-500/15'
-                  )}
-                >
-                  {isEndingTerm || isLoadingSession || isLoadingSchool || !schoolId ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin text-current" />
-                      {isEndingTerm ? `Ending...` : `Checking...`}
-                    </>
-                  ) : (
-                    <>
-                      {isHeaderDestructive ? (
-                        <HeaderActionIcon className="h-4 w-4 shrink-0" aria-hidden />
-                      ) : null}
-                      {buttonConfig.text}
-                    </>
-                  )}
-                </Button>
+                <span className={cn(shouldNudgeStartSession && 'overview-cta-nudge')}>
+                  <Button
+                    variant={isHeaderDestructive ? 'ghost' : buttonConfig.variant}
+                    isFlat={isHeaderDestructive}
+                    size="sm"
+                    onClick={buttonConfig.onClick}
+                    disabled={isEndingTerm || isLoadingSession || isLoadingSchool}
+                    className={cn(
+                      'flex items-center gap-2 whitespace-nowrap flex-shrink-0 px-2 py-2 min-w-[120px] transition-all',
+                      isHeaderDestructive &&
+                        'border border-red-600/45 dark:border-red-500/50 text-red-600 dark:text-red-400 bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] shadow-none hover:bg-red-500/10 dark:hover:bg-red-500/15'
+                    )}
+                  >
+                    {isEndingTerm || isLoadingSession || isLoadingSchool || !schoolId ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin text-current" />
+                        {isEndingTerm ? `Ending...` : `Checking...`}
+                      </>
+                    ) : (
+                      <>
+                        {isHeaderDestructive ? (
+                          <HeaderActionIcon className="h-4 w-4 shrink-0" aria-hidden />
+                        ) : null}
+                        {buttonConfig.text}
+                      </>
+                    )}
+                  </Button>
+                </span>
               </PermissionGate>
             </div>
 
@@ -608,7 +640,10 @@ export default function AdminOverviewPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => refetch()}
+                    onClick={() => {
+                      refetch();
+                      refetchCharts();
+                    }}
                     className="mt-2"
                   >
                     Try Again
@@ -620,11 +655,24 @@ export default function AdminOverviewPage() {
         }
 
         {/* Setup guide — quiet, dismissible; does not replace existing dashboard */}
-        {!isLoading && !isLoadingSchool && !error && <SchoolSetupChecklist />}
+        {!isSummaryLoading && !error && <SchoolSetupChecklist />}
+
+        {schoolId && (
+          <LoisFocus
+            context={{
+              type: 'school',
+              schoolId,
+              label: school?.name || 'School overview',
+              path: '/dashboard/school/overview',
+            }}
+          />
+        )}
+
+        {!isSummaryLoading && !error && schoolId && <LoisInboxCard schoolId={schoolId} />}
 
         {/* Loading State */}
         {
-          (isLoading || isLoadingSchool) && (
+          isSummaryLoading && (
             <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
@@ -638,7 +686,7 @@ export default function AdminOverviewPage() {
 
         {/* Dashboard Content */}
         {
-          !isLoading && !isLoadingSchool && !error && stats && (
+          !isSummaryLoading && !error && stats && (
             <>
               {/* Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6">
@@ -689,6 +737,7 @@ export default function AdminOverviewPage() {
                   type="area"
                   dataKeys={['students', 'teachers', 'courses']}
                   colors={['#3b82f6', '#10b981', '#a855f7']}
+                  isLoading={chartsPending}
                 />
                 <AnalyticsChart
                   title="Student Distribution"
@@ -697,6 +746,7 @@ export default function AdminOverviewPage() {
                   type="donut"
                   dataKeys={['students']}
                   colors={['#3b82f6', '#10b981', '#f59e0b', '#ef4444']}
+                  isLoading={chartsPending}
                 />
               </div>
 
@@ -709,6 +759,7 @@ export default function AdminOverviewPage() {
                   type="area"
                   dataKeys={['admissions', 'transfers']}
                   colors={['#3b82f6', '#10b981']}
+                  isLoading={chartsPending}
                 />
               </div>
 

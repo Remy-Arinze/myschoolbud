@@ -23,8 +23,8 @@ import {
   type Term,
 } from '@/lib/store/api/schoolAdminApi';
 import { useStudentSchoolType } from '@/hooks/useStudentDashboard';
+import { useWorkingDays } from '@/hooks/useRuntimePolicies';
 import {
-  DEFAULT_WORKING_DAYS,
   buildHalfTermRange,
   holidayRangesFromEvents,
   isInstructionalDay,
@@ -75,6 +75,7 @@ export default function StudentCalendarPage() {
 
   // Get student's school and school type from enrollment
   const { schoolType: currentType, schoolId } = useStudentSchoolType();
+  const workingDays = useWorkingDays();
   const { data: classesResponse } = useGetMyStudentClassesQuery();
   const classes = classesResponse?.data || [];
   const classData = useMemo(() => classes[0] || null, [classes]);
@@ -316,7 +317,7 @@ export default function StudentCalendarPage() {
         dates.forEach((date) => {
           if (
             !isInstructionalDay(date, {
-              workingDays: DEFAULT_WORKING_DAYS,
+              workingDays,
               termRange,
               nonInstructionalRanges,
             })
@@ -367,7 +368,7 @@ export default function StudentCalendarPage() {
     }
 
     return combined;
-  }, [events, timetable, dateRange, activeSession, schoolId, allSessions, currentType]);
+  }, [events, timetable, dateRange, activeSession, schoolId, allSessions, currentType, workingDays]);
 
   // Filter events for the selected date
   const dayEvents = useMemo(() => {

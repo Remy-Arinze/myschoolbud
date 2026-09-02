@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useGetPublicSchoolQuery, useSubmitAdmissionApplicationMutation } from '@/lib/store/api/publicApi';
+import { useGetPublicSchoolQuery, useGetAdmissionConfigQuery, useSubmitAdmissionApplicationMutation } from '@/lib/store/api/publicApi';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -18,6 +18,7 @@ export default function PublicAdmissionPage() {
   const schoolId = params.schoolId as string;
 
   const { data: school, isLoading: isLoadingSchool, isError } = useGetPublicSchoolQuery(schoolId);
+  const { data: admissionConfig } = useGetAdmissionConfigQuery(schoolId);
   const [submitApplication, { isLoading: isSubmitting }] = useSubmitAdmissionApplicationMutation();
 
   const [formData, setFormData] = useState({
@@ -35,9 +36,27 @@ export default function PublicAdmissionPage() {
     parentPhone: '',
     parentEmail: '',
     parentRelationship: '',
+    bloodGroup: '',
+    allergies: '',
+    medications: '',
+    emergencyContact: '',
+    emergencyContactPhone: '',
+    medicalNotes: '',
   });
 
   const [submitted, setSubmitted] = useState(false);
+
+  type FieldCfg = { key: string; label: string; required: boolean; visible: boolean };
+  const fields = (admissionConfig?.formFields as FieldCfg[] | undefined) ?? [];
+  const fieldByKey = Object.fromEntries(fields.map((f) => [f.key, f]));
+  const show = (key: string) => !fieldByKey[key] || fieldByKey[key].visible !== false;
+  const req = (key: string, fallback = false) => fieldByKey[key]?.required ?? fallback;
+  const label = (key: string, fallback: string) => fieldByKey[key]?.label ?? fallback;
+
+  const applicationsOpen = admissionConfig?.applicationsOpen !== false;
+  const deadlinePassed =
+    !!admissionConfig?.applicationDeadline &&
+    new Date() > new Date(admissionConfig.applicationDeadline);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,6 +117,21 @@ export default function PublicAdmissionPage() {
     );
   }
 
+  if (!applicationsOpen || deadlinePassed) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
+        <AlertCircle className="h-12 w-12 text-amber-500 mb-4" />
+        <h1 className="text-xl font-bold mb-2">Applications closed</h1>
+        <p className="text-gray-600 mb-6">
+          {deadlinePassed
+            ? 'The application deadline for this school has passed.'
+            : 'This school is not currently accepting applications.'}
+        </p>
+        <Button onClick={() => router.push('/')}>Go to Homepage</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
@@ -123,28 +157,36 @@ export default function PublicAdmissionPage() {
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold border-b pb-2">Personal Information</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {show('firstName') && (
                   <Input
-                    label="First Name *"
-                    required
+                    label={`${label('firstName', 'First Name')}${req('firstName', true) ? ' *' : ''}`}
+                    required={req('firstName', true)}
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   />
+                  )}
+                  {show('lastName') && (
                   <Input
-                    label="Last Name *"
-                    required
+                    label={`${label('lastName', 'Last Name')}${req('lastName', true) ? ' *' : ''}`}
+                    required={req('lastName', true)}
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   />
+                  )}
+                  {show('middleName') && (
                   <Input
-                    label="Middle Name"
+                    label={`${label('middleName', 'Middle Name')}${req('middleName') ? ' *' : ''}`}
+                    required={req('middleName')}
                     value={formData.middleName}
                     onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
                   />
+                  )}
+                  {show('gender') && (
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Gender *</label>
+                    <label className="text-sm font-medium">{label('gender', 'Gender')}{req('gender', true) ? ' *' : ''}</label>
                     <select
                       className="w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-sm"
-                      required
+                      required={req('gender', true)}
                       value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                     >
@@ -153,26 +195,33 @@ export default function PublicAdmissionPage() {
                       <option value="FEMALE">Female</option>
                     </select>
                   </div>
+                  )}
+                  {show('dateOfBirth') && (
                   <DatePicker
-                    label="Date of Birth *"
-                    required
+                    label={`${label('dateOfBirth', 'Date of Birth')}${req('dateOfBirth', true) ? ' *' : ''}`}
+                    required={req('dateOfBirth', true)}
                     value={formData.dateOfBirth}
                     onChange={(val) => setFormData({ ...formData, dateOfBirth: val })}
                   />
+                  )}
+                  {show('nationality') && (
                   <Input
-                    label="Nationality *"
-                    required
+                    label={`${label('nationality', 'Nationality')}${req('nationality', true) ? ' *' : ''}`}
+                    required={req('nationality', true)}
                     placeholder="e.g. Nigerian"
                     value={formData.nationality}
                     onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
                   />
+                  )}
+                  {show('state') && (
                   <Input
-                    label="State of Origin *"
-                    required
+                    label={`${label('state', 'State of Origin')}${req('state', true) ? ' *' : ''}`}
+                    required={req('state', true)}
                     placeholder="e.g. Lagos"
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                   />
+                  )}
                 </div>
               </div>
 
@@ -180,59 +229,140 @@ export default function PublicAdmissionPage() {
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold border-b pb-2">Contact Information</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {show('email') && (
                   <Input
-                    label="Email Address *"
+                    label={`${label('email', 'Email Address')}${req('email', true) ? ' *' : ''}`}
                     type="email"
-                    required
+                    required={req('email', true)}
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
+                  )}
+                  {show('phone') && (
                   <PhoneInput
-                    label="Phone Number"
+                    label={`${label('phone', 'Phone Number')}${req('phone') ? ' *' : ''}`}
+                    required={req('phone')}
                     value={formData.phone}
                     onChange={(val) => setFormData({ ...formData, phone: val })}
                   />
+                  )}
+                  {show('address') && (
                   <div className="sm:col-span-2">
                     <Input
-                      label="Home Address"
+                      label={`${label('address', 'Home Address')}${req('address') ? ' *' : ''}`}
+                      required={req('address')}
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     />
                   </div>
+                  )}
                 </div>
               </div>
 
-              {/* Parent/Guardian Information */}
+              {(show('parentName') || show('parentPhone') || show('parentEmail') || show('parentRelationship')) && (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold border-b pb-2">Parent/Guardian Information</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {show('parentName') && (
                   <Input
-                    label="Parent Full Name *"
-                    required
+                    label={`${label('parentName', 'Parent Full Name')}${req('parentName', true) ? ' *' : ''}`}
+                    required={req('parentName', true)}
                     value={formData.parentName}
                     onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
                   />
+                  )}
+                  {show('parentRelationship') && (
                   <Input
-                    label="Relationship *"
-                    required
+                    label={`${label('parentRelationship', 'Relationship')}${req('parentRelationship', true) ? ' *' : ''}`}
+                    required={req('parentRelationship', true)}
                     placeholder="e.g. Father, Mother"
                     value={formData.parentRelationship}
                     onChange={(e) => setFormData({ ...formData, parentRelationship: e.target.value })}
                   />
+                  )}
+                  {show('parentPhone') && (
                   <PhoneInput
-                    label="Parent Phone Number *"
-                    required
+                    label={`${label('parentPhone', 'Parent Phone Number')}${req('parentPhone', true) ? ' *' : ''}`}
+                    required={req('parentPhone', true)}
                     value={formData.parentPhone}
                     onChange={(val) => setFormData({ ...formData, parentPhone: val })}
                   />
+                  )}
+                  {show('parentEmail') && (
                   <Input
-                    label="Parent Email Address"
+                    label={`${label('parentEmail', 'Parent Email Address')}${req('parentEmail') ? ' *' : ''}`}
                     type="email"
+                    required={req('parentEmail')}
                     value={formData.parentEmail}
                     onChange={(e) => setFormData({ ...formData, parentEmail: e.target.value })}
                   />
+                  )}
                 </div>
               </div>
+              )}
+
+              {(show('bloodGroup') ||
+                show('allergies') ||
+                show('medications') ||
+                show('emergencyContact') ||
+                show('emergencyContactPhone') ||
+                show('medicalNotes')) && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold border-b pb-2">Health Information</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {show('bloodGroup') && (
+                  <Input
+                    label={`${label('bloodGroup', 'Blood Group')}${req('bloodGroup') ? ' *' : ''}`}
+                    required={req('bloodGroup')}
+                    value={formData.bloodGroup}
+                    onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                  />
+                  )}
+                  {show('allergies') && (
+                  <Input
+                    label={`${label('allergies', 'Allergies')}${req('allergies') ? ' *' : ''}`}
+                    required={req('allergies')}
+                    value={formData.allergies}
+                    onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+                  />
+                  )}
+                  {show('medications') && (
+                  <Input
+                    label={`${label('medications', 'Medications')}${req('medications') ? ' *' : ''}`}
+                    required={req('medications')}
+                    value={formData.medications}
+                    onChange={(e) => setFormData({ ...formData, medications: e.target.value })}
+                  />
+                  )}
+                  {show('emergencyContact') && (
+                  <Input
+                    label={`${label('emergencyContact', 'Emergency Contact')}${req('emergencyContact') ? ' *' : ''}`}
+                    required={req('emergencyContact')}
+                    value={formData.emergencyContact}
+                    onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                  />
+                  )}
+                  {show('emergencyContactPhone') && (
+                  <PhoneInput
+                    label={`${label('emergencyContactPhone', 'Emergency Contact Phone')}${req('emergencyContactPhone') ? ' *' : ''}`}
+                    required={req('emergencyContactPhone')}
+                    value={formData.emergencyContactPhone}
+                    onChange={(val) => setFormData({ ...formData, emergencyContactPhone: val })}
+                  />
+                  )}
+                  {show('medicalNotes') && (
+                  <div className="sm:col-span-2">
+                    <Input
+                      label={`${label('medicalNotes', 'Medical Notes')}${req('medicalNotes') ? ' *' : ''}`}
+                      required={req('medicalNotes')}
+                      value={formData.medicalNotes}
+                      onChange={(e) => setFormData({ ...formData, medicalNotes: e.target.value })}
+                    />
+                  </div>
+                  )}
+                </div>
+              </div>
+              )}
 
               <div className="pt-6">
                 <Button 

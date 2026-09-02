@@ -68,6 +68,25 @@ function writeFlag(key: string, value: boolean) {
   }
 }
 
+/** Missing key means collapsed — the checklist should not own the overview on first visit. */
+function readCollapsed(key: string): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    return localStorage.getItem(key) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+function writeCollapsed(key: string, collapsed: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, collapsed ? '1' : '0');
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
 function buildSteps(
   progress: SchoolSetupProgress | undefined,
   terminology: ReturnType<typeof getTerminology>
@@ -192,14 +211,14 @@ function buildSteps(
 }
 
 export function useSchoolSetupProgress() {
-  const { currentType } = useSchoolType();
+  const { currentType, availableTypes } = useSchoolType();
   const terminology = getTerminology(currentType);
   const { data: schoolResponse } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
 
   const { data, isLoading, isFetching, error } = useGetSetupProgressQuery(
     currentType || undefined,
-    { skip: !schoolId }
+    { skip: !schoolId || (!currentType && availableTypes.length > 0) }
   );
 
   const progress = data?.data;
@@ -215,42 +234,15 @@ export function useSchoolSetupProgress() {
 
   const storageScope = currentType || null;
   const [dismissed, setDismissed] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [hydrated, setHydrated] = useState(false);
-  const [defaultsApplied, setDefaultsApplied] = useState(false);
 
   useEffect(() => {
     if (!schoolId) return;
     setDismissed(readFlag(dismissKey(schoolId, storageScope)));
-    setCollapsed(readFlag(collapsedKey(schoolId, storageScope)));
+    setCollapsed(readCollapsed(collapsedKey(schoolId, storageScope)));
     setHydrated(true);
-    setDefaultsApplied(false);
   }, [schoolId, storageScope]);
-
-  // First load only: mostly-done schools start collapsed so Overview stays calm
-  useEffect(() => {
-    if (!hydrated || !schoolId || defaultsApplied || !progress) return;
-    const key = collapsedKey(schoolId, storageScope);
-    let hasPreference = false;
-    try {
-      hasPreference = localStorage.getItem(key) !== null;
-    } catch {
-      hasPreference = false;
-    }
-    if (!hasPreference && completedCount >= Math.ceil(totalCount * 0.7)) {
-      setCollapsed(true);
-      writeFlag(key, true);
-    }
-    setDefaultsApplied(true);
-  }, [
-    hydrated,
-    schoolId,
-    defaultsApplied,
-    progress,
-    completedCount,
-    totalCount,
-    storageScope,
-  ]);
 
   const dismiss = useCallback(() => {
     if (!schoolId) return;
@@ -261,7 +253,7 @@ export function useSchoolSetupProgress() {
   const restore = useCallback(() => {
     if (!schoolId) return;
     writeFlag(dismissKey(schoolId, storageScope), false);
-    writeFlag(collapsedKey(schoolId, storageScope), false);
+    writeCollapsed(collapsedKey(schoolId, storageScope), false);
     setDismissed(false);
     setCollapsed(false);
   }, [schoolId, storageScope]);
@@ -270,14 +262,14 @@ export function useSchoolSetupProgress() {
     if (!schoolId) return;
     setCollapsed((prev) => {
       const next = !prev;
-      writeFlag(collapsedKey(schoolId, storageScope), next);
+      writeCollapsed(collapsedKey(schoolId, storageScope), next);
       return next;
     });
   }, [schoolId, storageScope]);
 
   const expand = useCallback(() => {
     if (!schoolId) return;
-    writeFlag(collapsedKey(schoolId, storageScope), false);
+    writeCollapsed(collapsedKey(schoolId, storageScope), false);
     setCollapsed(false);
   }, [schoolId, storageScope]);
 

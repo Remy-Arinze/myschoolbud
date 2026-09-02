@@ -13,7 +13,7 @@
  */
 
 import { useMemo, useCallback, useState } from 'react';
-import { getScheduleForSchoolType, type SchedulePeriod } from '@/lib/utils/nigerianSchoolSchedule';
+import { getScheduleFromBellTemplates, type SchedulePeriod } from '@/lib/utils/nigerianSchoolSchedule';
 import type { 
   TimetablePeriod, 
   DayOfWeek,
@@ -21,12 +21,13 @@ import type {
   TeacherWithWorkload,
   WorkloadStatus,
 } from '@/lib/store/api/schoolAdminApi';
+import { DEFAULT_WORKING_DAYS } from '@/lib/calendar/instructionalDays';
 
 // ============================================
 // TYPES
 // ============================================
 
-const DAYS: DayOfWeek[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
+const FALLBACK_DAYS: DayOfWeek[] = [...DEFAULT_WORKING_DAYS];
 
 // Core subjects that should appear more frequently
 const CORE_SUBJECTS = ['english', 'mathematics', 'math', 'basic science', 'science'];
@@ -91,6 +92,9 @@ export interface UseAutoGenerateWithTeachersOptions {
   existingPeriods: TimetablePeriod[];
   maxSameSubjectPerDay?: number;
   freePeriodsPerDay?: number;
+  workingDays?: DayOfWeek[];
+  bellScheduleTemplates?: Array<{ schoolType: string; periods: unknown; isDefault?: boolean }>;
+  maxPeriodsPerTeacherPerDay?: number;
 }
 
 export interface UseAutoGenerateWithTeachersReturn {
@@ -151,9 +155,16 @@ export function useAutoGenerateWithTeachers({
   existingPeriods,
   maxSameSubjectPerDay = 2,
   freePeriodsPerDay = 1,
+  workingDays,
+  bellScheduleTemplates,
+  maxPeriodsPerTeacherPerDay = 6,
 }: UseAutoGenerateWithTeachersOptions): UseAutoGenerateWithTeachersReturn {
   
-  const schedule = useMemo(() => getScheduleForSchoolType(schoolType), [schoolType]);
+  const DAYS = workingDays?.length ? workingDays : FALLBACK_DAYS;
+  const schedule = useMemo(
+    () => getScheduleFromBellTemplates(schoolType, bellScheduleTemplates),
+    [schoolType, bellScheduleTemplates],
+  );
   
   const items = useMemo(() => {
     return schoolType === 'TERTIARY' ? courses : subjects;
@@ -186,6 +197,7 @@ export function useAutoGenerateWithTeachers({
     
     // Track teacher workloads during generation
     const workloadTracker = new Map<string, number>();
+    const dailyLoadTracker = new Map<string, number>();
     
     const hasExistingTimetable = existingPeriods.length > 0;
     
@@ -208,6 +220,8 @@ export function useAutoGenerateWithTeachers({
       // Track existing teacher assignments
       if (p.teacherId) {
         workloadTracker.set(p.teacherId, (workloadTracker.get(p.teacherId) || 0) + 1);
+        const dailyKey = `${p.teacherId}:${p.dayOfWeek}`;
+        dailyLoadTracker.set(dailyKey, (dailyLoadTracker.get(dailyKey) || 0) + 1);
       }
     });
     
@@ -402,7 +416,14 @@ export function useAutoGenerateWithTeachers({
               periodData.hasTeacherWarning = true;
               periodData.warningMessage = `No teachers assigned to ${selected.name}`;
             } else {
-              const selectedTeacher = selectLeastLoadedTeacher(teachers, workloadTracker);
+              const selectedTeacher = selectLeastLoadedTeacher(
+                teachers.filter((t) => {
+                  const dailyKey = `${t.id}:${day}`;
+                  const daily = dailyLoadTracker.get(dailyKey) || 0;
+                  return daily < maxPeriodsPerTeacherPerDay;
+                }),
+                workloadTracker,
+              );
               
               if (selectedTeacher) {
                 periodData.teacherId = selectedTeacher.id;
@@ -413,14 +434,23 @@ export function useAutoGenerateWithTeachers({
                   selectedTeacher.id, 
                   (workloadTracker.get(selectedTeacher.id) || 0) + 1
                 );
+                const dailyKey = `${selectedTeacher.id}:${day}`;
+                dailyLoadTracker.set(dailyKey, (dailyLoadTracker.get(dailyKey) || 0) + 1);
                 
                 // Check if overloaded
                 const totalLoad = (selectedTeacher.periodCount || 0) + 
                                   (workloadTracker.get(selectedTeacher.id) || 0);
-                if (totalLoad > WORKLOAD_THRESHOLDS.HIGH) {
+                const dailyLoad = dailyLoadTracker.get(dailyKey) || 0;
+                if (dailyLoad >= maxPeriodsPerTeacherPerDay) {
+                  periodData.hasTeacherWarning = true;
+                  periodData.warningMessage = `${selectedTeacher.firstName} ${selectedTeacher.lastName} reached the daily period cap (${maxPeriodsPerTeacherPerDay})`;
+                } else if (totalLoad > WORKLOAD_THRESHOLDS.HIGH) {
                   periodData.hasTeacherWarning = true;
                   periodData.warningMessage = `${selectedTeacher.firstName} ${selectedTeacher.lastName} has ${totalLoad} periods (high load)`;
                 }
+              } else if (teachers.length > 0) {
+                periodData.hasTeacherWarning = true;
+                periodData.warningMessage = `All teachers for ${selected.name} are at the daily period cap`;
               }
             }
           }
@@ -456,7 +486,7 @@ export function useAutoGenerateWithTeachers({
   }, [
     schedule, items, schoolType, existingPeriods, 
     maxSameSubjectPerDay, freePeriodsPerDay, 
-    requiresTeacherAssignment, subjectMap
+    requiresTeacherAssignment, subjectMap, DAYS, maxPeriodsPerTeacherPerDay,
   ]);
 
   /**

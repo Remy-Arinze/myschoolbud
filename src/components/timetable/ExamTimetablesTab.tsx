@@ -12,6 +12,7 @@ import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { getTerminology } from '@/lib/utils/terminology';
+import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import {
   useGetMySchoolQuery,
   useGetActiveSessionQuery,
@@ -58,6 +59,7 @@ const EMPTY_FORM = {
 export function ExamTimetablesTab() {
   const { currentType } = useSchoolType();
   const terminology = getTerminology(currentType);
+  const { policies } = useRuntimePolicies();
 
   const { data: schoolResponse, isLoading: isLoadingSchool } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
@@ -148,6 +150,17 @@ export function ExamTimetablesTab() {
       return;
     }
     const cls = classes.find((c: Class) => c.id === form.classId);
+    const room = rooms.find((r: { id: string; capacity?: number; name: string }) => r.id === form.roomId);
+    if (
+      policies.timetable.roomCapacityWarningEnabled &&
+      room?.capacity &&
+      cls &&
+      cls.studentsCount > room.capacity
+    ) {
+      toast(`Room ${room.name} holds ${room.capacity} but this class has ${cls.studentsCount} students.`, {
+        icon: '⚠️',
+      });
+    }
     try {
       await createSlot({
         schoolId,
@@ -509,9 +522,9 @@ export function ExamTimetablesTab() {
                 onChange={(e) => setForm((f) => ({ ...f, roomId: e.target.value }))}
               >
                 <option value="">Not set</option>
-                {rooms.map((r: { id: string; name: string }) => (
+                {rooms.map((r: { id: string; name: string; capacity?: number }) => (
                   <option key={r.id} value={r.id}>
-                    {r.name}
+                    {r.name}{r.capacity ? ` (${r.capacity})` : ''}
                   </option>
                 ))}
               </Select>

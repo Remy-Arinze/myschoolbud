@@ -28,7 +28,8 @@ import {
 } from '@/lib/store/api/schoolAdminApi';
 import { useStudentSchoolType, getStudentTerminology } from '@/hooks/useStudentDashboard';
 import { useFileDownload } from '@/hooks/useFileDownload';
-import { format } from 'date-fns';
+import { percentageToDisplayGrade, weightedSubjectPercentage } from '@/lib/grading/gradeScale';
+import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 
 interface Grade {
   id: string;
@@ -89,27 +90,25 @@ const gradeTypeShortLabels: Record<string, string> = {
   EXAM: 'Exam',
 };
 
-const getLetterGrade = (percentage: number): string => {
-  if (percentage >= 70) return 'A';
-  if (percentage >= 60) return 'B';
-  if (percentage >= 50) return 'C';
-  if (percentage >= 40) return 'D';
-  return 'F';
-};
-
-const getGradeColor = (grade: string) => {
-  switch (grade) {
-    case 'A':
-      return 'border border-blue-500 text-blue-600 dark:text-blue-400';
-    case 'B':
-      return 'border border-blue-400 text-blue-500 dark:text-blue-300';
-    case 'C':
-      return 'border border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-400';
-    case 'D':
-      return 'border border-orange-200 text-orange-600 dark:text-orange-400';
-    default:
-      return 'border border-red-200 text-red-600 dark:text-red-400';
+const getGradeColor = (grade: string, passing = true) => {
+  if (!passing) {
+    return 'border border-red-200 text-red-600 dark:text-red-400';
   }
+  if (grade.startsWith('A') || grade === 'B2' || grade === 'B3') {
+    return 'border border-blue-500 text-blue-600 dark:text-blue-400';
+  }
+  if (grade.startsWith('C') || grade === 'B') {
+    return 'border border-blue-400 text-blue-500 dark:text-blue-300';
+  }
+  if (grade === 'D7' || grade === 'D' || grade === 'E8') {
+    return 'border border-orange-200 text-orange-600 dark:text-orange-400';
+  }
+  if (grade === 'F9' || grade === 'F' || grade.includes('%')) {
+    return passing
+      ? 'border border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-400'
+      : 'border border-red-200 text-red-600 dark:text-red-400';
+  }
+  return 'border border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-400';
 };
 
 const getTypeColor = (type: string) => {
@@ -129,6 +128,11 @@ export default function StudentResultsPage() {
   const [selectedTermId, setSelectedTermId] = useState<string>('');
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
   const [gradeTypeFilter, setGradeTypeFilter] = useState<GradeTypeFilter>('ALL');
+  const { policies } = useRuntimePolicies();
+  const gradeScale = policies.grading.gradeScaleType;
+  const passMark = policies.grading.passMark;
+  const caWeight = policies.grading.defaultCaWeight;
+  const examWeight = policies.grading.defaultExamWeight;
 
   // Get school type and school ID from student's enrollment (not localStorage)
   const { schoolType: currentType, schoolId, isLoading: isLoadingSchoolType } = useStudentSchoolType();
@@ -248,12 +252,18 @@ export default function StudentResultsPage() {
       let termTotalMaxScore = 0;
 
       termResult.subjects.forEach((subject) => {
-        if (subject.totalMaxScore > 0) {
+        const caMax = subject.caMaxScore + subject.testMaxScore;
+        const caScore = subject.caScore + subject.testScore;
+        const caPct = caMax > 0 ? (caScore / caMax) * 100 : null;
+        const examPct = subject.examMaxScore > 0 ? (subject.examScore / subject.examMaxScore) * 100 : null;
+        if (caPct != null || examPct != null) {
+          subject.percentage = weightedSubjectPercentage(caPct, examPct, caWeight, examWeight);
+        } else if (subject.totalMaxScore > 0) {
           subject.percentage = (subject.totalScore / subject.totalMaxScore) * 100;
-          subject.grade = getLetterGrade(subject.percentage);
         }
-        termTotalScore += subject.totalScore;
-        termTotalMaxScore += subject.totalMaxScore;
+        subject.grade = percentageToDisplayGrade(subject.percentage, gradeScale, passMark);
+        termTotalScore += subject.percentage;
+        termTotalMaxScore += 100;
 
         // Sort assessments by date (newest first)
         subject.assessments.sort((a, b) => {
@@ -281,7 +291,7 @@ export default function StudentResultsPage() {
       }
       return b.termName.localeCompare(a.termName);
     });
-  }, [filteredGrades]);
+  }, [filteredGrades, gradeScale, passMark, caWeight, examWeight]);
 
   // Set default selected term
   const effectiveTermId = selectedTermId || activeSession?.term?.id || termResults[0]?.termId || '';
@@ -487,7 +497,7 @@ export default function StudentResultsPage() {
                             Overall Grade
                           </p>
                           <p className="text-3xl font-bold text-light-text-primary dark:text-dark-text-primary">
-                            {getLetterGrade(currentResults.averagePercentage)}
+                            {percentageToDisplayGrade(currentResults.averagePercentage, gradeScale, passMark)}
                           </p>
                         </div>
                         <Award className="h-8 w-8 text-black dark:text-white" />
@@ -592,7 +602,7 @@ export default function StudentResultsPage() {
                                 </div>
 
                                 {/* Grade Badge */}
-                                <span className={`px-3 py-1 rounded-full text-sm font-bold ${getGradeColor(subject.grade)}`}>
+                                <span className={`px-3 py-1 rounded-full text-sm font-bold ${getGradeColor(subject.grade, subject.percentage >= passMark)}`}>
                                   {subject.grade}
                                 </span>
                               </div>
@@ -674,8 +684,8 @@ export default function StudentResultsPage() {
                                                   {((assessment.score / assessment.maxScore) * 100).toFixed(1)}%
                                                 </p>
                                               </div>
-                                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${getGradeColor(getLetterGrade((assessment.score / assessment.maxScore) * 100))}`}>
-                                                {getLetterGrade((assessment.score / assessment.maxScore) * 100)}
+                                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${getGradeColor(percentageToDisplayGrade((assessment.score / assessment.maxScore) * 100, gradeScale, passMark), (assessment.score / assessment.maxScore) * 100 >= passMark)}`}>
+                                                {percentageToDisplayGrade((assessment.score / assessment.maxScore) * 100, gradeScale, passMark)}
                                               </span>
                                             </div>
                                           </div>
