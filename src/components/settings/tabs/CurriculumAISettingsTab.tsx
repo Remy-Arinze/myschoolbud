@@ -76,9 +76,9 @@ export function CurriculumAISettingsTab({ schoolId }: CurriculumAISettingsTabPro
           value={String(policy.curriculumSource ?? 'MERGED')}
           onChange={(e) => setPolicy((p) => ({ ...p, curriculumSource: e.target.value }))}
         >
-          <option value="AGORA_NATIONAL">Agora national curriculum</option>
+          <option value="AGORA_NATIONAL">Myschoolbud national curriculum</option>
           <option value="SCHOOL_UPLOAD">School-uploaded documents</option>
-          <option value="MERGED">Merged (Agora + school)</option>
+          <option value="MERGED">Merged (Myschoolbud + school)</option>
         </select>
       </SettingsSection>
 

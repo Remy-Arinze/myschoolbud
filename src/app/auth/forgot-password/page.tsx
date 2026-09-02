@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
           <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
             <Image
               src="/assets/logos/agora_word_blue.png"
-              alt="Agora"
+              alt="Myschoolbud"
               width={180}
               height={48}
               className="h-12 w-auto block dark:hidden"
@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
             />
             <Image
               src="/assets/logos/agora_worded_white.png"
-              alt="Agora"
+              alt="Myschoolbud"
               width={180}
               height={48}
               className="h-12 w-auto hidden dark:block"

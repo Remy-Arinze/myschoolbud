@@ -65,7 +65,7 @@ export function useApi() {
         return {
           success: false,
           message: isNetworkError
-            ? "We're having trouble connecting to Agora services. Please check your internet connection."
+            ? "We're having trouble connecting to Myschoolbud services. Please check your internet connection."
             : 'Something went wrong. Please try again.',
         };
       }

@@ -130,7 +130,7 @@ export function streamErrorFromRtk(error: unknown): AiChatStreamErrorPayload {
     return {
       code: 'LOIS_NETWORK',
       title: 'Connection',
-      message: "We could not reach Agora. Check your connection and try again.",
+      message: "We could not reach Myschoolbud. Check your connection and try again.",
     };
   }
 
@@ -144,7 +144,7 @@ export function streamErrorFromRtk(error: unknown): AiChatStreamErrorPayload {
     return {
       code: 'LOIS_NETWORK',
       title: 'Connection',
-      message: "We could not reach Agora. Check your connection and try again.",
+      message: "We could not reach Myschoolbud. Check your connection and try again.",
     };
   }
 

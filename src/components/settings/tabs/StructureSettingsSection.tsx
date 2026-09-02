@@ -121,8 +121,8 @@ export function StructureSettingsSection() {
           value={subjectMode}
           onChange={(e) => setSubjectMode(e.target.value)}
         >
-          <option value="AGORA_DEFAULT">Agora national curriculum only</option>
-          <option value="AGORA_PLUS_CUSTOM">Agora curriculum plus custom subjects</option>
+          <option value="AGORA_DEFAULT">Myschoolbud national curriculum only</option>
+          <option value="AGORA_PLUS_CUSTOM">Myschoolbud curriculum plus custom subjects</option>
           <option value="CUSTOM_ONLY">Custom subjects only</option>
         </select>
       </SettingsSection>

@@ -15,7 +15,7 @@ import { Check, X, Sparkles, Building2 } from 'lucide-react';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 
 const ENTERPRISE_MAILTO =
-  'mailto:sales@agora-schools.com?subject=Enterprise%20Plan%20Inquiry&body=School%20name%3A%0AApproximate%20student%20count%3A%0ABranches%3A%0AContact%20email%2Fphone%3A%0ANotes%3A';
+  'mailto:sales@myschoolbud.com?subject=Enterprise%20Plan%20Inquiry&body=School%20name%3A%0AApproximate%20student%20count%3A%0ABranches%3A%0AContact%20email%2Fphone%3A%0ANotes%3A';
 
 // Pro Plus AI credits (25 000) × 5
 const ENTERPRISE_AI_CREDITS = 125_000;

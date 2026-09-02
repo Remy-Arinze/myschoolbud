@@ -112,7 +112,7 @@ export default function SubscriptionPage() {
                   Billing & Plans
                 </h1>
                 <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed" style={{ fontSize: 'var(--text-body)' }}>
-                  Manage your subscription, track your AI token consumption, and unlock the full potential of Agora.
+                  Manage your subscription, track your AI token consumption, and unlock the full potential of Myschoolbud.
                 </p>
               </div>
 
@@ -165,7 +165,7 @@ export default function SubscriptionPage() {
 
                 <div className="space-y-4 pt-4 border-t border-light-border dark:border-dark-border">
                   <div className="flex justify-between items-center" style={{ fontSize: 'var(--text-body)' }}>
-                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Agora AI Tokens</span>
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Myschoolbud AI Tokens</span>
                     <span className="font-bold text-light-text-primary dark:text-dark-text-primary">
                       {aiCredits.remaining === -1 ? 'Unlimited' : `${aiCredits.remaining.toLocaleString()}`}
                       {aiCredits.total > 0 && aiCredits.total !== -1 && (
@@ -214,8 +214,8 @@ export default function SubscriptionPage() {
                 <p className={`mb-8 text-sm leading-relaxed ${tier === SubscriptionTier.FREE ? 'text-blue-50/80' : 'text-light-text-secondary dark:text-dark-text-secondary'
                   }`}>
                   {tier === SubscriptionTier.FREE
-                    ? "Upgrade to Agora PRO to give every teacher their own AI assistant for quizzes and grading."
-                    : "You are currently unlocking thousands of teacher hours through Agora's proprietary AI engine."
+                    ? "Upgrade to Myschoolbud PRO to give every teacher their own AI assistant for quizzes and grading."
+                    : "You are currently unlocking thousands of teacher hours through Myschoolbud's proprietary AI engine."
                   }
                 </p>
 
@@ -243,7 +243,7 @@ export default function SubscriptionPage() {
             <div className="bg-light-card dark:bg-dark-surface rounded-3xl border border-light-border dark:border-dark-border p-8">
               <h4 className="font-bold text-light-text-primary dark:text-dark-text-primary mb-6 flex items-center gap-2">
                 <Coins className="w-4 h-4 text-amber-500" />
-                Agora AI Tokens Rate
+                Myschoolbud AI Tokens Rate
               </h4>
               <div className="space-y-4">
                 {[
@@ -272,7 +272,7 @@ export default function SubscriptionPage() {
             {tier === SubscriptionTier.FREE ? 'Upgrade your workflow' : 'Manage your scaling'}
           </h2>
           <p className="text-light-text-secondary dark:text-dark-text-secondary max-w-2xl mx-auto" style={{ fontSize: 'var(--text-body)' }}>
-            Agora AI generates high-quality curriculum, quizzes, and automated essay grades so your teachers can focus on teaching.
+            Myschoolbud AI generates high-quality curriculum, quizzes, and automated essay grades so your teachers can focus on teaching.
           </p>
         </div>
 
@@ -292,7 +292,7 @@ export default function SubscriptionPage() {
                   Everything you need to know about billing, AI credits, and upgrading.
                 </p>
                 <div className="mt-8">
-                  <a href="mailto:support@agora.ng" className="inline-flex items-center gap-2 font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors" style={{ fontSize: 'var(--text-body)' }}>
+                  <a href="mailto:support@myschoolbud.com" className="inline-flex items-center gap-2 font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors" style={{ fontSize: 'var(--text-body)' }}>
                     Get in touch
                   </a>
                 </div>
@@ -303,11 +303,11 @@ export default function SubscriptionPage() {
               {[
                 {
                   q: 'What happens when I upgrade?',
-                  a: 'Your new plan activates immediately. You get instant access to the Agora AI engine and your AI credits align to the new tier\'s allowance (e.g., 10,000 Agora credits on Pro), with any unused balance from the prior paid period rolled in on renewal where applicable.'
+                  a: 'Your new plan activates immediately. You get instant access to the Myschoolbud AI engine and your AI credits align to the new tier\'s allowance (e.g., 10,000 Myschoolbud credits on Pro), with any unused balance from the prior paid period rolled in on renewal where applicable.'
                 },
                 {
                   q: 'How do AI Credits work?',
-                  a: 'Every time a teacher generates a lesson plan, quiz, or grades an essay, Agora credits are consumed based on model usage. Higher tiers include larger monthly credit pools (e.g., 25,000 on Pro+).'
+                  a: 'Every time a teacher generates a lesson plan, quiz, or grades an essay, Myschoolbud credits are consumed based on model usage. Higher tiers include larger monthly credit pools (e.g., 25,000 on Pro+).'
                 },
                 {
                   q: 'What if we run out of tokens mid-month?',

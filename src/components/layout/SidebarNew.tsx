@@ -26,7 +26,7 @@ function LogoSection() {
       >
         <Image
           src="/assets/logos/agora_main.png"
-          alt="Agora"
+          alt="Myschoolbud"
           width={40}
           height={40}
           className="h-8 w-8 object-contain teacher-logo"

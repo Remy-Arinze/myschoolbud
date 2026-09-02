@@ -39,7 +39,7 @@ export default function GlobalError({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Agora — Something went wrong</title>
+        <title>Myschoolbud — Something went wrong</title>
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -164,7 +164,7 @@ export default function GlobalError({
           <h1>{isChunkError ? 'Update Available' : 'Something went wrong'}</h1>
           <p>
             {isChunkError
-              ? 'A new version of Agora has been deployed. Click below to refresh and load the latest version.'
+              ? 'A new version of Myschoolbud has been deployed. Click below to refresh and load the latest version.'
               : "We've hit an unexpected issue. Our team has been notified and is looking into it. Please try refreshing or head back to the home page."}
           </p>
 

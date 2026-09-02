@@ -128,7 +128,7 @@ function PaymentCallbackContent() {
                     </Button>
                   </Link>
                   <p className="text-xs text-light-text-muted mt-4">
-                    If funds were deducted, please contact support at support@agora.ng
+                    If funds were deducted, please contact support at support@myschoolbud.com
                   </p>
                 </div>
               </div>

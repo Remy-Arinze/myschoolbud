@@ -136,7 +136,7 @@ function buildSteps(
     {
       id: 'curriculum',
       title: 'Set up curriculum',
-      description: 'Import Agora schemes or create your own for timetable subjects.',
+      description: 'Import Myschoolbud schemes or create your own for timetable subjects.',
       href: classId
         ? `/dashboard/school/courses/${classId}?tab=curriculum`
         : '/dashboard/school/courses',

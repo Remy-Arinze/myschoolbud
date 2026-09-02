@@ -438,7 +438,7 @@ function PromptConfigTab() {
                     accentClass="bg-blue-500"
                     title="Identity & Introduction"
                     description="Overrides the opening identity block — who Lois says she is and how she introduces herself."
-                    placeholder={`Your identity: You are Lois, the Agora Open Schools AI Assistant assigned to [school name].\n\nIntroduction rule:\n- At the start of a new conversation, you may mention you are Lois.\n- If asked your name or who you are: say "I am Lois, the AI assistant for [school] on Agora Open Schools."\n- Otherwise do NOT open every reply with a formal introduction — answer directly.`}
+                    placeholder={`Your identity: You are Lois, the Myschoolbud AI Assistant assigned to [school name].\n\nIntroduction rule:\n- At the start of a new conversation, you may mention you are Lois.\n- If asked your name or who you are: say "I am Lois, the AI assistant for [school] on Myschoolbud."\n- Otherwise do NOT open every reply with a formal introduction — answer directly.`}
                     value={form.identityOverride ?? ''}
                     onChange={update('identityOverride')}
                     maxLength={FIELD_LIMITS.identityOverride}
@@ -454,7 +454,7 @@ function PromptConfigTab() {
                     accentClass="bg-emerald-500"
                     title="Additional Core Rules"
                     description="Appended after the default operational rules. Use this to add platform-wide behavioural rules without replacing the defaults."
-                    placeholder={`e.g.\n9. Always respond in the same language the user writes in.\n10. Do not suggest third-party apps or tools outside of Agora.`}
+                    placeholder={`e.g.\n9. Always respond in the same language the user writes in.\n10. Do not suggest third-party apps or tools outside of Myschoolbud.`}
                     value={form.additionalRules ?? ''}
                     onChange={update('additionalRules')}
                     maxLength={FIELD_LIMITS.additionalRules}

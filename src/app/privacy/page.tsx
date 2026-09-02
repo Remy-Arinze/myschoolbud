@@ -72,7 +72,7 @@ export default function PrivacyPolicy() {
                             </p>
                             <div className="bg-[var(--dark-surface)] p-6 rounded-2xl border border-[var(--dark-border)] transition-colors duration-300">
                                 <p className="font-semibold text-[var(--dark-text-primary)]">Data Protection Office</p>
-                                <p>Email: privacy@agora.ng</p>
+                                <p>Email: privacy@myschoolbud.com</p>
                                 <p>Lagos, Nigeria | Secure Academic Registry</p>
                             </div>
                         </section>

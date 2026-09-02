@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/dashboard/', '/auth/'],
     },
-    sitemap: 'https://www.agora-schools.com/sitemap.xml',
+    sitemap: 'https://www.myschoolbud.com/sitemap.xml',
   };
 }

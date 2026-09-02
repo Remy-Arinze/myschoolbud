@@ -130,7 +130,7 @@ export function OtpVerification({
           {theme === 'light' ? (
             <Image
               src="/assets/logos/agora_main.png"
-              alt="Agora"
+              alt="Myschoolbud"
               width={120}
               height={32}
               className="h-8 w-auto grayscale brightness-0"
@@ -139,7 +139,7 @@ export function OtpVerification({
           ) : (
             <Image
               src="/assets/logos/agora_worded_white.png"
-              alt="Agora"
+              alt="Myschoolbud"
               width={120}
               height={32}
               className="h-8 w-auto"

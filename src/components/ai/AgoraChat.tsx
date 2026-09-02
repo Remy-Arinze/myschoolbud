@@ -474,7 +474,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       setMessages([
         {
           role: 'assistant',
-          content: `Hello ${firstName}! I'm Lois, your dedicated Agora Open Schools AI Assistant. ${greetingDesc}`,
+          content: `Hello ${firstName}! I'm Lois, your dedicated Myschoolbud AI Assistant. ${greetingDesc}`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -790,7 +790,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
           <Sparkles className="w-5 h-5 text-indigo-500 dark:text-blue-400" />
           {variant !== 'minimal' && (
             <>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-light-text-secondary dark:text-white/40" style={{ fontFamily: 'var(--font-heading)' }}>Agora Neural Cloud</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-light-text-secondary dark:text-white/40" style={{ fontFamily: 'var(--font-heading)' }}>Myschoolbud Neural Cloud</span>
               <div className="hidden md:flex items-center gap-1.5 ml-3 px-2.5 py-1 rounded-full bg-emerald-50/60 dark:bg-emerald-500/[0.08] border border-emerald-200/40 dark:border-emerald-500/20">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Agentic</span>
@@ -1084,7 +1084,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
             <div className="mt-5 flex justify-center items-center gap-6">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-1 rounded-full bg-indigo-500/40" />
-                <p className="text-[9px] text-light-text-muted dark:text-white/20 font-semibold uppercase tracking-[0.25em]">Agora Engine v5.0</p>
+                <p className="text-[9px] text-light-text-muted dark:text-white/20 font-semibold uppercase tracking-[0.25em]">Myschoolbud Engine v5.0</p>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-1 h-1 rounded-full bg-emerald-500/40" />

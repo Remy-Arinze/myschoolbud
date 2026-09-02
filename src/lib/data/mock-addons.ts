@@ -16,7 +16,7 @@ export const getAddonsData = (schoolId: string): Addon[] => {
   return [
     {
       id: '1',
-      name: 'Agora AI',
+      name: 'Myschoolbud AI',
       subtitle: "The Teacher's Assistant",
       description: 'AI-powered lesson planning and grading assistant',
       features: [
@@ -34,7 +34,7 @@ export const getAddonsData = (schoolId: string): Addon[] => {
       description: 'Biometric and card-based attendance tracking with SMS alerts',
       features: [
         'Biometric/Card: If the school issues ID cards with QR codes, the teacher scans them at the door using the mobile app.',
-        'SMS Trigger: If a student is marked "Absent" at 8:30 AM, the parent automatically gets an SMS: "Agora Alert: Chioma is not in school today."',
+        'SMS Trigger: If a student is marked "Absent" at 8:30 AM, the parent automatically gets an SMS: "Myschoolbud Alert: Chioma is not in school today."',
       ],
       monetization: 'Fee per SMS sent + Hardware sales (ID Cards)',
       status: 'active' as const,

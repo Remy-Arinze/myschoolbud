@@ -611,7 +611,7 @@ function ProfilePageContent() {
                   <div>
                     <h4 className="text-sm font-bold text-blue-900 dark:text-blue-100">Global Account</h4>
                     <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5 leading-relaxed">
-                      Your account has elevated privileges across all Agora services. Security changes take effect immediately.
+                      Your account has elevated privileges across all Myschoolbud services. Security changes take effect immediately.
                     </p>
                   </div>
                 </div>

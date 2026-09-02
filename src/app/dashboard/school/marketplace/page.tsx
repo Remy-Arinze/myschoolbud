@@ -30,7 +30,7 @@ import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 const allPlugins = [
   {
     id: '2',
-    name: 'Agora AI',
+    name: 'Myschoolbud AI',
     subtitle: "The Teacher's Assistant",
     description: 'AI-powered lesson planning and grading assistant. Generate compliant lesson notes aligned with NERDC curriculum and perform OCR-based essay grading.',
     category: 'AI & Automation',
@@ -144,7 +144,7 @@ export default function MarketplacePage() {
                 Plugin Marketplace
               </h1>
               <p className="text-light-text-secondary dark:text-dark-text-secondary">
-                Discover and subscribe to plugins to enhance your school&apos;s Agora experience
+                Discover and subscribe to plugins to enhance your school&apos;s Myschoolbud experience
               </p>
             </div>
           </div>

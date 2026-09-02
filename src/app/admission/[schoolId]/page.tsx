@@ -257,7 +257,7 @@ export default function PublicAdmissionPage() {
             className="inline-flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Agora
+            Back to Myschoolbud
           </button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-/* Agora service worker — Web Push + light offline shell */
+/* Myschoolbud service worker — Web Push + light offline shell */
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -8,7 +8,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'Agora', body: 'You have a new notification', link: '/dashboard' };
+  let data = { title: 'Myschoolbud', body: 'You have a new notification', link: '/dashboard' };
   try {
     if (event.data) {
       data = { ...data, ...event.data.json() };
@@ -20,7 +20,7 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Agora', {
+    self.registration.showNotification(data.title || 'Myschoolbud', {
       body: data.body || '',
       icon: '/assets/logos/agora_main.png',
       badge: '/assets/favicon-32x32.png',

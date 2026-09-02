@@ -16,7 +16,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.agora-schools.com'),
+  metadataBase: new URL('https://www.myschoolbud.com'),
   title: {
     default: 'Myschoolbud | Global Student Identity Ledger & School Management System',
     template: '%s | Myschoolbud'
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://www.agora-schools.com',
+    url: 'https://www.myschoolbud.com',
     siteName: 'Myschoolbud',
     title: 'Myschoolbud - The Digital Chain-of-Trust for Education',
     description: 'A borderless academic identity for every student. Secured, portable, and immutable records on a global ledger.',
@@ -123,8 +123,8 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'Organization',
               name: 'Myschoolbud',
-              url: 'https://www.agora-schools.com',
-              logo: 'https://www.agora-schools.com/assets/logos/agora_main.png',
+              url: 'https://www.myschoolbud.com',
+              logo: 'https://www.myschoolbud.com/assets/logos/agora_main.png',
               description: 'Myschoolbud creates a borderless academic identity for every student, anchoring educational history in a global student ledger.',
               sameAs: [
                 'https://twitter.com/agora_edu',

@@ -166,7 +166,7 @@ export const MobileSidebar = ({
             <Link href="/" className="flex items-center">
               <img
                 src="/assets/logos/agora_main.png"
-                alt="Agora"
+                alt="Myschoolbud"
                 className="h-8 w-auto flex-shrink-0"
                 style={{ height: '32px' }}
               />

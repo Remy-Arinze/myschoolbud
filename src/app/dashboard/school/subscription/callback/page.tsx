@@ -132,7 +132,7 @@ export default function SubscriptionCallbackPage() {
               Back to Subscription
             </Link>
             <a
-              href="mailto:support@agora.ng?subject=Payment%20Issue"
+              href="mailto:support@myschoolbud.com?subject=Payment%20Issue"
               className="block w-full py-3 px-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               Contact Support

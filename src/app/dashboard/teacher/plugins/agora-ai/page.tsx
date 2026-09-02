@@ -26,7 +26,7 @@ export default function AgoraAIPage() {
                             <AgoraChat 
                                 schoolId={schoolId} 
                                 initialConversationId={conversationId || undefined} 
-                                pageContext="The user is currently on the main Agora AI fullscreen chat interface."
+                                pageContext="The user is currently on the main Myschoolbud AI fullscreen chat interface."
                             />
                         ) : (
                             <div className="flex-1 flex items-center justify-center bg-light-card/50 dark:bg-white/5 italic text-light-text-muted dark:text-white/20">

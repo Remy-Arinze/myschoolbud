@@ -42,7 +42,7 @@ export function CommunicationsSettingsTab() {
     <div className="space-y-8">
       <SettingsSection title="Email Branding">
         <Label>Sender display name</Label>
-        <Input value={String(policy.emailSenderName ?? '')} onChange={(e) => setPolicy((p) => ({ ...p, emailSenderName: e.target.value }))} placeholder="Lagos Model College via Agora" />
+        <Input value={String(policy.emailSenderName ?? '')} onChange={(e) => setPolicy((p) => ({ ...p, emailSenderName: e.target.value }))} placeholder="Lagos Model College via Myschoolbud" />
       </SettingsSection>
 
       <SettingsSection title="Notification Channels">

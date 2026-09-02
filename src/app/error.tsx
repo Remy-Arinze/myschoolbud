@@ -57,7 +57,7 @@ export default function RootError({
         {/* Description */}
         <p className="text-sm text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] max-w-xs mx-auto leading-relaxed">
           {isChunkError
-            ? 'A new version of Agora is available. Click below to refresh and get the latest updates.'
+            ? 'A new version of Myschoolbud is available. Click below to refresh and get the latest updates.'
             : "We hit an unexpected issue. Our team has been notified. You can try again or head back to safety."}
         </p>
 

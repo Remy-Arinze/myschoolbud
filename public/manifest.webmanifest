@@ -1,6 +1,6 @@
 {
-  "name": "Agora Schools",
-  "short_name": "Agora",
+  "name": "Myschoolbud",
+  "short_name": "Myschoolbud",
   "description": "School management, student identity, and academic workflows.",
   "start_url": "/dashboard",
   "scope": "/",

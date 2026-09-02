@@ -152,7 +152,7 @@ export function useSubscription(): SubscriptionManagement {
       { feature: 'Teachers', free: '10', pro: '80', proPlus: '150' },
       { feature: 'Admins', free: '2', pro: '20', proPlus: '35' },
       { feature: 'Core Platform', free: true, pro: true, proPlus: true },
-      { feature: 'Agora AI Generation', free: false, pro: true, proPlus: true },
+      { feature: 'Myschoolbud AI Generation', free: false, pro: true, proPlus: true },
       { feature: 'RollCall', free: false, pro: false, proPlus: true },
       { feature: 'Bursary Pro', free: 'Basic', pro: 'Full', proPlus: 'Full' },
       { feature: 'AI Credits/Month', free: '0', pro: '10,000', proPlus: '25,000' },

@@ -86,7 +86,7 @@ export default function RegisterSchoolPage() {
                     </div>
                     <h2 className="text-2xl font-bold text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] mb-2">Registration Submitted</h2>
                     <p className="text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] mb-6">
-                        Thank you for registering your school on Agora. Your application is currently under review by our administration team. You will be notified via email once your account has been verified.
+                        Thank you for registering your school on Myschoolbud. Your application is currently under review by our administration team. You will be notified via email once your account has been verified.
                     </p>
                     <Link href="/auth/login" className="text-agora-blue hover:underline transition-colors">
                         Return to Login
@@ -103,7 +103,7 @@ export default function RegisterSchoolPage() {
                     <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
                         <Image
                             src="/assets/logos/agora_word_blue.png"
-                            alt="Agora"
+                            alt="Myschoolbud"
                             width={120}
                             height={30}
                             className="h-8 w-auto block dark:hidden"
@@ -111,7 +111,7 @@ export default function RegisterSchoolPage() {
                         />
                         <Image
                             src="/assets/logos/agora_worded_white.png"
-                            alt="Agora"
+                            alt="Myschoolbud"
                             width={120}
                             height={30}
                             className="h-8 w-auto hidden dark:block"
@@ -124,7 +124,7 @@ export default function RegisterSchoolPage() {
                     Register Your School
                 </h1>
                 <p className="text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] text-center mb-8 text-sm">
-                    Join Agora to streamline your school's management pipeline.
+                    Join Myschoolbud to streamline your school's management pipeline.
                 </p>
 
                 <form onSubmit={handleSubmit} className="bg-[var(--light-card)] dark:bg-[var(--dark-surface)] p-6 sm:p-8 rounded-xl border border-[var(--light-border)] dark:border-[var(--dark-border)] space-y-8">

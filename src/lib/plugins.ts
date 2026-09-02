@@ -19,7 +19,7 @@ export const getActivePluginsForTeacher = (): Plugin[] => {
   return [
     {
       id: '2',
-      name: 'Agora AI',
+      name: 'Myschoolbud AI',
       slug: 'agora-ai',
       icon: Sparkles,
       description: "The Teacher's Assistant",

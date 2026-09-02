@@ -148,7 +148,7 @@ Jane,Mary,Smith,2011-08-20,Primary 1,Gold,jane.smith@example.com,+2348012345681,
                   <ul className="list-disc list-inside space-y-1 text-sm text-amber-800 dark:text-amber-200">
                     <li><code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">classLevel</code> must match an existing class level (e.g., &quot;JSS 3&quot;, &quot;Primary 1&quot;)</li>
                     <li><code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">classArm</code> should match the arm name only (e.g., &quot;A&quot;, &quot;Gold&quot;) - the system will find the full class</li>
-                    <li>If a student email already exists in the Agora system, you&apos;ll need to initiate a transfer instead</li>
+                    <li>If a student email already exists in the Myschoolbud system, you&apos;ll need to initiate a transfer instead</li>
                     <li>Students will be automatically enrolled in the specified class/arm</li>
                     <li>Password reset emails will be sent to students with email addresses</li>
                     <li>Each row will be processed individually - errors in one row won&apos;t stop others</li>

@@ -158,7 +158,7 @@ function LoginContent() {
       }
     } catch (err) {
       if (err instanceof TypeError && (err.message === 'Failed to fetch' || err.message === 'NetworkError when attempting to fetch resource')) {
-        setError("We're having trouble connecting to Agora services. Please check your internet connection or the server status.");
+        setError("We're having trouble connecting to Myschoolbud services. Please check your internet connection or the server status.");
       } else {
         setError(err instanceof Error ? err.message : 'An error occurred');
       }
@@ -224,7 +224,7 @@ function LoginContent() {
       }
     } catch (err) {
       if (err instanceof TypeError && (err.message === 'Failed to fetch' || err.message === 'NetworkError when attempting to fetch resource')) {
-        setError("We're having trouble connecting to Agora services. Please check your internet connection or the server status.");
+        setError("We're having trouble connecting to Myschoolbud services. Please check your internet connection or the server status.");
       } else {
         setError(err instanceof Error ? err.message : 'OTP verification failed');
       }
@@ -310,7 +310,7 @@ function LoginContent() {
               <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
                 <Image
                   src="/assets/logos/agora_word_blue.png"
-                  alt="Agora"
+                  alt="Myschoolbud"
                   width={100}
                   height={24}
                   className="h-6 w-auto block dark:hidden"
@@ -318,7 +318,7 @@ function LoginContent() {
                 />
                 <Image
                   src="/assets/logos/agora_worded_white.png"
-                  alt="Agora"
+                  alt="Myschoolbud"
                   width={100}
                   height={24}
                   className="h-6 w-auto hidden dark:block"
@@ -359,7 +359,7 @@ function LoginContent() {
                 <input
                   id="email-input"
                   type="text"
-                  placeholder="superadmin@agora.com or AG-SCHL-A3B5C7"
+                  placeholder="superadmin@myschoolbud.com or AG-SCHL-A3B5C7"
                   value={formData.emailOrPublicId}
                   onChange={(e) =>
                     setFormData({ ...formData, emailOrPublicId: e.target.value })

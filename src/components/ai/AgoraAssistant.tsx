@@ -220,7 +220,7 @@ export const AgoraAssistant: React.FC<AgoraAssistantProps> = ({ schoolId }) => {
         <div className="flex gap-3 items-end">
           <div className="flex-1 relative bg-white/60 dark:bg-white/[0.03] border border-light-border dark:border-white/10 rounded-2xl overflow-hidden focus-within:border-agora-blue dark:focus-within:border-white/20 transition-all shadow-sm">
             <textarea
-              placeholder="Ask about Agora products..."
+              placeholder="Ask about Myschoolbud products..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {

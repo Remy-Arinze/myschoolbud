@@ -68,7 +68,7 @@ export const AiUsageHistory: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary mb-2">No AI usage yet</h3>
                 <p className="text-light-text-secondary text-xs dark:text-dark-text-secondary max-w-sm mx-auto">
-                    When your teachers start using Agora AI tools, the history will appear here for you to track consumption.
+                    When your teachers start using Myschoolbud AI tools, the history will appear here for you to track consumption.
                 </p>
             </div>
         );

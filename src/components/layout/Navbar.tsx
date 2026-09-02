@@ -74,21 +74,21 @@ export function Navbar() {
                   theme === 'light' ? (
                     <img
                       src="/assets/logos/agora_main.png"
-                      alt="Agora"
+                      alt="Myschoolbud"
                       className="h-8 w-auto flex-shrink-0 grayscale brightness-0"
                       style={{ height: '32px' }}
                     />
                   ) : (
                     <img
                       src="/assets/logos/agora_worded_white.png"
-                      alt="Agora"
+                      alt="Myschoolbud"
                       className="h-8 w-auto flex-shrink-0"
                       style={{ height: '32px' }}
                     />
                   )
                 )}
                 <span className="text-2xl font-bold text-light-text-primary dark:text-white transition-colors duration-300">
-                  {(userRole === 'SCHOOL_ADMIN' || userRole === 'TEACHER' || userRole === 'STUDENT') && schoolName ? schoolName : 'Agora'}
+                  {(userRole === 'SCHOOL_ADMIN' || userRole === 'TEACHER' || userRole === 'STUDENT') && schoolName ? schoolName : 'Myschoolbud'}
                 </span>
               </Link>
             )}

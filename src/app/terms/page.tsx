@@ -84,7 +84,7 @@ export default function TermsOfService() {
                             </p>
                             <div className="bg-[var(--dark-surface)] p-6 rounded-2xl border border-[var(--dark-border)] transition-colors duration-300">
                                 <p className="font-semibold text-[var(--dark-text-primary)]">Myschoolbud Legal & Operations</p>
-                                <p>Email: systems@agora.ng</p>
+                                <p>Email: systems@myschoolbud.com</p>
                                 <p>Lagos, Nigeria | Pan-African Support</p>
                             </div>
                         </section>

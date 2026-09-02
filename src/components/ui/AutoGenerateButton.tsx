@@ -45,7 +45,7 @@ export function AutoGenerateButton({
           {logoSrc ? (
             <Image
               src={logoSrc}
-              alt="Agora"
+              alt="Myschoolbud"
               width={16}
               height={16}
               className="mr-2 object-contain"

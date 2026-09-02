@@ -518,7 +518,7 @@ export async function streamAiChat(
                 code: networkish ? 'LOIS_NETWORK' : 'LOIS_UNKNOWN',
                 title: networkish ? 'Connection' : 'Interrupted',
                 message: networkish
-                    ? "We could not reach Agora. Check your connection and try again."
+                    ? "We could not reach Myschoolbud. Check your connection and try again."
                     : 'The reply was interrupted. Try sending your message again.',
             });
         }

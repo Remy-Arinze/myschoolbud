@@ -20,7 +20,7 @@ import {
 const allPlugins = [
   {
     id: '1',
-    name: 'Agora AI',
+    name: 'Myschoolbud AI',
     subtitle: "The Teacher's Assistant",
     description: 'AI-powered lesson planning and grading assistant',
     monetization: 'Monthly subscription per teacher seat',

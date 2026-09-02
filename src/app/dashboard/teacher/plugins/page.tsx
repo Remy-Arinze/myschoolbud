@@ -24,7 +24,7 @@ import {
 const schoolPlugins = [
   {
     id: '2',
-    name: 'Agora AI',
+    name: 'Myschoolbud AI',
     subtitle: "The Teacher's Assistant",
     description: 'AI-powered lesson planning and grading assistant. Generate compliant lesson notes aligned with NERDC curriculum and perform OCR-based essay grading.',
     category: 'AI & Automation',

@@ -101,7 +101,7 @@ export function AgoraAiTools({
                     <div>
                         <p className="text-sm font-bold text-indigo-900 dark:text-indigo-300">Context Locked</p>
                         <p className="text-xs text-indigo-700 dark:text-indigo-400">
-                            Agora AI is currently tailored for <span className="font-bold">{defaultSubject || 'this class'}</span> ({defaultGradeLevel}).
+                            Myschoolbud AI is currently tailored for <span className="font-bold">{defaultSubject || 'this class'}</span> ({defaultGradeLevel}).
                         </p>
                     </div>
                 </div>

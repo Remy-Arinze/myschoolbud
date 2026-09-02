@@ -41,7 +41,7 @@ const baseQueryWithReauth: BaseQueryFn<
   if (result.error) {
     if (result.error.status === 'FETCH_ERROR') {
       (result.error as any).data = {
-        message: "We're having trouble connecting to Agora services. Please check your internet connection or the server status."
+        message: "We're having trouble connecting to Myschoolbud services. Please check your internet connection or the server status."
       };
     } else if (result.error.status === 429) {
       (result.error as any).data = {
