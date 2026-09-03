@@ -11,7 +11,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { WordedLogo } from '@/components/layout/WordedLogo';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -118,8 +118,7 @@ function ResetPasswordContent() {
         <FadeInUp from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="w-full max-w-md">
           <div className="flex items-center justify-center mb-8">
             <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-              <Image src="/assets/logos/agora_word_blue.png" alt="Myschoolbud" width={180} height={48} className="h-12 w-auto block dark:hidden" priority />
-              <Image src="/assets/logos/agora_worded_white.png" alt="Myschoolbud" width={180} height={48} className="h-12 w-auto hidden dark:block" priority />
+              <WordedLogo size="lg" priority />
             </Link>
           </div>
           <Card>
@@ -177,8 +176,7 @@ function ResetPasswordContent() {
       <FadeInUp from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
           <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-            <Image src="/assets/logos/agora_word_blue.png" alt="Myschoolbud" width={180} height={48} className="h-12 w-auto block dark:hidden" priority />
-            <Image src="/assets/logos/agora_worded_white.png" alt="Myschoolbud" width={180} height={48} className="h-12 w-auto hidden dark:block" priority />
+            <WordedLogo size="lg" priority />
           </Link>
         </div>
 

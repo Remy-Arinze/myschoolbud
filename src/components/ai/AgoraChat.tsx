@@ -3,13 +3,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Send,
-  Paperclip,
   Trash2,
-  Sparkles,
-  Bot,
   User,
-  Loader2,
   Copy,
   History,
   X,
@@ -25,6 +20,13 @@ import {
   ChevronRight,
   StopCircle,
   Plus,
+  ArrowUp,
+  Clock,
+  BarChart3,
+  Mail,
+  AlertTriangle,
+  Building2,
+  ClipboardCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
@@ -42,12 +44,12 @@ import {
 import { useGetMyTeacherProfileQuery } from '@/lib/store/api/schoolAdminApi';
 import toast from 'react-hot-toast';
 
-import { useTheme } from '@/contexts/ThemeContext';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import { SaveAssessmentEditor } from './SaveAssessmentEditor';
 import { inlineAssistantErrorNote, toastTextFromStreamError } from '@/lib/ai-chat-errors';
 import { useLoisWorkspaceOptional, type LoisPageContext, type LoisSource } from './LoisWorkspace';
+import { LoisOrb } from './LoisOrb';
 import Link from 'next/link';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -89,55 +91,215 @@ const ThreeDotTyping = () => (
     {[0, 1, 2].map((i) => (
       <motion.div
         key={i}
-        animate={{
-          scale: [1, 1.4, 1],
-          opacity: [0.4, 1, 0.4]
-        }}
-        transition={{
-          duration: 0.8,
-          repeat: Infinity,
-          delay: i * 0.15
-        }}
-        className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.3)]"
+        animate={{ opacity: [0.35, 1, 0.35] }}
+        transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
+        className="w-1.5 h-1.5 rounded-full bg-[var(--agora-blue)]"
       />
     ))}
   </div>
 );
 
-const BrainIndicator = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
-  const dimensions = {
-    sm: 'w-6 h-6',
-    md: 'w-10 h-10',
-    lg: 'w-16 h-16'
-  };
+type PromptCard = {
+  title: string;
+  description: string;
+  prompt: string;
+  icon: React.ReactNode;
+};
 
+function loisPromptCards(params: {
+  isSchoolAdmin: boolean;
+  structuredFocus: LoisPageContext | null;
+  pathHint: string;
+}): PromptCard[] {
+  const { isSchoolAdmin, structuredFocus, pathHint } = params;
+  const isStudentsContext = structuredFocus?.type === 'student' || pathHint.includes('/students');
+  const isClassesContext =
+    structuredFocus?.type === 'class' ||
+    pathHint.includes('/classes') ||
+    pathHint.includes('/levels');
+  const studentName = structuredFocus?.type === 'student' ? structuredFocus.label : 'this student';
+  const className = structuredFocus?.type === 'class' ? structuredFocus.label : 'this class';
+
+  if (isStudentsContext && structuredFocus?.type === 'student') {
+    return [
+      {
+        title: 'Published grades',
+        description: `Recent results for ${studentName}`,
+        icon: <BarChart3 className="h-3.5 w-3.5" />,
+        prompt: `Show me the recent performance and grades for ${studentName}`,
+      },
+      {
+        title: 'Attendance',
+        description: 'Presence over the last two weeks',
+        icon: <ClipboardCheck className="h-3.5 w-3.5" />,
+        prompt: `Summarise attendance for ${studentName}`,
+      },
+      {
+        title: 'Draft a parent note',
+        description: 'Preview only — nothing is sent',
+        icon: <Mail className="h-3.5 w-3.5" />,
+        prompt: `Draft a supportive parent update about ${studentName}'s progress. Do not send it.`,
+      },
+    ];
+  }
+
+  if (isStudentsContext) {
+    return [
+      {
+        title: 'At-risk students',
+        description: 'Below the performance threshold',
+        icon: <AlertTriangle className="h-3.5 w-3.5" />,
+        prompt: 'Who is below the academic risk threshold right now?',
+      },
+      {
+        title: 'Find a student',
+        description: 'Look up by name or class',
+        icon: <User className="h-3.5 w-3.5" />,
+        prompt: 'Help me find a student by name.',
+      },
+      {
+        title: 'Draft a parent note',
+        description: 'Preview only — nothing is sent',
+        icon: <Mail className="h-3.5 w-3.5" />,
+        prompt: "Draft an email to a student's parents regarding their performance. Do not send it.",
+      },
+    ];
+  }
+
+  if (isClassesContext) {
+    return [
+      {
+        title: 'Class timetable',
+        description: `What ${className} is doing now`,
+        icon: <Clock className="h-3.5 w-3.5" />,
+        prompt: `What is going on in ${className} right now?`,
+      },
+      {
+        title: 'Class performance',
+        description: 'Published grade averages this term',
+        icon: <BarChart3 className="h-3.5 w-3.5" />,
+        prompt: `How is ${className} performing this term?`,
+      },
+      {
+        title: 'Scheme of work',
+        description: 'Planned vs delivered weeks',
+        icon: <BookOpen className="h-3.5 w-3.5" />,
+        prompt: `What does the scheme of work look like for ${className}?`,
+      },
+    ];
+  }
+
+  if (isSchoolAdmin) {
+    return [
+      {
+        title: 'What I noticed',
+        description: 'Background issues already flagged',
+        icon: <AlertTriangle className="h-3.5 w-3.5" />,
+        prompt: 'What issues have you already noticed for this school?',
+      },
+      {
+        title: 'At-risk students',
+        description: 'Below 45% this term',
+        icon: <BarChart3 className="h-3.5 w-3.5" />,
+        prompt: 'Who is below the academic risk threshold this term?',
+      },
+      {
+        title: 'School snapshot',
+        description: 'Enrolments, teachers, and classes',
+        icon: <Building2 className="h-3.5 w-3.5" />,
+        prompt: 'Give me the current school statistics.',
+      },
+    ];
+  }
+
+  return [
+    {
+      title: 'Quick quiz',
+      description: '10 questions for your class',
+      icon: <FileQuestion className="h-3.5 w-3.5" />,
+      prompt: 'Generate a 10-question quiz for my class right now.',
+    },
+    {
+      title: 'Next period',
+      description: 'What you are teaching next',
+      icon: <Clock className="h-3.5 w-3.5" />,
+      prompt: 'What is my next subject and in which class/room?',
+    },
+    {
+      title: 'Grade an essay',
+      description: 'Feedback you can review first',
+      icon: <FileText className="h-3.5 w-3.5" />,
+      prompt: "Help me grade this student's essay and give me feedback.",
+    },
+  ];
+}
+
+function LoisPromptSuggestions({
+  cards,
+  isMinimal,
+  typeScale,
+  onSelect,
+}: {
+  cards: PromptCard[];
+  isMinimal: boolean;
+  typeScale: { body: string; tiny: string };
+  onSelect: (prompt: string) => void;
+}) {
   return (
-    <motion.div
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
+    <div
       className={cn(
-        "relative flex items-center justify-center rounded-2xl bg-white dark:bg-white/10 shadow-lg border border-indigo-100 dark:border-white/10 overflow-hidden",
-        dimensions[size]
+        isMinimal
+          ? 'flex flex-wrap gap-1.5'
+          : 'grid grid-cols-1 sm:grid-cols-3 gap-2 w-full',
       )}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-blue-600/10 animate-pulse" />
-      <motion.img
-        src="/assets/logos/agora_main.png"
-        alt="Lois Brain"
-        className="w-[70%] h-[70%] object-contain relative z-10"
-        animate={{
-          scale: [1, 1.05, 1],
-          filter: ["brightness(1)", "brightness(1.2)", "brightness(1)"]
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      />
-    </motion.div>
+      {cards.map((card, i) => (
+        <motion.button
+          key={card.title}
+          type="button"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, delay: 0.05 * i, ease: 'easeOut' }}
+          onClick={() => onSelect(card.prompt)}
+          title={card.description}
+          className={cn(
+            'lois-prompt-chip group text-left',
+            isMinimal
+              ? 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 max-w-full'
+              : 'flex flex-col items-start gap-2.5 rounded-2xl p-3.5 h-full',
+          )}
+        >
+          <span
+            className={cn(
+              'inline-flex items-center justify-center shrink-0 text-[var(--agora-blue)] bg-[var(--agora-blue)]/10',
+              isMinimal ? 'h-5 w-5 rounded-full' : 'h-8 w-8 rounded-xl',
+            )}
+          >
+            {React.cloneElement(card.icon as React.ReactElement<{ className?: string }>, {
+              className: isMinimal ? 'h-3 w-3' : 'h-4 w-4',
+            })}
+          </span>
+          <span className="min-w-0">
+            <span
+              className="block font-semibold text-light-text-primary dark:text-dark-text-primary leading-tight transition-colors group-hover:text-[var(--agora-blue)]"
+              style={{ fontSize: typeScale.body }}
+            >
+              {card.title}
+            </span>
+            {!isMinimal && (
+              <span
+                className="block mt-1 text-light-text-secondary dark:text-dark-text-secondary leading-snug"
+                style={{ fontSize: typeScale.tiny }}
+              >
+                {card.description}
+              </span>
+            )}
+          </span>
+        </motion.button>
+      ))}
+    </div>
   );
-};
+}
 
 const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { event: ToolEvent; schoolId: string; conversationId?: string | null; variant?: 'default' | 'minimal' }) => {
   const [expanded, setExpanded] = useState(
@@ -151,13 +313,10 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-indigo-50/60 dark:bg-indigo-500/[0.08] border border-indigo-100 dark:border-indigo-500/20"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[var(--light-card)] dark:bg-[var(--dark-surface)] border border-[var(--light-border)] dark:border-[var(--dark-border)]"
       >
-        <div className="flex relative items-center justify-center">
-          <div className="absolute inset-0 bg-indigo-500/40 blur-sm rounded-full animate-ping" />
-          <div className="w-2 h-2 rounded-full bg-indigo-500 relative z-10" />
-        </div>
-        <span className="text-sm text-indigo-700 dark:text-indigo-300 font-medium italic">
+        <div className="w-1.5 h-1.5 rounded-full bg-[var(--agora-blue)]" />
+          <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium" style={{ fontSize: 'var(--lois-small, var(--text-small))' }}>
           {event.message}
         </span>
       </motion.div>
@@ -175,7 +334,7 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
           <ToolIcon toolName={event.toolName || ''} />
         </div>
         <div className="flex-1">
-          <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+          <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
             {event.toolDisplayName}
           </span>
           <p className="text-[11px] text-amber-600/70 dark:text-amber-400/60 font-medium">
@@ -203,7 +362,7 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
           <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="w-4 h-4" />
           </div>
-          <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300 flex-1 text-left">
+          <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex-1 text-left">
             {event.toolDisplayName} — Complete
           </span>
           {expanded ? (
@@ -437,21 +596,23 @@ interface AgoraChatProps {
   initialConversationId?: string;
   variant?: 'default' | 'minimal';
   pageContext?: string | LoisPageContext;
+  headerActions?: React.ReactNode;
 }
 
 export const AgoraChat: React.FC<AgoraChatProps> = ({
   schoolId,
   initialConversationId,
   variant = 'default',
-  pageContext
+  pageContext,
+  headerActions,
 }) => {
-  const { theme } = useTheme();
   const user = useSelector((state: RootState) => state.auth.user);
   const token = useSelector((state: RootState) => state.auth.token);
   const { data: profileResponse } = useGetMyTeacherProfileQuery(undefined, {
     skip: user?.role !== 'TEACHER'
   });
-  const firstName = profileResponse?.data?.firstName || user?.firstName || 'Teacher';
+  const firstName = profileResponse?.data?.firstName || user?.firstName || 'there';
+  const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
   const workspace = useLoisWorkspaceOptional();
   const structuredFocus: LoisPageContext | null =
     pageContext && typeof pageContext === 'object'
@@ -810,264 +971,150 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
     toast.success('Chat cleared');
   };
 
-  // ─── Render ─────────────────────────────────────────────────────────────
+  const isMinimal = variant === 'minimal';
+  const typeScale = {
+    title: isMinimal ? 'var(--lois-title)' : 'var(--text-section-title)',
+    greeting: isMinimal ? 'var(--lois-greeting)' : '1.15rem',
+    body: isMinimal ? 'var(--lois-body)' : 'var(--text-body)',
+    small: isMinimal ? 'var(--lois-small)' : 'var(--text-small)',
+    tiny: isMinimal ? 'var(--lois-tiny)' : 'var(--text-tiny)',
+  };
 
   return (
-    <div className="flex flex-col h-full w-full max-w-7xl mx-auto bg-transparent overflow-hidden relative" style={{ fontFamily: 'var(--font-sans)' }}>
-      {/* Background Glows */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-[160px] pointer-events-none z-0 transition-opacity duration-1000" />
-
-      {/* Top Bar */}
-      <div className="px-4 md:px-8 py-4 md:py-6 flex items-center justify-between z-10 shrink-0">
-        <div className="flex items-center gap-3">
-          <Sparkles className="w-5 h-5 text-indigo-500 dark:text-blue-400" />
-          {variant !== 'minimal' && (
-            <>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-light-text-secondary dark:text-white/40" style={{ fontFamily: 'var(--font-heading)' }}>Myschoolbud Neural Cloud</span>
-              <div className="hidden md:flex items-center gap-1.5 ml-3 px-2.5 py-1 rounded-full bg-emerald-50/60 dark:bg-emerald-500/[0.08] border border-emerald-200/40 dark:border-emerald-500/20">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Agentic</span>
-              </div>
-            </>
-          )}
-          {variant === 'minimal' && (
-            <div className="flex flex-col">
-              <span className="text-[12px] font-bold uppercase tracking-widest text-[#111827] dark:text-blue-400" style={{ fontFamily: 'var(--font-heading)' }}>Lois</span>
-              {structuredFocus?.label ? (
-                <span className="text-[10px] text-light-text-secondary dark:text-white/40 font-medium normal-case tracking-normal">
-                  {structuredFocus.label}
+    <div
+      className={cn(
+        'lois-panel flex flex-col h-full w-full max-w-7xl mx-auto bg-transparent overflow-hidden relative',
+      )}
+      style={{ fontFamily: 'var(--font-sans)' }}
+    >
+      <div
+        className={cn(
+          'relative z-10 shrink-0 flex items-center justify-between gap-2',
+          isMinimal
+            ? 'px-3 py-2.5 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]'
+            : 'px-4 md:px-8 py-4 md:py-6 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]',
+        )}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <LoisOrb size={isMinimal ? 'md' : 'lg'} pulse />
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h2
+                className="font-semibold text-light-text-primary dark:text-dark-text-primary leading-none tracking-tight"
+                style={{ fontFamily: 'var(--font-heading)', fontSize: typeScale.title }}
+              >
+                Lois
+              </h2>
+              {isMinimal && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--agora-blue)]/10 px-1.5 py-0.5 text-[var(--agora-blue)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--agora-blue)] shadow-[0_0_8px_var(--agora-blue)]" />
+                  <span className="font-medium leading-none" style={{ fontSize: typeScale.tiny }}>Live</span>
                 </span>
-              ) : null}
+              )}
             </div>
-          )}
+            <p
+              className="mt-1 text-light-text-secondary dark:text-dark-text-secondary truncate leading-none"
+              style={{ fontSize: typeScale.tiny }}
+            >
+              {structuredFocus?.label || 'School assistant'}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            type="button"
             onClick={handleNewChat}
-            className="text-light-text-muted dark:text-white/20 hover:text-agora-blue dark:hover:text-white hover:bg-light-hover dark:hover:bg-white/5 rounded-full px-4 border border-transparent hover:border-light-border dark:hover:border-white/10 transition-all font-semibold uppercase tracking-wider text-[9px]"
+            className="lois-icon-btn"
+            title="New chat"
+            aria-label="New chat"
           >
-            New Chat
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
             onClick={() => setIsHistoryOpen(true)}
-            className="text-light-text-muted dark:text-white/20 hover:text-agora-blue dark:hover:text-white hover:bg-light-hover dark:hover:bg-white/5 rounded-full px-2 md:px-4 border border-transparent hover:border-light-border dark:hover:border-white/10 transition-all"
+            className="lois-icon-btn"
+            title="History"
+            aria-label="Chat history"
           >
-            <History className="w-4 h-4 md:mr-2" />
-            <span className="text-[9px] font-semibold uppercase tracking-wider hidden md:inline">Chat History</span>
-          </Button>
+            <History className="w-3.5 h-3.5" />
+          </button>
+          {headerActions}
         </div>
       </div>
 
-      {/* Chat Messages Area */}
       <div className="flex-1 relative flex flex-col z-10 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-light-border dark:scrollbar-thumb-white/10 scroll-smooth">
         {isHistoryLoading ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-4">
-            <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-            <p className="text-sm italic text-light-text-muted dark:text-white/40">Loading your history with Lois...</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-2">
+            <LoisOrb size="md" pulse />
+            <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: typeScale.small }}>
+              Loading conversations…
+            </p>
           </div>
         ) : messages.length <= 1 ? (
-          <div className="flex flex-col items-center justify-center text-center px-4 py-8 md:py-16 space-y-8 md:space-y-12 animate-in fade-in zoom-in-[0.98] duration-1000">
-            <FadeInUp duration={0.8} delay={0.1} className="flex flex-col items-center">
-              <div className="mb-6 relative">
-                <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full animate-pulse" />
-                <Sparkles className="w-12 h-12 text-indigo-500 dark:text-blue-400 relative z-10" />
+          <div className={cn(
+            'flex-1 flex flex-col min-h-0',
+            isMinimal ? 'px-3 py-5' : 'max-w-3xl mx-auto w-full px-4 py-6 md:px-5 md:py-8',
+          )}>
+            <div className="flex-1 min-h-4" />
+
+            <div className={cn('flex flex-col gap-3', isMinimal ? 'items-stretch text-left' : 'items-center text-center')}>
+              <div>
+                <span
+                  className="uppercase tracking-[0.18em] text-light-text-muted dark:text-dark-text-muted font-medium"
+                  style={{ fontSize: typeScale.tiny }}
+                >
+                  Try asking
+                </span>
+                <h3
+                  className="mt-2 font-semibold text-light-text-primary dark:text-dark-text-primary tracking-tight leading-snug"
+                  style={{ fontFamily: 'var(--font-heading)', fontSize: typeScale.greeting }}
+                >
+                  How can I help, {firstName}?
+                </h3>
+                <p
+                  className="mt-1.5 text-light-text-secondary dark:text-dark-text-secondary max-w-md leading-relaxed"
+                  style={{ fontSize: typeScale.small }}
+                >
+                  {isSchoolAdmin
+                    ? 'Ask about students, classes, staff, fees, admissions, or the calendar.'
+                    : 'Ask for a lesson plan, quiz, grades, or what’s next on the timetable.'}
+                </p>
               </div>
-              <p className="text-[9px] items-center uppercase font-semibold tracking-[0.3em] text-light-text-muted dark:text-white/30 mb-2">Authenticated: {firstName}</p>
-              <h2 className={cn(
-                "font-semibold text-light-text-primary dark:text-white tracking-tighter mb-4 leading-tight px-4",
-                variant === 'minimal' ? "text-xl md:text-2xl" : "text-xl md:text-3xl"
-              )} style={{ fontFamily: 'var(--font-heading)' }}>
-                How can I help, <span className="text-agora-blue">{firstName}?</span>
-              </h2>
-              <p className={cn(
-                "text-light-text-muted dark:text-white/30 max-w-md mx-auto px-4",
-                variant === 'minimal' ? "text-[10px] mb-4 md:mb-6" : "text-sm mb-6 md:mb-10 text-light-text-secondary dark:text-gray-400"
-              )}>
-                I can generate lesson plans, quizzes, flashcards, assessments and more — just ask naturally.
-              </p>
 
-              <div className={cn(
-                "grid grid-cols-1 gap-4 max-w-5xl w-full px-4",
-                variant === 'minimal' ? "md:grid-cols-1" : "md:grid-cols-3"
-              )}>
-                {(() => {
-                  const defaultOptions = [
-                    {
-                      icon: "📝",
-                      color: "bg-blue-500/10 dark:bg-blue-500/20",
-                      prompt: "Generate a 10-question quiz for my class right now."
-                    },
-                    {
-                      icon: "⏰",
-                      color: "bg-purple-500/10 dark:bg-purple-500/20",
-                      prompt: "What is my next subject and in which class/room?"
-                    },
-                    {
-                      icon: "🎯",
-                      color: "bg-emerald-500/10 dark:bg-emerald-500/20",
-                      prompt: "Help me grade this student's essay and give me feedback."
-                    }
-                  ];
-
-                  const isStudentsContext =
-                    structuredFocus?.type === 'student' || pathHint.includes('/students');
-                  const isClassesContext =
-                    structuredFocus?.type === 'class' ||
-                    pathHint.includes('/classes') ||
-                    pathHint.includes('/levels');
-                  const isSchoolContext = structuredFocus?.type === 'school';
-
-                  const studentName = structuredFocus?.type === 'student' ? structuredFocus.label : 'this student';
-                  const className = structuredFocus?.type === 'class' ? structuredFocus.label : 'this class';
-
-                  const contextualOptions = isStudentsContext && structuredFocus?.type === 'student' ? [
-                    {
-                      title: "Analyze Grades",
-                      desc: "Review recent academic performance",
-                      icon: "📊",
-                      color: "bg-indigo-500/10 dark:bg-indigo-500/20",
-                      prompt: `Show me the recent performance and grades for ${studentName}`
-                    },
-                    {
-                      title: "Attendance",
-                      desc: "Recent presence",
-                      icon: "📋",
-                      color: "bg-emerald-500/10 dark:bg-emerald-500/20",
-                      prompt: `Summarise attendance for ${studentName}`
-                    },
-                    {
-                      title: "Draft parent note",
-                      desc: "Preview only — not sent",
-                      icon: "✉️",
-                      color: "bg-purple-500/10 dark:bg-purple-500/20",
-                      prompt: `Draft a supportive parent update about ${studentName}'s progress. Do not send it.`
-                    }
-                  ] : isStudentsContext ? [
-                    {
-                      title: "Analyze Grades",
-                      desc: "Review recent academic performance",
-                      icon: "📊",
-                      color: "bg-indigo-500/10 dark:bg-indigo-500/20",
-                      prompt: "Show me the recent performance and grades for this student"
-                    },
-                    {
-                      title: "Draft Parent Email",
-                      desc: "Write a progress update to parents",
-                      icon: "✉️",
-                      color: "bg-purple-500/10 dark:bg-purple-500/20",
-                      prompt: "Draft an email to this student's parents regarding their performance. Do not send it."
-                    },
-                    {
-                      title: "List at-risk",
-                      desc: "Students below threshold",
-                      icon: "📋",
-                      color: "bg-emerald-500/10 dark:bg-emerald-500/20",
-                      prompt: "Who is below the academic risk threshold right now?"
-                    }
-                  ] : isClassesContext ? [
-                    {
-                      title: "Class Timetable",
-                      desc: "Check the schedule for this class",
-                      icon: "⏰",
-                      color: "bg-amber-500/10 dark:bg-amber-500/20",
-                      prompt: `What is going on in ${className} right now?`
-                    },
-                    {
-                      title: "Class performance",
-                      desc: "Published grade averages",
-                      icon: "📊",
-                      color: "bg-purple-500/10 dark:bg-purple-500/20",
-                      prompt: `How is ${className} performing this term?`
-                    },
-                    {
-                      title: "Scheme of work",
-                      desc: "Planned vs delivered",
-                      icon: "👨‍🏫",
-                      color: "bg-blue-500/10 dark:bg-blue-500/20",
-                      prompt: `What does the scheme of work look like for ${className}?`
-                    }
-                  ] : isSchoolContext ? [
-                    {
-                      title: "What Lois noticed",
-                      desc: "Background insights",
-                      icon: "📊",
-                      color: "bg-indigo-500/10 dark:bg-indigo-500/20",
-                      prompt: "What issues have you already noticed for this school?"
-                    },
-                    {
-                      title: "At-risk students",
-                      desc: "Below 45% this term",
-                      icon: "🎯",
-                      color: "bg-emerald-500/10 dark:bg-emerald-500/20",
-                      prompt: "Who is below the academic risk threshold this term?"
-                    },
-                    {
-                      title: "School snapshot",
-                      desc: "Live counts",
-                      icon: "⏰",
-                      color: "bg-purple-500/10 dark:bg-purple-500/20",
-                      prompt: "Give me the current school statistics."
-                    }
-                  ] : defaultOptions;
-
-                  const displayOptions = (structuredFocus || pathHint) && (isStudentsContext || isClassesContext || isSchoolContext)
-                    ? contextualOptions
-                    : defaultOptions;
-
-                  return displayOptions.map((card, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSendMessage(card.prompt)}
-                      className={cn(
-                        "group relative flex flex-col items-start transition-all text-left overflow-hidden hover:translate-y-[-4px] shadow-sm hover:shadow-xl hover:shadow-indigo-500/5",
-                        variant === 'minimal'
-                          ? "bg-light-card/40 dark:bg-white/[0.03] border border-light-border dark:border-white/10"
-                          : "bg-transparent border border-light-border/40 dark:border-white/5 hover:border-agora-blue/50",
-                        "p-3 md:p-4 rounded-xl md:rounded-2xl"
-                      )}
-                    >
-                      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 dark:group-hover:opacity-100 transition-opacity duration-500", card.color)} />
-                      <div className="flex items-center gap-4 z-10 w-full">
-                        <span className="text-xl shrink-0">{card.icon}</span>
-                        <p className="text-sm font-semibold text-[#111827] dark:text-white/90 leading-tight flex-1">
-                          {card.prompt}
-                        </p>
-                      </div>
-                    </button>
-                  ))
-                })()}
-              </div>
-            </FadeInUp>
+              <LoisPromptSuggestions
+                cards={loisPromptCards({ isSchoolAdmin, structuredFocus, pathHint })}
+                isMinimal={isMinimal}
+                typeScale={typeScale}
+                onSelect={handleSendMessage}
+              />
+            </div>
           </div>
         ) : (
-          <div className="px-4 md:px-8 space-y-6 md:space-y-10 py-4 md:py-8">
+          <div className={cn('space-y-4', isMinimal ? 'px-3 py-4' : 'px-4 md:px-5 py-4 md:py-6')}>
             {messages.map((msg, idx) => (
               idx === 0 ? null : (
-                <FadeInUp key={idx} duration={0.4} delay={0}>
+                <FadeInUp key={idx} duration={0.25} delay={0}>
                   <div className={cn(
-                    "flex gap-6 group",
+                    "flex gap-2.5 group",
                     msg.role === 'user' ? "flex-row-reverse" : "flex-row"
                   )}>
                     <div className={cn(
-                      "flex-shrink-0 transition-transform group-hover:scale-110",
-                      msg.role === 'assistant' ? "relative" : "w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg bg-light-card dark:bg-white/10 border border-light-border dark:border-white/10 text-light-text-primary dark:text-white"
+                      "flex-shrink-0",
+                      msg.role === 'assistant'
+                        ? "relative"
+                        : "w-7 h-7 rounded-lg flex items-center justify-center bg-[var(--light-card)] dark:bg-[var(--dark-surface)] border border-[var(--light-border)] dark:border-[var(--dark-border)] text-light-text-primary dark:text-dark-text-primary"
                     )}>
-                      {msg.role === 'assistant' ? <BrainIndicator /> : <User size={20} />}
+                      {msg.role === 'assistant' ? <LoisOrb size="sm" /> : <User size={12} />}
                     </div>
 
                     <div className={cn(
-                      "flex flex-col max-w-[85%] md:max-w-[75%] gap-2",
+                      "flex flex-col max-w-[85%] gap-1",
                       msg.role === 'user' ? "items-end text-right" : "items-start text-left"
                     )}>
-                      {/* Tool Events (rendered above the text for assistant) */}
                       {msg.role === 'assistant' && msg.toolEvents && msg.toolEvents.length > 0 && (
-                        <div className="w-full space-y-2 mb-2">
+                        <div className="w-full space-y-2 mb-1">
                           {msg.toolEvents.map((event, eventIdx) => (
                             event.type === 'sources' ? null : (
                             <ToolCard key={eventIdx} event={event} schoolId={schoolId} variant={variant} conversationId={currentConversationId} />
@@ -1076,22 +1123,21 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                         </div>
                       )}
 
-                      {/* Message Content */}
                       {(msg.content || msg.isStreaming) && (
-                        <div className={cn(
-                          "p-4 md:p-2 text-sm md:text-[15px] leading-relaxed relative",
-                          msg.role === 'user'
-                            ? "bg-transparent border-none p-0 text-indigo-600 dark:text-indigo-400 font-bold"
-                            : "bg-transparent border-none p-0 text-light-text-primary dark:text-white/90"
-                        )}>
-                          <div className={cn(
-                            "whitespace-pre-wrap font-medium",
-                            msg.role === 'assistant' && variant === 'minimal' && "text-light-text-primary dark:text-white/80"
-                          )}>
-                            <div className="flex flex-col gap-2">
+                        <div
+                          className={cn(
+                            "leading-relaxed",
+                            msg.role === 'user'
+                              ? "rounded-2xl rounded-tr-md bg-[var(--agora-blue)] text-white px-3 py-2"
+                              : "text-light-text-primary dark:text-dark-text-primary",
+                          )}
+                          style={{ fontSize: typeScale.body }}
+                        >
+                          <div className="whitespace-pre-wrap">
+                            <div className="flex flex-col gap-1.5">
                               {msg.content}
                               {msg.isStreaming && (
-                                <div className="mt-1">
+                                <div className="mt-0.5">
                                   <ThreeDotTyping />
                                 </div>
                               )}
@@ -1101,20 +1147,22 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                       )}
 
                       {msg.role === 'assistant' && !msg.isStreaming && msg.sources && msg.sources.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 px-1">
+                        <div className="flex flex-wrap gap-1 px-0.5">
                           {msg.sources.map((source, si) =>
                             source.href ? (
                               <Link
                                 key={`${source.label}-${si}`}
                                 href={source.href}
-                                className="px-2 py-0.5 rounded-full border border-light-border dark:border-white/10 text-[10px] font-medium text-light-text-secondary dark:text-white/50 hover:text-indigo-600 dark:hover:text-indigo-300"
+                                className="px-1.5 py-0.5 rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] text-light-text-secondary dark:text-dark-text-secondary hover:text-[var(--agora-blue)] hover:border-[var(--agora-blue)]/40"
+                                style={{ fontSize: typeScale.tiny }}
                               >
                                 {source.label}
                               </Link>
                             ) : (
                               <span
                                 key={`${source.label}-${si}`}
-                                className="px-2 py-0.5 rounded-full border border-light-border dark:border-white/10 text-[10px] font-medium text-light-text-secondary dark:text-white/50"
+                                className="px-1.5 py-0.5 rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] text-light-text-secondary dark:text-dark-text-secondary"
+                                style={{ fontSize: typeScale.tiny }}
                               >
                                 {source.label}
                               </span>
@@ -1123,8 +1171,8 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                         </div>
                       )}
 
-                      <div className="flex items-center gap-3 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-[10px] text-[#4b5563] dark:text-white/30 uppercase font-bold tracking-widest">
+                      <div className="flex items-center gap-2 px-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: typeScale.tiny }}>
                           {msg.timestamp}
                         </span>
                         {msg.role === 'assistant' && !msg.isStreaming && msg.content && (
@@ -1132,7 +1180,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                             onClick={() => handleCopy(msg.content)}
                             className="text-light-text-muted dark:text-white/30 hover:text-agora-blue dark:hover:text-white transition-colors p-1"
                           >
-                            <Copy size={12} />
+                            <Copy size={11} />
                           </button>
                         )}
                       </div>
@@ -1147,74 +1195,45 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="p-2 md:p-12 z-20 shrink-0 pb-6 md:pb-12">
-        <div className="max-w-4xl mx-auto relative px-2 md:px-4">
-          <div className="relative group transition-all duration-300">
-            <div className="flex items-center gap-3">
-              {/* Themed Input Bubble (Paperclip + Input) */}
-              <div className={cn(
-                "flex-1 flex items-center gap-1 transition-all duration-300",
-                variant === 'minimal'
-                  ? "bg-light-input dark:bg-white/[0.04] border border-light-border dark:border-white/10 rounded-2xl md:rounded-[2rem]"
-                  : "bg-transparent border border-light-border/40 dark:border-white/5 focus-within:border-agora-blue/30 rounded-2xl md:rounded-[2rem]"
-              )}>
-                <button className="p-4 rounded-full text-light-text-muted dark:text-white/20 hover:text-agora-blue dark:hover:text-white transition-all shrink-0">
-                  <Paperclip size={15} />
-                </button>
-
-                <input
-                  ref={inputRef}
-                  placeholder={`Hi ${firstName}, what can I do for you today?`}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  disabled={isStreaming}
-                  className="flex-1 h-13 py-2 bg-transparent !bg-transparent text-[#111827] dark:text-white placeholder:text-[#9ca3af] dark:placeholder:text-white/15 focus:outline-none px-2 text-[15px] font-bold disabled:cursor-not-allowed"
-                  style={{ backgroundColor: 'transparent' }}
-                />
-              </div>
-
-              {/* Independent Send Button */}
-              <div className="flex-shrink-0">
-                <Button
-                  onClick={() => handleSendMessage()}
-                  disabled={!inputValue.trim() || isStreaming}
-                  className={cn(
-                    "rounded-full bg-agora-blue dark:bg-indigo-600 hover:bg-agora-blue/90 dark:hover:bg-indigo-500 text-white shadow-lg shadow-blue-500/10 active:scale-95 transition-all shrink-0 border-none",
-                    variant === 'minimal' ? "w-8 h-8 md:w-9 md:h-9 p-0" : "w-10 h-10 md:w-11 md:h-11 p-0"
-                  )}
-                >
-                  {isStreaming ? (
-                    <StopCircle className={cn("animate-pulse", variant === 'minimal' ? "w-3 h-3" : "w-4 h-4 md:w-5 md:h-5")} />
-                  ) : (
-                    <Send className={variant === 'minimal' ? "w-3 h-3" : "w-4 h-4 md:w-5 md:h-5"} />
-                  )}
-                </Button>
-              </div>
+      <div className={cn('z-20 shrink-0', isMinimal ? 'px-3 pb-3 pt-1' : 'p-2 md:p-12 pb-6 md:pb-12')}>
+        <div className="max-w-4xl mx-auto">
+          <div className="lois-composer">
+            <div className="flex items-center gap-2 rounded-[0.95rem] bg-[var(--input-field-bg)] px-2.5 py-2">
+              <input
+                ref={inputRef}
+                placeholder="Ask Lois anything…"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isStreaming}
+                className="flex-1 min-w-0 disabled:cursor-not-allowed"
+              />
+              <button
+                type="button"
+                onClick={() => (isStreaming ? handleStopStreaming() : handleSendMessage())}
+                disabled={!isStreaming && !inputValue.trim()}
+                className="relative h-7 w-7 shrink-0 rounded-lg overflow-hidden text-white disabled:opacity-35 transition-transform active:scale-95"
+                aria-label={isStreaming ? 'Stop' : 'Send'}
+              >
+                <span className="absolute inset-0 bg-[#0A0A0B]" />
+                <span className="absolute inset-0 bg-gradient-to-br from-[#7D52FF]/50 via-[var(--agora-blue)]/30 to-[#00D1FF]/40" />
+                <span className="relative flex items-center justify-center">
+                  {isStreaming ? <StopCircle className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />}
+                </span>
+              </button>
             </div>
           </div>
-          {variant !== 'minimal' && (
-            <div className="mt-5 flex justify-center items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-1 rounded-full bg-indigo-500/40" />
-                <p className="text-[9px] text-light-text-muted dark:text-white/20 font-semibold uppercase tracking-[0.25em]">Myschoolbud Engine v5.0</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-1 rounded-full bg-emerald-500/40" />
-                <p className="text-[9px] text-light-text-muted dark:text-white/20 font-semibold uppercase tracking-[0.25em]">SSE Streaming</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-1 rounded-full bg-amber-500/40" />
-                <p className="text-[9px] text-light-text-muted dark:text-white/20 font-semibold uppercase tracking-[0.25em]">Agentic Tools</p>
-              </div>
-            </div>
-          )}
+          <p
+            className="mt-1.5 text-center text-light-text-muted dark:text-dark-text-muted"
+            style={{ fontSize: typeScale.tiny }}
+          >
+            Lois can be wrong — double-check important details.
+          </p>
         </div>
       </div>
 
@@ -1228,101 +1247,95 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsHistoryOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+              className={cn(
+                'z-[100]',
+                variant === 'minimal' ? 'absolute inset-0 bg-black/20' : 'fixed inset-0 bg-black/40',
+              )}
             />
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="fixed right-0 top-0 bottom-0 w-80 md:w-96 bg-light-card/95 dark:bg-[var(--dark-bg)]/95 backdrop-blur-2xl border-l border-light-border/50 dark:border-white/[0.08] z-[101] shadow-[ -20px_0_50px_rgba(0,0,0,0.3)] flex flex-col"
+              transition={{ duration: 0.2 }}
+              className={cn(
+                'z-[101] flex flex-col bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] border-l border-[var(--light-border)] dark:border-[var(--dark-border)]',
+                variant === 'minimal' ? 'absolute inset-y-0 right-0 w-full' : 'fixed right-0 top-0 bottom-0 w-80 md:w-96',
+              )}
             >
-              {/* Drawer Header */}
-              <div className="p-6 md:p-8 border-b border-light-border/50 dark:border-white/[0.08] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-500">
-                    <History className="w-5 h-5" />
-                  </div>
-                  <div className="flex flex-col">
-                    <h3 className="text-base font-bold text-light-text-primary dark:text-white leading-none mb-1" style={{ fontFamily: 'var(--font-heading)' }}>Chat History</h3>
-                    <p className="text-[10px] text-light-text-muted dark:text-white/30 uppercase tracking-widest font-bold">Lois Assistant</p>
-                  </div>
+              <div className="px-3.5 py-2.5 border-b border-[var(--light-border)] dark:border-[var(--dark-border)] flex items-center justify-between">
+                <div>
+                  <h3
+                    className="font-semibold text-light-text-primary dark:text-dark-text-primary"
+                    style={{ fontFamily: 'var(--font-heading)', fontSize: typeScale.title }}
+                  >
+                    Chat history
+                  </h3>
+                  <p className="mt-0.5 text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: typeScale.tiny }}>
+                    Previous conversations
+                  </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsHistoryOpen(false)}
-                  className="p-2.5 hover:bg-light-hover dark:hover:bg-white/5 rounded-full transition-all text-light-text-muted dark:text-white/40 hover:text-light-text-primary dark:hover:text-white"
+                  className="lois-icon-btn"
+                  aria-label="Close history"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              {/* Drawer Content */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
                 {!historyData || historyData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-light-hover dark:bg-white/[0.03] flex items-center justify-center">
-                      <MessageSquare className="w-6 h-6 text-light-text-muted/20 dark:text-white/10" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-light-text-primary dark:text-white/60">No history found</p>
-                      <p className="text-[11px] text-light-text-muted dark:text-white/20 px-10">Your conversations with Lois will appear here.</p>
-                    </div>
+                  <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+                    <MessageSquare className="w-5 h-5 text-light-text-secondary dark:text-dark-text-secondary mb-2" />
+                    <p className="font-semibold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: typeScale.body }}>
+                      No conversations yet
+                    </p>
+                    <p className="mt-1 text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: typeScale.small }}>
+                      New chats with Lois will show up here.
+                    </p>
                   </div>
                 ) : (
                   historyData.map((chat: any) => (
-                    <motion.div
+                    <div
                       key={chat.id}
                       onClick={() => handleSelectConversation(chat.id, chat.title)}
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
                       className={cn(
-                        "group relative p-4 rounded-[1.25rem] border transition-all cursor-pointer overflow-hidden backdrop-blur-sm",
+                        'group relative cursor-pointer rounded-lg border px-3 py-2.5 pr-9',
                         currentConversationId === chat.id
-                          ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-500"
-                          : "bg-light-hover/40 dark:bg-white/[0.02] border-transparent hover:border-light-border dark:hover:border-white/10 hover:bg-light-hover/60 dark:hover:bg-white/[0.05]"
+                          ? 'bg-[var(--light-sidebar-active)] dark:bg-[var(--dark-sidebar-active)] border-[var(--dashboard-sidebar-active-border)]'
+                          : 'bg-[var(--light-card)] dark:bg-[var(--dark-surface)] border-[var(--light-border)] dark:border-[var(--dark-border)] hover:border-[var(--dashboard-sidebar-active-border)]',
                       )}
                     >
-                      {/* Selection Indicator */}
                       {currentConversationId === chat.id && (
-                        <motion.div
-                          layoutId="activeHistory"
-                          className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500"
-                        />
+                        <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[var(--agora-blue)]" />
                       )}
-
-                      <div className="flex flex-col gap-1.5 pr-8">
-                        <span className={cn(
-                          "text-[13px] font-bold truncate leading-tight transition-colors",
-                          currentConversationId === chat.id ? "text-indigo-600 dark:text-indigo-400" : "text-light-text-primary dark:text-white/80"
-                        )}>
-                          {chat.title || "Untitled Conversation"}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-light-text-muted dark:text-white/20">
-                            {new Date(chat.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </span>
-                        </div>
-                      </div>
-
+                      <p
+                        className="font-semibold text-light-text-primary dark:text-dark-text-primary truncate"
+                        style={{ fontSize: typeScale.body }}
+                      >
+                        {chat.title || 'Untitled conversation'}
+                      </p>
+                      <p className="text-light-text-secondary dark:text-dark-text-secondary mt-0.5" style={{ fontSize: typeScale.tiny }}>
+                        {new Date(chat.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
                       <button
+                        type="button"
                         onClick={(e) => handleDeleteConversation(e, chat.id)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 opacity-0 group-hover:opacity-100 text-light-text-muted dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 transition-all rounded-lg hover:bg-red-500/5"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 text-light-text-secondary hover:text-red-600 rounded-md hover:bg-[var(--light-hover)]"
+                        aria-label="Delete conversation"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    </motion.div>
+                    </div>
                   ))
                 )}
               </div>
 
-              {/* Drawer Footer */}
-              <div className="p-6 md:p-8 border-t border-light-border/50 dark:border-white/[0.08] bg-light-card/40 dark:bg-white/[0.01]">
-                <Button
-                  onClick={handleNewChat}
-                  className="w-full bg-agora-blue hover:bg-agora-blue/90 text-white rounded-xl py-3.5 h-auto font-semibold text-xs shadow-lg shadow-blue-500/10 group active:scale-95 transition-all"
-                >
-                  <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform" />
-                  Start New Session
+              <div className="p-3 border-t border-[var(--light-border)] dark:border-[var(--dark-border)]">
+                <Button onClick={handleNewChat} variant="primary" fullWidth>
+                  <Plus className="w-4 h-4 mr-2" />
+                  New chat
                 </Button>
               </div>
             </motion.div>

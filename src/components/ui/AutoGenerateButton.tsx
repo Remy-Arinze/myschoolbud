@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from './Button';
+import { LoisOrb } from '@/components/ai/LoisOrb';
 
 interface AutoGenerateButtonProps {
   onClick: () => void;
@@ -13,7 +13,6 @@ interface AutoGenerateButtonProps {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
-  logoSrc?: string;
 }
 
 export function AutoGenerateButton({
@@ -25,7 +24,6 @@ export function AutoGenerateButton({
   variant = 'secondary',
   size = 'sm',
   className = '',
-  logoSrc,
 }: AutoGenerateButtonProps) {
   return (
     <Button
@@ -37,26 +35,15 @@ export function AutoGenerateButton({
     >
       {isLoading ? (
         <>
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
           {loadingLabel}
         </>
       ) : (
         <>
-          {logoSrc ? (
-            <Image
-              src={logoSrc}
-              alt="Myschoolbud"
-              width={16}
-              height={16}
-              className="mr-2 object-contain"
-            />
-          ) : (
-            <Sparkles className="h-4 w-4 mr-2" />
-          )}
+          <LoisOrb size="xs" className="mr-1" />
           {label}
         </>
       )}
     </Button>
   );
 }
-

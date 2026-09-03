@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { LogOut } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { WordedLogo } from '@/components/layout/WordedLogo';
 import { getActivePluginsForTeacher } from '@/lib/plugins';
 import { usePermissionFilteredSidebar } from '@/hooks/useSidebarConfig';
 import { SchoolTypeSwitcher } from '@/components/dashboard/SchoolTypeSwitcher';
@@ -19,19 +20,12 @@ import '@/lib/store/api/notificationsApi';
 
 function LogoSection() {
   return (
-    <div className="mb-4 flex items-center justify-between group">
+    <div className="mb-4 flex items-center group">
       <Link
         href="/"
-        className="font-normal flex items-center justify-center md:justify-start py-1 px-3 relative z-20"
+        className="flex items-center py-1 px-3 relative z-20"
       >
-        <Image
-          src="/assets/logos/agora_main.png"
-          alt="Myschoolbud"
-          width={40}
-          height={40}
-          className="h-8 w-8 object-contain teacher-logo"
-          priority
-        />
+        <WordedLogo size="md" priority />
       </Link>
     </div>
   );

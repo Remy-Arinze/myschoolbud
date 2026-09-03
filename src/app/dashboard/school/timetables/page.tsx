@@ -77,7 +77,7 @@ export default function TimetablesPage() {
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') === 'exam' ? 'exam' : 'class';
 
-  const handleTabChange = (tab: string) => {
+  const timetableTabHref = (tab: 'class' | 'exam') => {
     const params = new URLSearchParams(searchParams.toString());
     if (tab === 'class') {
       params.delete('tab');
@@ -85,7 +85,7 @@ export default function TimetablesPage() {
       params.set('tab', tab);
     }
     const qs = params.toString();
-    router.replace(`/dashboard/school/timetables${qs ? `?${qs}` : ''}`);
+    return `/dashboard/school/timetables${qs ? `?${qs}` : ''}`;
   };
 
   const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -107,8 +107,9 @@ export default function TimetablesPage() {
   );
 
   const activeTermId = activeSessionResponse?.data?.term?.id;
+  const termId = selectedTermId || activeTermId || '';
 
-  // Set selected term to active term by default when not in history mode
+  // Keep selected term on the active term unless History is open
   useEffect(() => {
     if (activeTermId) {
       if (!showHistory) {
@@ -136,9 +137,9 @@ export default function TimetablesPage() {
     {
       schoolId: schoolId!,
       schoolType: currentType || undefined,
-      termId: selectedTermId || undefined,
+      termId: termId || undefined,
     },
-    { skip: !schoolId }
+    { skip: !schoolId || !termId }
   );
 
   // Get timetable for selected class
@@ -146,20 +147,19 @@ export default function TimetablesPage() {
     {
       schoolId: schoolId!,
       classId: selectedClassId,
-      termId: selectedTermId,
+      termId,
     },
-    { skip: !schoolId || !selectedClassId || !selectedTermId }
+    { skip: !schoolId || !selectedClassId || !termId }
   );
 
   // For SECONDARY, include termId to get teacher workload data
-  // Skip until termId is selected for SECONDARY to ensure we get workload data
   const { data: subjectsResponse, refetch: refetchSubjects } = useGetSubjectsQuery(
     {
       schoolId: schoolId!,
       schoolType: currentType || undefined,
-      termId: currentType === 'SECONDARY' ? selectedTermId : undefined,
+      termId: currentType === 'SECONDARY' ? termId : undefined,
     },
-    { skip: !schoolId || (currentType === 'SECONDARY' && !selectedTermId) }
+    { skip: !schoolId || (currentType === 'SECONDARY' && !termId) }
   );
 
   const { data: coursesResponse } = useGetCoursesQuery(
@@ -312,7 +312,7 @@ export default function TimetablesPage() {
     courseId?: string,
     teacherId?: string  // NEW: Teacher ID for SECONDARY schools
   ) => {
-    if (!schoolId || !selectedClassId || !selectedTermId) return;
+    if (!schoolId || !selectedClassId || !termId) return;
 
     try {
       if (slot.periodData) {
@@ -372,7 +372,7 @@ export default function TimetablesPage() {
               ? { classArmId: selectedClassId }
               : { classId: selectedClassId }
             ),
-            termId: selectedTermId,
+            termId,
           },
         }).unwrap();
         toast.success('Period created successfully');
@@ -410,7 +410,7 @@ export default function TimetablesPage() {
     courseId?: string;
     courseName?: string;
   }>) => {
-    if (!schoolId || !selectedClassId || !selectedTermId) return;
+    if (!schoolId || !selectedClassId || !termId) return;
 
     try {
       // Create a map of existing periods with their IDs for updates
@@ -466,7 +466,7 @@ export default function TimetablesPage() {
                 ? { classArmId: selectedClassId }
                 : { classId: selectedClassId }
               ),
-              termId: selectedTermId,
+              termId,
             },
           }).unwrap();
           createdCount++;
@@ -607,7 +607,7 @@ export default function TimetablesPage() {
    * Apply previewed timetable (from preview modal)
    */
   const handleApplyPreview = useCallback(async (periods: GeneratedPeriodWithTeacher[]) => {
-    if (!schoolId || !selectedClassId || !selectedTermId) return;
+    if (!schoolId || !selectedClassId || !termId) return;
 
     setIsApplyingPreview(true);
 
@@ -662,7 +662,7 @@ export default function TimetablesPage() {
                 ? { classArmId: selectedClassId }
                 : { classId: selectedClassId }
               ),
-              termId: selectedTermId,
+              termId,
             },
           }).unwrap();
           createdCount++;
@@ -690,7 +690,7 @@ export default function TimetablesPage() {
       setIsApplyingPreview(false);
     }
   }, [
-    schoolId, selectedClassId, selectedTermId, timetable, classes,
+    schoolId, selectedClassId, termId, timetable, classes,
     updatePeriod, createPeriod, refetchTimetable, refetchTimetables
   ]);
 
@@ -742,7 +742,7 @@ export default function TimetablesPage() {
     teacherId?: string;
     type: 'LESSON' | 'BREAK' | 'LUNCH' | 'ASSEMBLY';
   }>) => {
-    if (!schoolId || !selectedClassId || !selectedTermId) return;
+    if (!schoolId || !selectedClassId || !termId) return;
 
     const selectedClass = classes.find((c) => c.id === selectedClassId);
     const hasClassArmId = selectedClass?.classArmId;
@@ -752,7 +752,7 @@ export default function TimetablesPage() {
         schoolId,
         classId: selectedClassId,
         data: {
-          termId: selectedTermId,
+              termId,
           ...(hasClassArmId
             ? { classArmId: selectedClassId }
             : { classId: selectedClassId }
@@ -783,7 +783,9 @@ export default function TimetablesPage() {
   };
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
-  const selectedTerm = allTerms.find((t) => t.id === selectedTermId);
+  const selectedTerm = allTerms.find((t) => t.id === termId);
+  const isClassTabLoading =
+    isLoadingSchool || isLoadingActiveSession || (!!termId && isLoadingTimetables);
 
   // Get classes that have timetables
   const classesWithTimetables = useMemo(() => {
@@ -844,56 +846,49 @@ export default function TimetablesPage() {
           </div>
         </FadeInUp>
 
-        {/* Tabs */}
-        <div className="mb-6 border-b border-light-border dark:border-dark-border">
-          <div className="flex space-x-1 overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => handleTabChange('class')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'class'
-                ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
-                }`}
+        <nav className="mb-6" aria-label="Timetable sections">
+          <div className="settings-section-tabs">
+            <Link
+              href={timetableTabHref('class')}
+              aria-current={activeTab === 'class' ? 'page' : undefined}
+              className="settings-section-tab"
+              style={{ fontSize: 'var(--text-body)' }}
             >
               <Clock className="h-4 w-4" />
               Class schedules
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabChange('exam')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'exam'
-                ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
-                }`}
+            </Link>
+            <Link
+              href={timetableTabHref('exam')}
+              aria-current={activeTab === 'exam' ? 'page' : undefined}
+              className="settings-section-tab"
+              style={{ fontSize: 'var(--text-body)' }}
             >
               <GraduationCap className="h-4 w-4" />
               Exam timetable
-            </button>
+            </Link>
           </div>
-        </div>
+        </nav>
 
         {activeTab === 'class' && (
           <>
-        {/* Timetables List */}
-        {isLoadingSchool || isLoadingActiveSession || (selectedTermId && isLoadingTimetables) ? (
+        {isClassTabLoading ? (
           <div className="py-24 flex flex-col items-center justify-center">
             <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
-            <p className="text-light-text-secondary dark:text-dark-text-secondary font-medium animate-pulse">
+            <p className="text-light-text-secondary dark:text-dark-text-secondary font-medium animate-pulse" style={{ fontSize: 'var(--text-body)' }}>
               Loading timetables...
             </p>
           </div>
-        ) : selectedTermId ? (
+        ) : (
           <>
             {showHistory && (
               <div className="flex justify-end mb-4">
                 <Select
-                  value={selectedTermId}
-                  onChange={(e) => setSelectedTermId(e.target.value)}
+                  value={termId}
+                  onChange={(e) => setSelectedTermId(e.target.value || activeTermId || '')}
                   inline
                   wrapperClassName="w-auto min-w-[300px]"
                   leftIcon={<Calendar className="h-4 w-4 text-light-text-muted dark:text-dark-text-muted" />}
                 >
-                  <option value="">Select Term...</option>
                   {allTerms.map((term) => (
                     <option key={term.id} value={term.id}>
                       {term.sessionName} - {term.name}
@@ -913,14 +908,10 @@ export default function TimetablesPage() {
                         : 'hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800'
                       }`}
                     onClick={() => {
-                      // Toggle: if already selected, deselect it
                       if (selectedClassId === cls.id) {
                         setSelectedClassId('');
                       } else {
                         setSelectedClassId(cls.id);
-                        if (!selectedTermId && activeSessionResponse?.data?.term?.id) {
-                          setSelectedTermId(activeSessionResponse.data.term.id);
-                        }
                       }
                     }}
                   >
@@ -951,9 +942,6 @@ export default function TimetablesPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedClassId(cls.id);
-                              if (!selectedTermId && activeSessionResponse?.data?.term?.id) {
-                                setSelectedTermId(activeSessionResponse.data.term.id);
-                              }
                             }}
                           >
                             View Timetable
@@ -967,7 +955,7 @@ export default function TimetablesPage() {
                                 setDeleteConfirmModal({
                                   classId: cls.id,
                                   className: cls.name,
-                                  termId: selectedTermId,
+                                  termId,
                                 });
                               }}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -987,44 +975,20 @@ export default function TimetablesPage() {
                     <CardContent className="py-12 text-center">
                       <EmptyStateIcon type="statistics" />
                       <p className="text-light-text-secondary dark:text-dark-text-secondary mb-4" style={{ fontSize: 'var(--text-body)' }}>
-                        No timetables created yet for {selectedTerm?.sessionName} - {selectedTerm?.name}
+                        {selectedTerm
+                          ? `No timetables generated yet for ${selectedTerm.sessionName} - ${selectedTerm.name}`
+                          : 'No timetables generated yet'}
                       </p>
-                        {/* Removed redundant Create Button because it's available at the top right */}
                     </CardContent>
                   </Card>
                 </div>
               )}
             </div>
           </>
-        ) : (
-          <Card>
-            <div className="flex justify-end p-4 pb-0">
-              <Select
-                value={selectedTermId}
-                onChange={(e) => setSelectedTermId(e.target.value)}
-                inline
-                wrapperClassName="w-auto min-w-[300px]"
-                leftIcon={<Calendar className="h-4 w-4 text-light-text-muted dark:text-dark-text-muted" />}
-              >
-                <option value="">Select Term...</option>
-                {allTerms.map((term) => (
-                  <option key={term.id} value={term.id}>
-                    {term.sessionName} - {term.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <CardContent className="py-12 text-center pt-4">
-              <EmptyStateIcon type="statistics" />
-              <p className="text-light-text-secondary dark:text-dark-text-secondary mb-4" style={{ fontSize: 'var(--text-body)' }}>
-                Please select a term from the top right to view timetables
-              </p>
-            </CardContent>
-          </Card>
         )}
 
         {/* Timetable Builder for Selected Class */}
-        {selectedClassId && selectedTermId && (
+        {selectedClassId && termId && (
           <Card className="mt-6">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1049,7 +1013,7 @@ export default function TimetablesPage() {
                         setDeleteConfirmModal({
                           classId: selectedClassId,
                           className: selectedClass?.name || '',
-                          termId: selectedTermId,
+                          termId,
                         });
                       }}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 min-w-fit"
@@ -1133,7 +1097,7 @@ export default function TimetablesPage() {
                     courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, type: 'course' as const }))}
                     timetable={timetable}
                     classArmId={''} // Not used when classId is provided
-                    termId={selectedTermId}
+                    termId={termId}
                     onPeriodUpdate={handlePeriodUpdate}
                     onPeriodDelete={handlePeriodDelete}
                     onAutoGenerate={currentType === 'SECONDARY' ? handleAutoGenerateWithPreview : handleAutoGenerate}

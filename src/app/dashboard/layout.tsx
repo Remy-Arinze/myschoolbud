@@ -3,28 +3,25 @@
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { SidebarNew } from '@/components/layout/SidebarNew';
 import { Navbar } from '@/components/layout/Navbar';
-import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/lib/store/store';
 import { cn } from '@/lib/utils';
 import { GlobalAiAssistant } from '@/components/ai/GlobalAiAssistant';
 import { NotificationProvider } from '@/components/notifications/NotificationProvider';
-import { LoisWorkspaceProvider, useLoisWorkspaceOptional } from '@/components/ai/LoisWorkspace';
+import { LoisWorkspaceProvider } from '@/components/ai/LoisWorkspace';
+import { LoisInsightDeepLink } from '@/components/ai/LoisInsightDeepLink';
 
 function MainContent({ children, showNavbar, userRole }: { children: React.ReactNode, showNavbar: boolean, userRole?: string }) {
   const ambientBg =
     userRole === 'TEACHER' || userRole === 'STUDENT' || userRole === 'SCHOOL_ADMIN';
-  const workspace = useLoisWorkspaceOptional();
-  const dockedOpen = userRole === 'SCHOOL_ADMIN' && workspace?.isOpen;
-
   return (
     <main
       className={cn(
         "flex-1 min-h-screen transition-all duration-300 scrollbar-hide overflow-y-auto overflow-x-hidden w-full",
         ambientBg ? "bg-transparent" : "bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]",
         "md:ml-[250px]",
-        dockedOpen && "lg:mr-[400px]",
         showNavbar ? "pt-[80px] md:pt-[100px]" : "pt-[80px] md:pt-8",
         "px-4 pb-20 md:px-8"
       )}
@@ -52,6 +49,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           {showNavbar && <Navbar />}
           <SidebarNew hideMobileHeader={showNavbar} />
           <MainContent showNavbar={showNavbar} userRole={userRole}>{children}</MainContent>
+          <LoisInsightDeepLink />
           <GlobalAiAssistant />
         </div>
       </LoisWorkspaceProvider>

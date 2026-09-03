@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import {
-  Sparkles,
   BookOpen,
   Check,
   X,
@@ -11,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { LoisOrb } from '@/components/ai/LoisOrb';
 import type { CurriculumSummary } from '@/lib/store/api/schoolAdminApi';
 import { useCurriculum } from '@/hooks/useCurriculum';
 
@@ -172,7 +172,7 @@ export function GenerateCurriculumModal({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4 mr-2" />
+                    <LoisOrb size="xs" className="mr-2" />
                     Generate {selectedSubjects.size} Curricula
                   </>
                 )}

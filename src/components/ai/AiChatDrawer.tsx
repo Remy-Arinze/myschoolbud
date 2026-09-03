@@ -35,50 +35,62 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
     <>
       {isOpen && !docked && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-md z-[99] animate-in fade-in duration-300"
+          className="fixed inset-0 bg-black/40 z-[99] animate-in fade-in duration-200"
           onClick={onClose}
         />
       )}
 
       <div
         className={cn(
-          "fixed right-0 bottom-0 z-[100] transition-all duration-500 flex flex-col overflow-hidden border-l border-t",
-          "bg-white dark:bg-[var(--dark-bg)] border-gray-200/50 dark:border-white/10",
-          docked
-            ? "lg:top-0 lg:h-screen lg:rounded-none"
-            : "rounded-t-[3rem] lg:rounded-tr-none lg:rounded-l-[3rem]",
-          isOpen
-            ? "translate-y-0 lg:translate-x-0"
-            : "translate-y-full lg:translate-x-full lg:translate-y-0",
-          docked && !isMaximized ? "h-[90vh] lg:h-screen" : isMaximized ? "h-screen rounded-none" : "h-[90vh]",
+          'lois-panel lois-shell fixed z-[100] transition-all duration-300 flex flex-col overflow-hidden',
+          isMaximized
+            ? 'lois-shell--max inset-0 h-screen rounded-none shadow-none'
+            : cn(
+                'right-0 bottom-0 h-[70vh] rounded-t-2xl',
+                'lg:right-4 lg:bottom-4 lg:rounded-2xl',
+                'shadow-[0_18px_50px_-20px_rgba(2,23,61,0.35)]',
+              ),
+          isOpen ? 'translate-y-0' : 'translate-y-full',
           widthClass,
-          theme === 'dark' ? 'dark' : ''
+          theme === 'dark' ? 'dark' : '',
         )}
       >
-        <div className="flex-1 overflow-hidden relative flex flex-col">
-          <div className="absolute top-6 right-8 z-[101] flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsMaximized(!isMaximized)}
-              className="p-2.5 rounded-2xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-all text-gray-500 dark:text-white/40 hover:text-gray-900 dark:hover:text-white border border-black/5 dark:border-white/5 hidden lg:block"
-            >
-              {isMaximized ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 transition-all text-red-500 dark:text-red-400 border border-red-500/10"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="flex-1 min-h-0 flex flex-col pt-16">
-            <div className="flex-1 relative overflow-hidden">
-              <AgoraChat schoolId={schoolId} variant="minimal" pageContext={pageContext || undefined} />
-            </div>
-          </div>
-        </div>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -right-16 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(125,82,255,0.22),transparent_68%)] lois-mesh-blob blur-2xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-32 -left-10 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(0,127,255,0.16),transparent_70%)] lois-mesh-blob blur-2xl"
+          style={{ animationDelay: '2.4s' }}
+        />
+        <AgoraChat
+          schoolId={schoolId}
+          variant="minimal"
+          pageContext={pageContext || undefined}
+          headerActions={
+            <>
+              <button
+                type="button"
+                onClick={() => setIsMaximized(!isMaximized)}
+                className="lois-icon-btn hidden lg:inline-flex"
+                aria-label={isMaximized ? 'Restore panel size' : 'Expand panel'}
+                title={isMaximized ? 'Restore' : 'Expand'}
+              >
+                {isMaximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="lois-icon-btn"
+                aria-label="Close Lois"
+                title="Close"
+              >
+                <X size={14} />
+              </button>
+            </>
+          }
+        />
       </div>
     </>
   );

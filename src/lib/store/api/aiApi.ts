@@ -25,6 +25,17 @@ export interface LoisConfigInput {
     schoolContext?: string | null;
 }
 
+export interface LoisInsightDto {
+    id: string;
+    type: string;
+    severity: string;
+    title: string;
+    summary: string;
+    href: string | null;
+    askPrompt: string | null;
+    createdAt: string;
+}
+
 export interface SystemPromptConfigDto {
     id: string;
     identityOverride: string | null;
@@ -296,24 +307,19 @@ export const aiApi = apiSlice.injectEndpoints({
         }),
 
         getLoisInsights: builder.query<
-            {
-                success: boolean;
-                data: {
-                    id: string;
-                    type: string;
-                    severity: string;
-                    title: string;
-                    summary: string;
-                    href: string | null;
-                    askPrompt: string | null;
-                    createdAt: string;
-                }[];
-            },
+            { success: boolean; data: LoisInsightDto[] },
             { schoolId: string; limit?: number }
         >({
             query: ({ schoolId, limit }) =>
                 `/schools/${schoolId}/ai/insights${limit ? `?limit=${limit}` : ''}`,
             providesTags: ['LoisInsights'],
+        }),
+        getLoisInsight: builder.query<
+            { success: boolean; data: LoisInsightDto },
+            { schoolId: string; insightId: string }
+        >({
+            query: ({ schoolId, insightId }) =>
+                `/schools/${schoolId}/ai/insights/${insightId}`,
         }),
     }),
 });
@@ -351,6 +357,7 @@ export const {
     useAdminToggleSkillMutation,
     useAdminDeleteSkillMutation,
     useGetLoisInsightsQuery,
+    useGetLoisInsightQuery,
 } = aiApi;
 
 // ─── SSE Streaming Types ──────────────────────────────────────────────────────

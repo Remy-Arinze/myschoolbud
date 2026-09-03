@@ -125,9 +125,9 @@
     --agora-success: #36FE96;
     /* Neon green for dark mode */
     --dark-bg: #1C1C1D;
-    --dark-card: #2a2a2a;
-    --dark-surface: #1f1f22;
-    --dark-border: #232327;
+    --dark-card: #2e2e32;
+    --dark-surface: #262628;
+    --dark-border: #3f3f46;
     --dark-input: #2f2f34;
     --dark-text-primary: #ffffff;
     --dark-text-secondary: #9ca3af;
@@ -315,22 +315,35 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
 
-  .dark body.staff-dashboard-active .dashboard-content .rounded-lg:not(button),
-  .dark body.staff-dashboard-active .dashboard-content .border:not(button),
-  .dark body.staff-dashboard-active .dashboard-content [class*="bg-"]:not(button) {
+  .dark body.staff-dashboard-active .dashboard-content .rounded-lg:not(button):not(:is(.fixed.inset-0, .fixed.inset-0 *)),
+  .dark body.staff-dashboard-active .dashboard-content .border:not(button):not(:is(.fixed.inset-0, .fixed.inset-0 *)),
+  .dark body.staff-dashboard-active .dashboard-content [class*="bg-"]:not(button):not(:is(.fixed.inset-0, .fixed.inset-0 *)) {
     background-color: var(--dark-surface) !important;
     border-color: #1a1a1c !important;
     backdrop-filter: none !important;
   }
 
-  .dark body.staff-dashboard-active .dashboard-content h1,
-  .dark body.staff-dashboard-active .dashboard-content h2,
-  .dark body.staff-dashboard-active .dashboard-content h3 {
+  .dark body.staff-dashboard-active .dashboard-content h1:not(:is(.fixed.inset-0 h1)),
+  .dark body.staff-dashboard-active .dashboard-content h2:not(:is(.fixed.inset-0 h2)),
+  .dark body.staff-dashboard-active .dashboard-content h3:not(:is(.fixed.inset-0 h3)) {
     color: var(--dark-text-primary) !important;
   }
 
-  .dark body.staff-dashboard-active .dashboard-content p {
+  .dark body.staff-dashboard-active .dashboard-content p:not(:is(.fixed.inset-0 p)) {
     color: var(--dark-text-muted) !important;
+  }
+
+  /* Dialogs sit in the page tree, so they inherit the flatten above unless excluded.
+     Restore a lifted panel, visible edge, and a real dimmed overlay. */
+  html.dark .fixed.inset-0.bg-black\/50,
+  html.dark .fixed.inset-0.bg-black\/60 {
+    background-color: rgba(0, 0, 0, 0.72);
+  }
+
+  html.dark .fixed.inset-0 > [class*="rounded"] {
+    background-color: var(--dark-card);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04);
   }
 
   /* School admin settings tabs — one-line scroll; selected uses sidebar active fill */
@@ -357,6 +370,7 @@
     white-space: nowrap;
     border-radius: 0.5rem;
     padding: 0.375rem 0.75rem;
+    font-size: var(--text-body);
     font-weight: 500;
     color: #4b5563;
     text-decoration: none;
@@ -915,5 +929,231 @@
     .mockup-perspective {
       transform: none !important;
     }
+  }
+}
+
+/* ── Lois Ask panel ────────────────────────────────────────────── */
+.lois-panel {
+  --lois-title: 0.8125rem;
+  --lois-greeting: 0.9375rem;
+  --lois-body: 0.75rem;
+  --lois-small: 0.6875rem;
+  --lois-tiny: 0.625rem;
+}
+
+.lois-shell {
+  border: 1px solid transparent;
+  background-color: transparent;
+  background-image:
+    linear-gradient(var(--light-bg), var(--light-bg)),
+    linear-gradient(135deg, #7d52ff, var(--agora-blue), #00d1ff);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.dark .lois-shell {
+  background-image:
+    linear-gradient(var(--dark-bg), var(--dark-bg)),
+    linear-gradient(135deg, #7d52ff, var(--agora-blue), #00d1ff);
+}
+
+.lois-shell.lois-shell--max {
+  border-color: transparent;
+  background-image: none;
+  background-color: var(--light-bg);
+}
+
+.dark .lois-shell.lois-shell--max {
+  background-color: var(--dark-bg);
+}
+
+@keyframes lois-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lois-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes lois-mesh {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(8%, -6%, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+
+.lois-orb-ring {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #7d52ff 70deg,
+    transparent 140deg,
+    #00d1ff 230deg,
+    transparent 300deg,
+    #007fff 360deg
+  );
+  animation: lois-spin 5s linear infinite;
+}
+
+.lois-orb-glow {
+  background: radial-gradient(circle, rgba(125, 82, 255, 0.5), transparent 68%);
+  animation: lois-breathe 3s ease-in-out infinite;
+}
+
+.lois-mesh-blob {
+  animation: lois-mesh 12s ease-in-out infinite;
+}
+
+.lois-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.75rem;
+  width: 1.75rem;
+  border-radius: 0.5rem;
+  color: var(--light-text-secondary);
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.dark .lois-icon-btn {
+  color: var(--dark-text-secondary);
+}
+
+.lois-icon-btn:hover {
+  background: var(--light-hover);
+  color: var(--light-text-primary);
+}
+
+.dark .lois-icon-btn:hover {
+  background: var(--dark-hover);
+  color: var(--dark-text-primary);
+}
+
+.lois-composer {
+  position: relative;
+  border-radius: 1.05rem;
+  padding: 1px;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--input-field-bg), var(--input-field-bg)) padding-box,
+    linear-gradient(135deg, rgba(125, 82, 255, 0.45), rgba(0, 127, 255, 0.55), rgba(0, 209, 255, 0.4)) border-box;
+  box-shadow:
+    0 10px 28px -16px rgba(0, 127, 255, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  transition: box-shadow 200ms ease, background 200ms ease;
+}
+
+.dark .lois-composer {
+  box-shadow:
+    0 10px 28px -16px rgba(0, 127, 255, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+.lois-composer:focus-within {
+  background:
+    linear-gradient(var(--input-field-bg), var(--input-field-bg)) padding-box,
+    linear-gradient(135deg, #7d52ff, #007fff, #00d1ff) border-box;
+  box-shadow:
+    0 12px 32px -14px rgba(0, 127, 255, 0.55),
+    0 0 0 4px rgba(0, 127, 255, 0.08);
+}
+
+.lois-composer input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-size: var(--lois-body) !important;
+  color: var(--light-text-primary) !important;
+  padding: 0 !important;
+}
+
+.dark .lois-composer input {
+  color: var(--dark-text-primary) !important;
+}
+
+.lois-composer input::placeholder {
+  font-size: var(--lois-small) !important;
+}
+
+.lois-prompt-chip {
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.58) 0%,
+    rgba(255, 255, 255, 0.22) 48%,
+    rgba(0, 127, 255, 0.06) 100%
+  );
+  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  box-shadow:
+    0 10px 28px -18px rgba(0, 127, 255, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.dark .lois-prompt-chip {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.04) 52%,
+    rgba(0, 127, 255, 0.1) 100%
+  );
+  box-shadow:
+    0 10px 28px -18px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.lois-prompt-chip:hover {
+  border-color: color-mix(in srgb, var(--agora-blue) 42%, white);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(0, 127, 255, 0.1) 100%
+  );
+  box-shadow:
+    0 12px 30px -16px rgba(0, 127, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.dark .lois-prompt-chip:hover {
+  border-color: color-mix(in srgb, var(--agora-blue) 50%, transparent);
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.16) 0%,
+    rgba(0, 127, 255, 0.16) 100%
+  );
+}
+
+.lois-prompt-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--agora-blue) 26%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lois-orb-ring,
+  .lois-orb-glow,
+  .lois-mesh-blob {
+    animation: none;
   }
 }

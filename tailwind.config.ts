@@ -39,6 +39,7 @@ const config: Config = {
 
         // Dark Mode - using CSS variables from globals.css (hex values)
         'dark-bg': 'var(--dark-bg)',
+        'dark-card': 'var(--dark-card)',
         'dark-surface': 'var(--dark-surface)',
         'dark-border': 'var(--dark-border)',
         'dark-hover': 'var(--dark-hover)',

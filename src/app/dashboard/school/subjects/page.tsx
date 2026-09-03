@@ -21,7 +21,6 @@ import {
   X,
   CheckCircle,
   AlertCircle,
-  Sparkles,
   GraduationCap,
   Save,
   Grid3x3,
@@ -34,6 +33,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { AutoGenerateButton } from '@/components/ui/AutoGenerateButton';
+import { LoisOrb } from '@/components/ai/LoisOrb';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
@@ -455,7 +455,6 @@ export default function SubjectsPage() {
                     isLoading={isGenerating}
                     label="Auto-Generate"
                     loadingLabel="Generating..."
-                    logoSrc="/assets/logos/agora_main.png"
                   />
                 </PermissionGate>
               )}
@@ -2152,7 +2151,7 @@ function AutoGenerateModal({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-              <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <LoisOrb size="sm" />
             </div>
             <p className="font-medium text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-section-title)' }}>
               Auto-Generate Subjects
@@ -2196,7 +2195,7 @@ function AutoGenerateModal({
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4 mr-2" />
+                  <LoisOrb size="xs" className="mr-2" />
                   Generate Subjects
                 </>
               )}

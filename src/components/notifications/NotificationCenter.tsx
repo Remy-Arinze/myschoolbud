@@ -11,10 +11,12 @@ import {
   useGetNotificationsQuery,
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
+  type InAppNotification,
 } from '@/lib/store/api/notificationsApi';
 import { usePwaPush } from '@/hooks/usePwaPush';
 import { RootState } from '@/lib/store/store';
 import toast from 'react-hot-toast';
+import { useLoisWorkspaceOptional } from '@/components/ai/LoisWorkspace';
 
 function formatWhen(iso: string) {
   try {
@@ -28,6 +30,17 @@ function formatWhen(iso: string) {
   } catch {
     return iso;
   }
+}
+
+function loisAskPrompt(n: InAppNotification): string | null {
+  if (n.type !== 'LOIS_INSIGHT') return null;
+  const meta = n.metadata;
+  if (meta && typeof meta === 'object' && 'askPrompt' in meta) {
+    const prompt = (meta as { askPrompt?: unknown }).askPrompt;
+    if (typeof prompt === 'string' && prompt.trim()) return prompt;
+  }
+  if (n.title?.trim()) return `Explain this insight: ${n.title}`;
+  return null;
 }
 
 export function NotificationCenter({
@@ -51,6 +64,7 @@ export function NotificationCenter({
   const [markRead] = useMarkNotificationReadMutation();
   const [markAllRead, { isLoading: markingAll }] = useMarkAllNotificationsReadMutation();
   const { permission, vapidConfigured, enablePush } = usePwaPush(true);
+  const workspace = useLoisWorkspaceOptional();
 
   const items = data?.data?.items ?? [];
   const unreadCount = items.filter((n) => !n.readAt).length;
@@ -143,6 +157,8 @@ export function NotificationCenter({
         <ul className="rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-card)] dark:bg-[var(--dark-surface)] divide-y divide-[var(--light-border)] dark:divide-[var(--dark-border)] overflow-hidden">
           {items.map((n) => {
             const unread = !n.readAt;
+            const askPrompt = loisAskPrompt(n);
+            const openLois = askPrompt && workspace;
             const content = (
               <div
                 className={cn(
@@ -187,6 +203,23 @@ export function NotificationCenter({
                 </div>
               </div>
             );
+
+            if (openLois) {
+              return (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    className="w-full text-left"
+                    onClick={() => {
+                      void markRead({ id: n.id });
+                      if (askPrompt) workspace?.askLois(askPrompt);
+                    }}
+                  >
+                    {content}
+                  </button>
+                </li>
+              );
+            }
 
             if (n.link) {
               return (

@@ -5,7 +5,7 @@ import Link, { LinkProps } from "next/link";
 import React, { useState, createContext, useContext, useRef, useEffect } from "react";
 import gsap from "gsap";
 import { Menu, X } from "lucide-react";
-import { useTheme } from "@/contexts/ThemeContext";
+import { WordedLogo } from "@/components/layout/WordedLogo";
 
 interface Links {
   label: string;
@@ -151,8 +151,6 @@ export const MobileSidebar = ({
     }
   }, [open, shouldRender]);
 
-  const { theme } = useTheme();
-
   return (
     <>
       {!hideMobileHeader && (
@@ -164,12 +162,7 @@ export const MobileSidebar = ({
         >
           <div className="flex justify-start items-center">
             <Link href="/" className="flex items-center">
-              <img
-                src="/assets/logos/agora_main.png"
-                alt="Myschoolbud"
-                className="h-8 w-auto flex-shrink-0"
-                style={{ height: '32px' }}
-              />
+              <WordedLogo size="sm" />
             </Link>
           </div>
           <div className="flex justify-end z-20">

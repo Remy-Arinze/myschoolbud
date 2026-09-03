@@ -6,6 +6,18 @@ import { X, AlertTriangle, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 
+function formatDeleteClassLabel(className: string, classLevel?: string, isClassArm?: boolean) {
+  const name = className.trim();
+  const level = classLevel?.trim();
+  if (!isClassArm || !level) return name;
+
+  const nameKey = name.toLowerCase().replace(/\s+/g, '');
+  const levelKey = level.toLowerCase().replace(/\s+/g, '');
+  // Arm names are often already "JSS 1 C" — don't prefix the level again.
+  if (nameKey === levelKey || nameKey.startsWith(levelKey)) return name;
+  return `${level} ${name}`;
+}
+
 interface DeleteClassModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -66,9 +78,7 @@ export function DeleteClassModal({
 
   const hasStudents = studentsCount > 0;
   const canDelete = !hasStudents || acknowledgeStudents;
-  const displayName = isClassArm && classLevel 
-    ? `${classLevel} ${className}` 
-    : className;
+  const displayName = formatDeleteClassLabel(className, classLevel, isClassArm);
 
   return (
     <div ref={backdropRef} className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" style={{ opacity: 0 }}>
@@ -85,7 +95,7 @@ export function DeleteClassModal({
               <h2 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary mb-1">
                 Delete {isClassArm ? 'ClassArm' : 'Class'}
               </h2>
-              <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+              <p className="text-sm text-light-text-secondary dark:text-neutral-300">
                 This action cannot be undone
               </p>
             </div>

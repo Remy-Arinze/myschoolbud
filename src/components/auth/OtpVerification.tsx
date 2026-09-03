@@ -5,8 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { Loader2 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useTheme } from '@/contexts/ThemeContext';
-import Image from 'next/image';
+import { WordedLogo } from '@/components/layout/WordedLogo';
 
 interface OtpVerificationProps {
   email: string;
@@ -115,38 +114,14 @@ export function OtpVerification({
     }
   };
 
-  const { theme } = useTheme();
-
-  // Focus first input on mount
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
 
   return (
     <div className="w-full max-w-lg mx-auto">
-      {/* Logo */}
       <div className="flex items-center justify-center mb-8">
-        <div className="flex items-center gap-2 px-3 py-1.5">
-          {theme === 'light' ? (
-            <Image
-              src="/assets/logos/agora_main.png"
-              alt="Myschoolbud"
-              width={120}
-              height={32}
-              className="h-8 w-auto grayscale brightness-0"
-              priority
-            />
-          ) : (
-            <Image
-              src="/assets/logos/agora_worded_white.png"
-              alt="Myschoolbud"
-              width={120}
-              height={32}
-              className="h-8 w-auto"
-              priority
-            />
-          )}
-        </div>
+        <WordedLogo size="md" priority />
       </div>
 
       {/* Instructions */}

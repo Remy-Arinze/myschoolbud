@@ -88,7 +88,8 @@ export function Modal({
           aria-modal="true"
           aria-labelledby={typeof title === 'string' ? 'agora-modal-title' : undefined}
           className={cn(
-            "bg-light-card dark:bg-dark-surface rounded-3xl shadow-2xl w-full",
+            "bg-light-card dark:bg-[var(--dark-card)] rounded-3xl shadow-2xl w-full border border-light-border dark:border-white/15",
+            "dark:shadow-[0_24px_64px_rgba(0,0,0,0.65)]",
             sizes[size],
             "max-h-[95vh] overflow-hidden flex flex-col pointer-events-auto",
             className
@@ -97,7 +98,7 @@ export function Modal({
           onClick={(e) => e.stopPropagation()}
         >
           {!hideHeader && (
-            <div className="flex items-center justify-between p-6 border-b border-light-border dark:border-dark-border">
+            <div className="flex items-center justify-between p-6 border-b border-light-border dark:border-white/10">
               <h2
                 id={typeof title === 'string' ? 'agora-modal-title' : undefined}
                 className="text-xl font-heading font-black text-light-text-primary dark:text-dark-text-primary"
@@ -119,7 +120,7 @@ export function Modal({
             {children}
           </div>
           {footer && (
-            <div className="flex-shrink-0 px-6 py-4 border-t border-light-border dark:border-dark-border bg-light-card dark:bg-dark-surface">
+            <div className="flex-shrink-0 px-6 py-4 border-t border-light-border dark:border-white/10 bg-light-card dark:bg-[var(--dark-card)]">
               {footer}
             </div>
           )}
@@ -163,10 +164,10 @@ export function ConfirmModal({
   const confirmButtonVariant = variant === 'danger' ? 'danger' : 'primary';
   const toneClass =
     variant === 'warning'
-      ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+      ? 'bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-400/40 text-amber-900 dark:text-amber-100'
       : variant === 'primary'
-        ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-        : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800';
+        ? 'bg-blue-50 dark:bg-sky-500/15 border border-blue-200 dark:border-sky-400/35 text-blue-900 dark:text-sky-100'
+        : 'bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-400/40 text-red-900 dark:text-red-100';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">

@@ -14,7 +14,8 @@ import {
 } from '@/lib/store/api/schoolAdminApi';
 import { useGenerateAssessmentMutation } from '@/lib/store/api/aiApi';
 import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
-import { Trash2, Plus, Sparkles, Loader2, BookOpen, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react';
+import { Trash2, Plus, Loader2, BookOpen, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react';
+import { LoisOrb } from '@/components/ai/LoisOrb';
 import toast from 'react-hot-toast';
 
 interface CreateAssessmentModalProps {
@@ -447,7 +448,7 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
                 <div className="p-4 border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 rounded-xl">
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                            <Sparkles className="h-5 w-5" />
+                            <LoisOrb size="sm" />
                             <h3 className="font-bold">AI Assessment Generator</h3>
                         </div>
                         <Button
@@ -562,7 +563,7 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
                                 isLoading={isGeneratingAi}
                                 disabled={selectedWeeks.length === 0}
                             >
-                                <Sparkles className="h-4 w-4" />
+                                <LoisOrb size="xs" />
                                 Generate Assessment Questions
                             </Button>
                             <p className="text-[10px] text-center text-light-text-secondary dark:text-dark-text-secondary">

@@ -3,8 +3,9 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
 import { TimeInput } from '@/components/ui/TimeInput';
-import { X, Save, Loader2, Plus, ChevronDown, Trash2, Sparkles } from 'lucide-react';
+import { X, Save, Loader2, Plus, ChevronDown, Trash2 } from 'lucide-react';
 import { FadeInUp } from '@/components/ui/FadeInUp';
+import { LoisOrb } from '@/components/ai/LoisOrb';
 import {
   type TimetablePeriod,
   type DayOfWeek,
@@ -355,7 +356,7 @@ export function EditableTimetableTable({
                 onClick={() => setShowAutoGenerateModal(true)}
                 disabled={isLoading}
               >
-                <Sparkles className="h-4 w-4 mr-2" />
+                <LoisOrb size="xs" className="mr-2" />
                 Auto-Fill
               </Button>
             )}
@@ -639,7 +640,7 @@ export function EditableTimetableTable({
             <FadeInUp from={{ opacity: 0, scale: 0.95 }} to={{ opacity: 1, scale: 1 }} duration={0.25} className="bg-white dark:bg-dark-surface rounded-lg p-6 max-w-md w-full mx-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                  <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <LoisOrb size="sm" />
                 </div>
                 <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary">
                   Auto-Fill Timetable
@@ -677,7 +678,7 @@ export function EditableTimetableTable({
                   onClick={handleAutoGenerate}
                   className="flex-1"
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
+                  <LoisOrb size="xs" className="mr-2" />
                   Generate
                 </Button>
                 <Button

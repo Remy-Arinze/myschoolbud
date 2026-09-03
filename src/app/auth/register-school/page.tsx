@@ -2,8 +2,8 @@
 
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
+import { WordedLogo } from '@/components/layout/WordedLogo';
 import { Alert } from '@/components/ui/Alert';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { CountrySelector } from '@/components/ui/CountrySelector';
@@ -101,22 +101,7 @@ export default function RegisterSchoolPage() {
             <div className="w-full max-w-2xl">
                 <div className="flex items-center justify-center mb-8">
                     <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-                        <Image
-                            src="/assets/logos/agora_word_blue.png"
-                            alt="Myschoolbud"
-                            width={120}
-                            height={30}
-                            className="h-8 w-auto block dark:hidden"
-                            priority
-                        />
-                        <Image
-                            src="/assets/logos/agora_worded_white.png"
-                            alt="Myschoolbud"
-                            width={120}
-                            height={30}
-                            className="h-8 w-auto hidden dark:block"
-                            priority
-                        />
+                        <WordedLogo size="md" priority />
                     </Link>
                 </div>
 

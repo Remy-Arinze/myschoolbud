@@ -84,7 +84,8 @@ export function useInboxNotifications() {
           data.type === 'GRADE_PUBLISHED' ||
           data.type === 'STUDENT_REASSIGNED' ||
           data.type === 'SUBSCRIPTION_BILLING_REMINDER' ||
-          data.type === 'ACADEMIC_RISK_DIGEST'
+          data.type === 'ACADEMIC_RISK_DIGEST' ||
+          data.type === 'LOIS_INSIGHT'
         ) {
           dispatch(apiSlice.util.invalidateTags(['Notification']));
         }

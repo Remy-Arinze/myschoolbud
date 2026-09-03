@@ -10,10 +10,10 @@ interface AlertProps extends HTMLAttributes<HTMLDivElement> {
 export const Alert = forwardRef<HTMLDivElement, AlertProps>(
   ({ className, variant = 'info', children, ...props }, ref) => {
     const variants = {
-      success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300',
-      error: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300',
-      warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300',
-      info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300',
+      success: 'bg-green-50 dark:bg-emerald-500/15 border-green-200 dark:border-emerald-400/35 text-green-800 dark:text-emerald-100',
+      error: 'bg-red-50 dark:bg-red-500/15 border-red-200 dark:border-red-400/40 text-red-800 dark:text-red-100',
+      warning: 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-400/40 text-amber-900 dark:text-amber-100',
+      info: 'bg-blue-50 dark:bg-sky-500/15 border-blue-200 dark:border-sky-400/35 text-blue-800 dark:text-sky-100',
     };
 
     return (

@@ -10,7 +10,7 @@ import { Alert } from '@/components/ui/Alert';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import { Mail, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { WordedLogo } from '@/components/layout/WordedLogo';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -77,22 +77,7 @@ export default function ForgotPasswordPage() {
         {/* Agora Logo */}
         <div className="flex items-center justify-center mb-8">
           <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-            <Image
-              src="/assets/logos/agora_word_blue.png"
-              alt="Myschoolbud"
-              width={180}
-              height={48}
-              className="h-12 w-auto block dark:hidden"
-              priority
-            />
-            <Image
-              src="/assets/logos/agora_worded_white.png"
-              alt="Myschoolbud"
-              width={180}
-              height={48}
-              className="h-12 w-auto hidden dark:block"
-              priority
-            />
+            <WordedLogo size="lg" priority />
           </Link>
         </div>
 

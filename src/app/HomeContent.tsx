@@ -16,7 +16,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SkewSection } from '@/components/ui/SkewSection';
 import { TransferVisual } from '@/components/ui/TransferVisual';
-import { useTheme } from '@/contexts/ThemeContext';
+import { WordedLogo } from '@/components/layout/WordedLogo';
 
 // Color classes for the timetable mini-grid cells
 const TIMETABLE_CELL_CLASSES = Array.from({ length: 20 }).map((_, i) => {
@@ -125,7 +125,6 @@ function TimetableGlowGrid() {
 }
 
 export default function HomeContent() {
-  const { theme } = useTheme();
   const user = useSelector((state: RootState) => state.auth.user);
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
@@ -653,13 +652,7 @@ export default function HomeContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-16 md:gap-8">
             <div className="col-span-1 md:col-span-1">
-              <Image
-                src={theme === 'light' ? '/assets/logos/agora_word_blue.png' : '/assets/logos/agora_worded_white.png'}
-                alt="Myschoolbud - Verified Academic History Logo"
-                width={140}
-                height={38}
-                className="h-8 w-auto mb-8 opacity-90 transition-opacity"
-              />
+              <WordedLogo size="md" className="mb-8 opacity-90" />
               <p className="text-xs leading-relaxed text-[var(--dark-text-muted)] max-w-[240px] font-light">
                 The Chain-of-Trust Registry for the African education ecosystem. Securing academic identities forever.
               </p>

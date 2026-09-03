@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, BrainCircuit } from 'lucide-react';
+import { BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { LoisInsightBadge } from './LoisInboxCard';
+import { LoisOrb } from './LoisOrb';
 
 interface FloatingAiCtaProps {
   onClick: () => void;
@@ -33,12 +34,7 @@ export const FloatingAiCta: React.FC<FloatingAiCtaProps> = ({ onClick, className
       <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-50 pointer-events-none" />
 
       <div className="relative flex items-center gap-2">
-        <div className="relative">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-125 transition-transform duration-500" />
-            <div className="absolute inset-0 text-blue-400 blur-sm scale-150 group-hover:opacity-100 opacity-0 transition-opacity">
-                <Sparkles className="w-3.5 h-3.5" />
-            </div>
-        </div>
+        <LoisOrb size="xs" className="group-hover:scale-110 transition-transform duration-500" />
         
         <span className="font-heading text-sm font-semibold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
           Ask Lois

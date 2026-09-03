@@ -61,7 +61,7 @@ export function DeleteFacultyModal({
                 <h2 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary mb-1">
                   Delete Faculty
                 </h2>
-                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                <p className="text-sm text-light-text-secondary dark:text-neutral-300">
                   This action cannot be undone
                 </p>
               </div>

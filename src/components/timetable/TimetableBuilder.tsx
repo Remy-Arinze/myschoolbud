@@ -25,8 +25,9 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Clock, GripVertical, X, Loader2, Sparkles, Plus, BookOpen, Info } from 'lucide-react';
+import { Clock, GripVertical, X, Loader2, Plus, BookOpen, Info } from 'lucide-react';
 import { FadeInUp } from '@/components/ui/FadeInUp';
+import { LoisOrb } from '@/components/ai/LoisOrb';
 import Link from 'next/link';
 import {
   type TimetablePeriod,
@@ -149,15 +150,15 @@ function DraggableItem({ item }: { item: DraggableSubject }) {
     >
       <GripVertical className="h-4 w-4 text-light-text-muted dark:text-dark-text-muted" />
       <div className="flex-1">
-        <p className={`text-sm font-medium ${
+        <p className={`font-medium ${
           item.type === 'free'
             ? 'text-gray-700 dark:text-gray-300'
             : 'text-light-text-primary dark:text-dark-text-primary'
-        }`}>
+        }`} style={{ fontSize: 'var(--text-body)' }}>
           {item.name}
         </p>
         {item.code && (
-          <p className="text-xs text-light-text-muted dark:text-dark-text-muted">{item.code}</p>
+          <p className="text-light-text-muted dark:text-dark-text-muted" style={{ fontSize: 'var(--text-tiny)' }}>{item.code}</p>
         )}
       </div>
     </div>
@@ -212,7 +213,7 @@ function TimetableCell({
     >
       {periodData ? (
         <div className="space-y-1.5">
-          <p className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+          <p className="font-semibold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-body)' }}>
             {periodData.subjectName || periodData.courseName || 'Free Period'}
           </p>
           {/* Show teacher or "No teacher" for SECONDARY */}
@@ -222,7 +223,8 @@ function TimetableCell({
                 e.stopPropagation();
                 onEditTeacher?.();
               }}
-              className="flex items-center gap-1 text-sm hover:underline transition-colors group"
+              className="flex items-center gap-1 hover:underline transition-colors group"
+              style={{ fontSize: 'var(--text-small)' }}
             >
               {periodData.teacherName ? (
                 <span className="text-light-text-secondary dark:text-dark-text-secondary group-hover:text-blue-600 dark:group-hover:text-blue-400">
@@ -235,18 +237,18 @@ function TimetableCell({
               )}
             </button>
           ) : periodData.teacherName ? (
-            <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+            <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-small)' }}>
               {periodData.teacherName}
             </p>
           ) : null}
           {periodData.roomName && (
-            <p className="text-xs text-light-text-muted dark:text-dark-text-muted">
+            <p className="text-light-text-muted dark:text-dark-text-muted" style={{ fontSize: 'var(--text-tiny)' }}>
               {periodData.roomName}
             </p>
           )}
         </div>
       ) : (
-        <div className="text-sm text-light-text-muted dark:text-dark-text-muted text-center py-3">
+        <div className="text-light-text-muted dark:text-dark-text-muted text-center py-3" style={{ fontSize: 'var(--text-small)' }}>
           {readOnly ? '' : 'Drop here'}
         </div>
       )}
@@ -478,7 +480,7 @@ export function TimetableBuilder({
       <div className="w-full">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Timetable</CardTitle>
+            <CardTitle>Timetable</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -487,16 +489,16 @@ export function TimetableBuilder({
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full" style={{ fontSize: 'var(--text-body)' }}>
                   <thead>
                     <tr>
-                      <th className="sticky left-0 z-20 bg-white dark:bg-dark-surface min-w-[100px] text-left py-4 px-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary border-b-2 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                      <th className="sticky left-0 z-20 bg-white dark:bg-dark-surface min-w-[100px] text-left py-4 px-4 font-semibold text-light-text-secondary dark:text-dark-text-secondary border-b-2 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                         Time
                       </th>
                       {DAYS.map((day) => (
                         <th
                           key={day}
-                          className="text-center py-4 px-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary border-b-2 border-light-border dark:border-dark-border min-w-[120px]"
+                          className="text-center py-4 px-4 font-semibold text-light-text-secondary dark:text-dark-text-secondary border-b-2 border-light-border dark:border-dark-border min-w-[120px]"
                         >
                           {DAY_LABELS[day]}
                         </th>
@@ -531,12 +533,12 @@ export function TimetableBuilder({
                       if (dbBreakPeriods.length > 0 && !hasLessons) {
                         return (
                           <tr key={`${timePeriod.startTime}-${breakType || 'break'}`}>
-                            <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface text-sm font-medium text-light-text-primary dark:text-dark-text-primary whitespace-nowrap py-4 px-4 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface font-medium text-light-text-primary dark:text-dark-text-primary whitespace-nowrap py-4 px-4 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                               <span>{timePeriod.startTime} - {timePeriod.endTime}</span>
                             </td>
                             <td
                               colSpan={DAYS.length}
-                              className="py-4 px-4 text-center text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary bg-gray-50 dark:bg-dark-surface/50"
+                              className="py-4 px-4 text-center font-medium text-light-text-secondary dark:text-dark-text-secondary bg-gray-50 dark:bg-dark-surface/50"
                             >
                               {breakLabel}
                             </td>
@@ -547,7 +549,7 @@ export function TimetableBuilder({
                       // Handle lesson periods
                       return (
                         <tr key={timePeriod.startTime}>
-                          <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface text-sm font-medium text-light-text-primary dark:text-dark-text-primary whitespace-nowrap py-4 px-4 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                          <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface font-medium text-light-text-primary dark:text-dark-text-primary whitespace-nowrap py-4 px-4 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                             <span>{timePeriod.startTime} - {timePeriod.endTime}</span>
                           </td>
                           {DAYS.map((day) => {
@@ -598,7 +600,7 @@ export function TimetableBuilder({
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">
+                <CardTitle>
                   {schoolType === 'TERTIARY' ? 'Courses' : 'Subjects'}
                 </CardTitle>
               </div>
@@ -613,7 +615,7 @@ export function TimetableBuilder({
                   disabled={isLoading || isAutoGenerating}
                   className="w-full mb-3"
                 >
-                  <Sparkles className="h-4 w-4 mr-2" />
+                  <LoisOrb size="xs" className="mr-2" />
                   Auto-Fill Timetable
                 </Button>
               )}
@@ -624,7 +626,7 @@ export function TimetableBuilder({
                     <div className="p-4 border border-light-border dark:border-dark-border rounded-lg bg-gray-50/50 dark:bg-gray-900/20 mb-4">
                       <div className="flex items-start gap-2 mb-3">
                         <Info className="h-4 w-4 text-light-text-muted dark:text-dark-text-muted mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                        <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-body)' }}>
                           You haven&apos;t created any {schoolType === 'TERTIARY' ? 'courses' : 'subjects'} yet.
                         </p>
                       </div>
@@ -649,7 +651,7 @@ export function TimetableBuilder({
         <div className="col-span-1 md:col-span-9">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Timetable</CardTitle>
+              <CardTitle>Timetable</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -658,16 +660,16 @@ export function TimetableBuilder({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full" style={{ fontSize: 'var(--text-body)' }}>
                     <thead>
                       <tr>
-                        <th className="sticky left-0 z-20 bg-white dark:bg-dark-surface min-w-[100px] text-left py-4 px-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary border-b-2 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                        <th className="sticky left-0 z-20 bg-white dark:bg-dark-surface min-w-[100px] text-left py-4 px-4 font-semibold text-light-text-secondary dark:text-dark-text-secondary border-b-2 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                           Time
                         </th>
                         {DAYS.map((day) => (
                           <th
                             key={day}
-                            className="text-center py-4 px-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary border-b-2 border-light-border dark:border-dark-border min-w-[120px]"
+                            className="text-center py-4 px-4 font-semibold text-light-text-secondary dark:text-dark-text-secondary border-b-2 border-light-border dark:border-dark-border min-w-[120px]"
                           >
                             {DAY_LABELS[day]}
                           </th>
@@ -702,12 +704,12 @@ export function TimetableBuilder({
                         if (dbBreakPeriods.length > 0 && !hasLessons) {
                           return (
                             <tr key={`${timePeriod.startTime}-${breakType || 'break'}`}>
-                              <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface text-sm font-medium text-light-text-primary dark:text-dark-text-primary whitespace-nowrap py-4 px-4 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                              <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface font-medium text-light-text-primary dark:text-dark-text-primary whitespace-nowrap py-4 px-4 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                 <span>{timePeriod.startTime} - {timePeriod.endTime}</span>
                               </td>
                               <td
                                 colSpan={DAYS.length}
-                                className="py-4 px-4 text-center text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary bg-gray-50 dark:bg-dark-surface/50"
+                                className="py-4 px-4 text-center font-medium text-light-text-secondary dark:text-dark-text-secondary bg-gray-50 dark:bg-dark-surface/50"
                               >
                                 {breakLabel}
                               </td>
@@ -718,7 +720,7 @@ export function TimetableBuilder({
                         // Handle lesson periods
                         return (
                           <tr key={timePeriod.startTime}>
-                            <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface text-sm font-medium text-light-text-primary dark:text-dark-text-primary whitespace-nowrap py-4 px-4 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface font-medium text-light-text-primary dark:text-dark-text-primary whitespace-nowrap py-4 px-4 border-r border-light-border dark:border-dark-border shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                               <span>{timePeriod.startTime} - {timePeriod.endTime}</span>
                             </td>
                             {DAYS.map((day) => {
@@ -770,7 +772,7 @@ export function TimetableBuilder({
       <DragOverlay>
         {activeItem ? (
           <div className="p-3 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-lg shadow-lg">
-            <p className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
+            <p className="font-medium text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-body)' }}>
               {activeItem.name}
             </p>
           </div>
@@ -783,18 +785,18 @@ export function TimetableBuilder({
           <FadeInUp from={{ opacity: 0, scale: 0.95 }} to={{ opacity: 1, scale: 1 }} duration={0.25} className="bg-white dark:bg-dark-surface rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <LoisOrb size="sm" />
               </div>
-              <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary">
+              <h3 className="font-semibold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-section-title)' }}>
                 Auto-Fill Timetable
               </h3>
             </div>
 
             <div className="space-y-3 mb-6">
-              <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+              <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-body)' }}>
                 This will automatically fill empty slots with:
               </p>
-              <ul className="text-sm text-light-text-secondary dark:text-dark-text-secondary space-y-1 ml-4">
+              <ul className="text-light-text-secondary dark:text-dark-text-secondary space-y-1 ml-4" style={{ fontSize: 'var(--text-body)' }}>
                 <li className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                   Random {schoolType === 'TERTIARY' ? 'courses' : 'subjects'} (core subjects appear more often)
@@ -809,7 +811,7 @@ export function TimetableBuilder({
                 </li>
               </ul>
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mt-3">
-                <p className="text-sm text-amber-800 dark:text-amber-300">
+                <p className="text-amber-800 dark:text-amber-300" style={{ fontSize: 'var(--text-body)' }}>
                   <strong>Note:</strong> Existing assignments won&apos;t be changed. Only empty slots will be filled.
                 </p>
               </div>
@@ -829,7 +831,7 @@ export function TimetableBuilder({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4 mr-2" />
+                    <LoisOrb size="xs" className="mr-2" />
                     Generate
                   </>
                 )}

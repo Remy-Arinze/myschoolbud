@@ -9,8 +9,8 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import Link from 'next/link';
-import Image from 'next/image';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { WordedLogo } from '@/components/layout/WordedLogo';
 import { OtpVerification } from '@/components/auth/OtpVerification';
 import { getReturnToParameter, getRoleBasedRedirect } from '@/utils/security/redirect-validator';
 
@@ -308,22 +308,7 @@ function LoginContent() {
             {/* Logo */}
             <div className="flex items-center justify-center mb-8">
               <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-                <Image
-                  src="/assets/logos/agora_word_blue.png"
-                  alt="Myschoolbud"
-                  width={100}
-                  height={24}
-                  className="h-6 w-auto block dark:hidden"
-                  priority
-                />
-                <Image
-                  src="/assets/logos/agora_worded_white.png"
-                  alt="Myschoolbud"
-                  width={100}
-                  height={24}
-                  className="h-6 w-auto hidden dark:block"
-                  priority
-                />
+                <WordedLogo size="sm" priority />
               </Link>
             </div>
 

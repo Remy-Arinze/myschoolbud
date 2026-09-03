@@ -233,7 +233,7 @@ export function ExamTimetablesTab() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <p className="text-light-text-secondary dark:text-dark-text-secondary max-w-2xl">
+        <p className="text-light-text-secondary dark:text-dark-text-secondary max-w-2xl" style={{ fontSize: 'var(--text-body)' }}>
           Build and publish end-of-{terminology.periodSingular.toLowerCase()} exam schedules.
           When published, regular timetables pause during the exam window.
         </p>
@@ -277,7 +277,7 @@ export function ExamTimetablesTab() {
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="text-xs font-medium text-light-text-muted uppercase tracking-wide">
+              <label className="font-medium text-light-text-muted uppercase tracking-wide" style={{ fontSize: 'var(--text-tiny)' }}>
                 {terminology.periodSingular}
               </label>
               <Select
@@ -293,16 +293,16 @@ export function ExamTimetablesTab() {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-light-text-muted uppercase tracking-wide">
+              <label className="font-medium text-light-text-muted uppercase tracking-wide" style={{ fontSize: 'var(--text-tiny)' }}>
                 Exam window
               </label>
               {hasExamWindow ? (
-                <p className="mt-2 text-sm font-medium">
+                <p className="mt-2 font-medium" style={{ fontSize: 'var(--text-body)' }}>
                   {format(new Date(selectedTerm!.examStart!), 'MMM d, yyyy')} –{' '}
                   {format(new Date(selectedTerm!.examEnd!), 'MMM d, yyyy')}
                 </p>
               ) : (
-                <p className="mt-2 text-sm text-amber-600 flex items-center gap-1">
+                <p className="mt-2 text-amber-600 flex items-center gap-1" style={{ fontSize: 'var(--text-body)' }}>
                   <AlertCircle className="h-4 w-4" />
                   Not set —{' '}
                   <Link
@@ -315,12 +315,12 @@ export function ExamTimetablesTab() {
               )}
             </div>
             <div>
-              <label className="text-xs font-medium text-light-text-muted uppercase tracking-wide">
+              <label className="font-medium text-light-text-muted uppercase tracking-wide" style={{ fontSize: 'var(--text-tiny)' }}>
                 Status
               </label>
               <div className="mt-2">
                 {isPublished ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" style={{ fontSize: 'var(--text-tiny)' }}>
                     <Lock className="h-3.5 w-3.5" />
                     Published
                     {selectedTerm?.examTimetablePublishedAt && (
@@ -330,7 +330,7 @@ export function ExamTimetablesTab() {
                     )}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" style={{ fontSize: 'var(--text-tiny)' }}>
                     Draft — {slots.length} slot{slots.length === 1 ? '' : 's'}
                   </span>
                 )}
@@ -341,14 +341,14 @@ export function ExamTimetablesTab() {
       </Card>
 
       {!hasExamWindow && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-amber-900 dark:text-amber-100" style={{ fontSize: 'var(--text-body)' }}>
           Set the exam start and end dates on this {terminology.periodSingular.toLowerCase()} before
           adding slots. Use session settings or the term dates editor on the overview page.
         </div>
       )}
 
       {isPublished && (
-        <div className="rounded-lg border border-green-300 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-900 dark:text-green-100">
+        <div className="rounded-lg border border-green-300 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-green-900 dark:text-green-100" style={{ fontSize: 'var(--text-body)' }}>
           Exam timetable is live. Teachers and students see exam slots instead of regular classes
           during the exam window. Unpublish to add or edit slots.
         </div>
@@ -367,22 +367,22 @@ export function ExamTimetablesTab() {
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-light-text-muted" />
             </div>
           ) : slots.length === 0 ? (
-            <div className="py-12 text-center text-light-text-secondary">
+            <div className="py-12 text-center text-light-text-secondary" style={{ fontSize: 'var(--text-body)' }}>
               <GraduationCap className="h-12 w-12 mx-auto mb-3 opacity-40" />
               <p>No exam slots yet.</p>
               {hasExamWindow && !isPublished && (
-                <p className="text-sm mt-1">Add one slot per subject paper (date, time, class).</p>
+                <p className="mt-1" style={{ fontSize: 'var(--text-small)' }}>Add one slot per subject paper (date, time, class).</p>
               )}
             </div>
           ) : (
             <div className="space-y-6">
               {slotsByDate.map(([dateKey, daySlots]) => (
                 <div key={dateKey}>
-                  <h3 className="font-semibold text-light-text-primary dark:text-dark-text-primary mb-2">
+                  <h3 className="font-semibold text-light-text-primary dark:text-dark-text-primary mb-2" style={{ fontSize: 'var(--text-section-title)' }}>
                     {format(parseISO(dateKey), 'EEEE, MMMM d, yyyy')}
                   </h3>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full" style={{ fontSize: 'var(--text-body)' }}>
                       <thead>
                         <tr className="border-b border-light-border dark:border-dark-border text-left text-light-text-muted">
                           <th className="py-2 pr-4">Time</th>
@@ -445,7 +445,7 @@ export function ExamTimetablesTab() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Exam date *</label>
+            <label className="block font-medium mb-1" style={{ fontSize: 'var(--text-small)' }}>Exam date *</label>
             <DatePicker
               value={form.examDate}
               onChange={(v) => setForm((f) => ({ ...f, examDate: v }))}
@@ -456,7 +456,7 @@ export function ExamTimetablesTab() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">Start time *</label>
+              <label className="block font-medium mb-1" style={{ fontSize: 'var(--text-small)' }}>Start time *</label>
               <Input
                 type="time"
                 value={form.startTime}
@@ -464,7 +464,7 @@ export function ExamTimetablesTab() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">End time *</label>
+              <label className="block font-medium mb-1" style={{ fontSize: 'var(--text-small)' }}>End time *</label>
               <Input
                 type="time"
                 value={form.endTime}
@@ -473,7 +473,7 @@ export function ExamTimetablesTab() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Subject *</label>
+            <label className="block font-medium mb-1" style={{ fontSize: 'var(--text-small)' }}>Subject *</label>
             <Select
               value={form.subjectId}
               onChange={(e) => setForm((f) => ({ ...f, subjectId: e.target.value }))}
@@ -487,7 +487,7 @@ export function ExamTimetablesTab() {
             </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Class *</label>
+            <label className="block font-medium mb-1" style={{ fontSize: 'var(--text-small)' }}>Class *</label>
             <Select
               value={form.classId}
               onChange={(e) => setForm((f) => ({ ...f, classId: e.target.value }))}
@@ -502,7 +502,7 @@ export function ExamTimetablesTab() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium mb-1">Invigilator (optional)</label>
+              <label className="block font-medium mb-1" style={{ fontSize: 'var(--text-small)' }}>Invigilator (optional)</label>
               <Select
                 value={form.teacherId}
                 onChange={(e) => setForm((f) => ({ ...f, teacherId: e.target.value }))}
@@ -516,7 +516,7 @@ export function ExamTimetablesTab() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Room (optional)</label>
+              <label className="block font-medium mb-1" style={{ fontSize: 'var(--text-small)' }}>Room (optional)</label>
               <Select
                 value={form.roomId}
                 onChange={(e) => setForm((f) => ({ ...f, roomId: e.target.value }))}
@@ -531,7 +531,7 @@ export function ExamTimetablesTab() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+            <label className="block font-medium mb-1" style={{ fontSize: 'var(--text-small)' }}>Notes (optional)</label>
             <Input
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
