@@ -887,7 +887,11 @@
     accent-color: var(--agora-blue);
   }
 
-  /* File input button */
+  /* File input button.
+     Write the WebKit prefix ourselves. Autoprefixer otherwise emits
+     ::file-selector-button:not(button), which Turbopack cannot parse. */
+  /* autoprefixer: off */
+  input[type="file"]::-webkit-file-upload-button,
   input[type="file"]::file-selector-button {
     background-color: var(--dark-hover);
     color: var(--dark-text-primary);
@@ -897,9 +901,11 @@
     cursor: pointer;
   }
 
+  input[type="file"]::-webkit-file-upload-button:hover,
   input[type="file"]::file-selector-button:hover {
     background-color: #334155;
   }
+  /* autoprefixer: on */
 
   .mockup-perspective {
     transform: perspective(1200px) rotateX(12deg) scale(1.05);
