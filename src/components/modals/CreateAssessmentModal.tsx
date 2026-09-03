@@ -15,6 +15,7 @@ import {
 import { useGenerateAssessmentMutation } from '@/lib/store/api/aiApi';
 import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import { Trash2, Plus, Sparkles, Loader2, BookOpen, ChevronDown, ChevronUp, CheckCircle2, Clock } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface CreateAssessmentModalProps {
     isOpen: boolean;
