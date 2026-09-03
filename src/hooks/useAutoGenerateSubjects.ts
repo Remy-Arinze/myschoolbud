@@ -15,7 +15,7 @@ interface UseAutoGenerateSubjectsReturn {
   showConfirmModal: boolean;
   openConfirmModal: () => void;
   closeConfirmModal: () => void;
-  handleAutoGenerate: () => Promise<void>;
+  handleAutoGenerate: (agoraSubjectIds: string[]) => Promise<void>;
   canAutoGenerate: boolean;
   schoolTypeLabel: string;
 }
@@ -31,7 +31,6 @@ export function useAutoGenerateSubjects(): UseAutoGenerateSubjectsReturn {
   
   const [autoGenerateMutation, { isLoading: isGenerating }] = useAutoGenerateSubjectsMutation();
 
-  // Only allow for PRIMARY and SECONDARY schools
   const canAutoGenerate = currentType === 'PRIMARY' || currentType === 'SECONDARY';
   
   const schoolTypeLabel = currentType === 'PRIMARY' ? 'Primary School' : 
@@ -50,9 +49,13 @@ export function useAutoGenerateSubjects(): UseAutoGenerateSubjectsReturn {
     setShowConfirmModal(false);
   }, []);
 
-  const handleAutoGenerate = useCallback(async () => {
+  const handleAutoGenerate = useCallback(async (agoraSubjectIds: string[]) => {
     if (!user?.schoolId || !currentType || !canAutoGenerate) {
       toast.error('Unable to generate subjects. Please try again.');
+      return;
+    }
+    if (!agoraSubjectIds.length) {
+      toast.error('Select at least one subject to generate.');
       return;
     }
 
@@ -60,6 +63,7 @@ export function useAutoGenerateSubjects(): UseAutoGenerateSubjectsReturn {
       const result = await autoGenerateMutation({
         schoolId: user.schoolId,
         schoolType: currentType as 'PRIMARY' | 'SECONDARY',
+        agoraSubjectIds,
       }).unwrap();
 
       const data = result.data as AutoGenerateResult;
@@ -89,4 +93,3 @@ export function useAutoGenerateSubjects(): UseAutoGenerateSubjectsReturn {
     schoolTypeLabel,
   };
 }
-

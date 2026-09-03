@@ -39,6 +39,7 @@ import type {
   TeacherAssignmentSummary,
 } from '@/hooks/useAutoGenerateWithTeachers';
 import { cn } from '@/lib/utils';
+import { BodyPortal } from '@/components/ui/BodyPortal';
 
 // ============================================
 // TYPES
@@ -231,7 +232,8 @@ export function TimetablePreviewModal({
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <BodyPortal>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10050] p-4">
       <div
         ref={panelRef}
         className="bg-white dark:bg-dark-surface rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
@@ -482,6 +484,7 @@ export function TimetablePreviewModal({
         </div>
       </div>
     </div>
+    </BodyPortal>
   );
 }
 

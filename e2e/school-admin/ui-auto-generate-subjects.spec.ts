@@ -32,9 +32,12 @@ test.describe('UI: auto-generate subjects from bank', () => {
     await expect(autoGenerateBtn).toBeVisible({ timeout: 15_000 });
     await autoGenerateBtn.click();
 
-    const modal = page.locator('div.fixed.inset-0').filter({ hasText: /auto-generate subjects/i });
+    const modal = page.getByRole('dialog').filter({ hasText: /auto-generate subjects/i });
     await expect(modal).toBeVisible({ timeout: 10_000 });
     await expect(modal.getByText(/standard .+ subjects/i)).toBeVisible();
+
+    const generateBtn = modal.getByRole('button', { name: /generate subjects/i });
+    await expect(generateBtn).toBeEnabled({ timeout: 20_000 });
 
     const generateResponsePromise = page.waitForResponse(
       (res) =>
@@ -43,7 +46,7 @@ test.describe('UI: auto-generate subjects from bank', () => {
       { timeout: 60_000 },
     );
 
-    await modal.getByRole('button', { name: /generate subjects/i }).click();
+    await generateBtn.click();
 
     const generateResponse = await generateResponsePromise;
     expect(generateResponse.ok()).toBeTruthy();

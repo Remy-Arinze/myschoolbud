@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { TimeInput } from '@/components/ui/TimeInput';
+import { TimeInput, parseTimeInput } from '@/components/ui/TimeInput';
 import { X, Save, Loader2, Plus, ChevronDown, Trash2 } from 'lucide-react';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import { LoisOrb } from '@/components/ai/LoisOrb';
@@ -11,6 +11,7 @@ import {
   type DayOfWeek,
 } from '@/lib/store/api/schoolAdminApi';
 import { useAutoGenerateTimetable } from '@/hooks/useAutoGenerateTimetable';
+import { BodyPortal } from '@/components/ui/BodyPortal';
 
 const DAYS: DayOfWeek[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -341,25 +342,31 @@ export function EditableTimetableTable({
   const options = isTertiary ? courses : subjects;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-dark-surface rounded-lg shadow-xl w-full max-w-[95vw] max-h-[90vh] flex flex-col">
+    <BodyPortal>
+    <div className="fixed inset-0 bg-black/50 z-[10050] flex items-center justify-center p-4">
+      <div className="bg-[var(--light-card)] dark:bg-[var(--dark-card)] rounded-lg shadow-xl w-full max-w-[95vw] max-h-[90vh] flex flex-col dark:[color-scheme:dark]">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-light-border dark:border-dark-border">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-semibold text-light-text-primary dark:text-dark-text-primary">
-              Edit Timetable
-            </h2>
-            {canGenerate && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowAutoGenerateModal(true)}
-                disabled={isLoading}
-              >
-                <LoisOrb size="xs" className="mr-2" />
-                Auto-Fill
-              </Button>
-            )}
+          <div className="min-w-0">
+            <div className="flex items-center gap-4">
+              <h2 className="font-semibold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-section-title)' }}>
+                Edit Timetable
+              </h2>
+              {canGenerate && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowAutoGenerateModal(true)}
+                  disabled={isLoading}
+                >
+                  <LoisOrb size="xs" className="mr-2" />
+                  Auto-Fill
+                </Button>
+              )}
+            </div>
+            <p className="mt-2 text-light-text-secondary dark:text-dark-text-secondary max-w-2xl" style={{ fontSize: 'var(--text-small)' }}>
+              Use the <span className="font-medium text-light-text-primary dark:text-dark-text-primary">+ Insert</span> button in the Action column to add an Assembly, Break, or Lunch row after that time slot. The trash icon removes a row.
+            </p>
           </div>
           <button
             onClick={handleClose}
@@ -375,18 +382,19 @@ export function EditableTimetableTable({
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-20 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border px-3 py-3 text-left text-sm font-semibold text-light-text-primary dark:text-dark-text-primary min-w-[140px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                  <th className="sticky left-0 z-20 bg-[var(--light-card)] dark:bg-[var(--dark-card)] border border-light-border dark:border-dark-border px-3 py-3 text-left font-semibold text-light-text-primary dark:text-dark-text-primary min-w-[140px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" style={{ fontSize: 'var(--text-small)' }}>
                     Time
                   </th>
                   {DAYS.map((day) => (
                     <th
                       key={day}
-                      className="border border-light-border dark:border-dark-border px-4 py-3 text-center text-sm font-semibold text-light-text-primary dark:text-dark-text-primary min-w-[120px]"
+                      className="border border-light-border dark:border-dark-border px-4 py-3 text-center font-semibold text-light-text-primary dark:text-dark-text-primary min-w-[120px]"
+                      style={{ fontSize: 'var(--text-small)' }}
                     >
                       {DAY_LABELS[day]}
                     </th>
                   ))}
-                  <th className="sticky right-0 z-20 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border px-4 py-3 text-center text-sm font-semibold text-light-text-primary dark:text-dark-text-primary min-w-[80px] shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                  <th className="sticky right-0 z-20 bg-[var(--light-card)] dark:bg-[var(--dark-card)] border border-light-border dark:border-dark-border px-4 py-3 text-center font-semibold text-light-text-primary dark:text-dark-text-primary min-w-[120px] shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]" style={{ fontSize: 'var(--text-small)' }}>
                     Action
                   </th>
                 </tr>
@@ -403,7 +411,7 @@ export function EditableTimetableTable({
                   if (isBreakType && breakType) {
                     return (
                       <tr key={`${timePeriod.startTime}-${breakType}`}>
-                        <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border px-3 py-3 min-w-[140px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                        <td className="sticky left-0 z-10 bg-[var(--light-card)] dark:bg-[var(--dark-card)] border border-light-border dark:border-dark-border px-3 py-3 min-w-[140px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                           <div className="flex flex-col gap-1.5">
                             <TimeInput
                               label="Start time"
@@ -414,7 +422,7 @@ export function EditableTimetableTable({
                                 }
                               }}
                             />
-                            <div className="text-center text-xs text-light-text-muted">to</div>
+                            <div className="text-center text-xs text-light-text-muted dark:text-dark-text-muted">to</div>
                             <TimeInput
                               label="End time"
                               value={timePeriod.endTime}
@@ -428,10 +436,10 @@ export function EditableTimetableTable({
                         </td>
                         <td
                           colSpan={DAYS.length}
-                          className="border border-light-border dark:border-dark-border px-4 py-3 text-center text-sm bg-gray-50 dark:bg-dark-surface/50"
+                          className="border border-[color-mix(in_srgb,var(--agora-blue)_28%,var(--light-border))] dark:border-[color-mix(in_srgb,var(--agora-blue)_35%,var(--dark-border))] px-4 py-3 text-center bg-[color-mix(in_srgb,var(--agora-blue)_16%,white)] dark:bg-[color-mix(in_srgb,var(--agora-blue)_22%,var(--dark-card))] text-[var(--agora-blue)]"
                         >
                           <div className="flex items-center justify-center gap-3">
-                            <span>
+                            <span className="font-medium" style={{ fontSize: 'var(--text-body)' }}>
                               {breakType === 'BREAK' ? 'Break' : breakType === 'LUNCH' ? 'Lunch' : breakType === 'ASSEMBLY' ? 'Assembly' : ''}
                             </span>
                             <button
@@ -447,7 +455,7 @@ export function EditableTimetableTable({
                             </button>
                           </div>
                         </td>
-                        <td className="sticky right-0 z-10 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border px-4 py-3 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                        <td className="sticky right-0 z-10 bg-[var(--light-card)] dark:bg-[var(--dark-card)] border border-light-border dark:border-dark-border px-4 py-3 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                           <InsertButton
                             onInsert={(type, startTime, endTime) => {
                               insertBreakPeriod(timePeriod.startTime, type, startTime, endTime);
@@ -462,7 +470,7 @@ export function EditableTimetableTable({
                   // Lesson periods
                   return (
                     <tr key={timePeriod.startTime}>
-                      <td className="sticky left-0 z-10 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border px-3 py-3 min-w-[140px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                      <td className="sticky left-0 z-10 bg-[var(--light-card)] dark:bg-[var(--dark-card)] border border-light-border dark:border-dark-border px-3 py-3 min-w-[140px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                         <div className="flex flex-col gap-1.5">
                           <TimeInput
                             label="Start time"
@@ -479,7 +487,7 @@ export function EditableTimetableTable({
                               }
                             }}
                           />
-                          <div className="text-center text-xs text-light-text-muted">to</div>
+                          <div className="text-center text-xs text-light-text-muted dark:text-dark-text-muted">to</div>
                           <TimeInput
                             label="End time"
                             value={timePeriod.endTime}
@@ -521,7 +529,7 @@ export function EditableTimetableTable({
                                     });
                                   }
                                 }}
-                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-dark-surface text-light-text-primary dark:text-dark-text-primary"
+                                className="w-full px-2 py-1.5 rounded border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-input)] dark:bg-[var(--dark-input)] text-light-text-primary dark:text-dark-text-primary"
                               >
                                 <option value="FREE_PERIOD">Free Period</option>
                                 {options.map((option) => (
@@ -545,7 +553,7 @@ export function EditableTimetableTable({
                                     }
                                   }
                                 }}
-                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-dark-surface text-light-text-primary dark:text-dark-text-primary"
+                                className="w-full px-2 py-1.5 rounded border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-input)] dark:bg-[var(--dark-input)] text-light-text-primary dark:text-dark-text-primary"
                               >
                                 <option value="FREE_PERIOD">Free Period</option>
                                 {options.map((option) => (
@@ -558,7 +566,7 @@ export function EditableTimetableTable({
                           </td>
                         );
                       })}
-                      <td className="sticky right-0 z-10 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border px-4 py-3 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                      <td className="sticky right-0 z-10 bg-[var(--light-card)] dark:bg-[var(--dark-card)] border border-light-border dark:border-dark-border px-4 py-3 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                         <div className="flex flex-col gap-2 items-center">
                           <button
                             type="button"
@@ -636,8 +644,8 @@ export function EditableTimetableTable({
 
         {/* Auto-Generate Confirmation Modal */}
         {showAutoGenerateModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-            <FadeInUp from={{ opacity: 0, scale: 0.95 }} to={{ opacity: 1, scale: 1 }} duration={0.25} className="bg-white dark:bg-dark-surface rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10060]">
+            <FadeInUp from={{ opacity: 0, scale: 0.95 }} to={{ opacity: 1, scale: 1 }} duration={0.25} className="bg-[var(--light-card)] dark:bg-[var(--dark-card)] rounded-lg p-6 max-w-md w-full mx-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
                   <LoisOrb size="sm" />
@@ -694,8 +702,8 @@ export function EditableTimetableTable({
 
         {/* Discard Changes Confirmation — Fix 4 */}
         {showDiscardConfirm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-            <div className="bg-white dark:bg-dark-surface rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10060]">
+            <div className="bg-[var(--light-card)] dark:bg-[var(--dark-card)] rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
               <h3 className="text-base font-semibold text-light-text-primary dark:text-dark-text-primary mb-2">
                 Discard changes?
               </h3>
@@ -723,6 +731,7 @@ export function EditableTimetableTable({
         )}
       </div>
     </div>
+    </BodyPortal>
   );
 }
 
@@ -737,12 +746,14 @@ function InsertButton({ onInsert, previousTime }: InsertButtonProps) {
   const [insertType, setInsertType] = useState<'BREAK' | 'LUNCH' | 'ASSEMBLY' | null>(null);
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const startInputRef = useRef<HTMLInputElement>(null);
+  const endInputRef = useRef<HTMLInputElement>(null);
 
-  // Calculate default times based on previous time
   const getDefaultTimes = () => {
     if (previousTime) {
-      // Add 1 hour to previous time
       const [prevHours, prevMinutes] = previousTime.split(':').map(Number);
       const nextHours = prevHours + 1;
       const defaultStart = `${String(nextHours).padStart(2, '0')}:${String(prevMinutes).padStart(2, '0')}`;
@@ -752,22 +763,48 @@ function InsertButton({ onInsert, previousTime }: InsertButtonProps) {
     return { defaultStart: '08:00', defaultEnd: '09:00' };
   };
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        if (isOpen && !insertType) {
-          setIsOpen(false);
-        }
-      }
-    };
+  const updatePosition = () => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const estimatedHeight = insertType ? 200 : 140;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
+    setMenuPos({
+      top: openUp ? undefined : rect.bottom + 4,
+      bottom: openUp ? window.innerHeight - rect.top + 4 : undefined,
+      right: Math.max(8, window.innerWidth - rect.right),
+    });
+  };
 
-    if (isOpen && !insertType) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
+  useLayoutEffect(() => {
+    if (!isOpen && !insertType) {
+      setMenuPos(null);
+      return;
     }
+    updatePosition();
+    const handler = () => updatePosition();
+    window.addEventListener('resize', handler);
+    document.addEventListener('scroll', handler, true);
+    return () => {
+      window.removeEventListener('resize', handler);
+      document.removeEventListener('scroll', handler, true);
+    };
+  }, [isOpen, insertType]);
+
+  useEffect(() => {
+    if (!isOpen && !insertType) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (anchorRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      setIsOpen(false);
+      setInsertType(null);
+      setStartTime('');
+      setEndTime('');
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, insertType]);
 
   const handleInsertClick = (type: 'BREAK' | 'LUNCH' | 'ASSEMBLY') => {
@@ -775,12 +812,14 @@ function InsertButton({ onInsert, previousTime }: InsertButtonProps) {
     const { defaultStart, defaultEnd } = getDefaultTimes();
     setStartTime(defaultStart);
     setEndTime(defaultEnd);
-    setIsOpen(false); // Close dropdown, show form
+    setIsOpen(false);
   };
 
   const handleConfirm = () => {
-    if (insertType && startTime && endTime && startTime < endTime) {
-      onInsert(insertType, startTime, endTime);
+    const parsedStart = parseTimeInput(startInputRef.current?.value ?? '') ?? startTime;
+    const parsedEnd = parseTimeInput(endInputRef.current?.value ?? '') ?? endTime;
+    if (insertType && parsedStart && parsedEnd && parsedStart < parsedEnd) {
+      onInsert(insertType, parsedStart, parsedEnd);
       setIsOpen(false);
       setInsertType(null);
       setStartTime('');
@@ -795,85 +834,105 @@ function InsertButton({ onInsert, previousTime }: InsertButtonProps) {
     setEndTime('');
   };
 
-  // Show time input form if type is selected
-  if (insertType) {
-    return (
-      <div className="flex flex-col gap-2 min-w-[200px]">
-        <div className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">
-          Insert {insertType === 'BREAK' ? 'Break' : insertType === 'LUNCH' ? 'Lunch' : 'Assembly'}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <TimeInput
-            label="Start time"
-            value={startTime}
-            onChange={setStartTime}
-            className="w-[85px]"
-          />
-          <span className="text-xs text-light-text-muted">-</span>
-          <TimeInput
-            label="End time"
-            value={endTime}
-            onChange={setEndTime}
-            className="w-[85px]"
-          />
-        </div>
-        <div className="flex gap-1">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleConfirm}
-            disabled={!startTime || !endTime || startTime >= endTime}
-            className="flex-1 text-xs py-1"
-          >
-            Insert
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCancel}
-            className="text-xs py-1"
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const typeLabel =
+    insertType === 'BREAK' ? 'Break' : insertType === 'LUNCH' ? 'Lunch' : insertType === 'ASSEMBLY' ? 'Assembly' : '';
 
-  // Show dropdown button
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1 px-2 py-1.5 text-xs text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-        title="Insert break/lunch/assembly"
-      >
-        <Plus className="h-3 w-3" />
-        <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {isOpen && !insertType && (
-        <div className="absolute right-0 top-full mt-1 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border rounded shadow-lg z-20 min-w-[150px]">
-          <button
-            onClick={() => handleInsertClick('ASSEMBLY')}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+    <>
+      <div ref={anchorRef}>
+        <button
+          type="button"
+          onClick={() => {
+            if (insertType) {
+              handleCancel();
+              return;
+            }
+            setIsOpen((open) => !open);
+          }}
+          className="inline-flex items-center gap-1 px-2 py-1.5 rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-input)] dark:bg-[var(--dark-input)] text-light-text-primary dark:text-dark-text-primary hover:bg-[var(--light-hover)] dark:hover:bg-[var(--dark-hover)] transition-colors"
+          title="Insert assembly, break, or lunch"
+          aria-label="Insert assembly, break, or lunch"
+          aria-expanded={isOpen || Boolean(insertType)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          <span className="font-medium" style={{ fontSize: 'var(--text-tiny)' }}>Insert</span>
+          <ChevronDown className={`h-3.5 w-3.5 text-light-text-secondary dark:text-dark-text-secondary transition-transform ${isOpen || insertType ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+      {(isOpen || insertType) && menuPos && (
+        <BodyPortal>
+          <div
+            ref={popoverRef}
+            style={{
+              position: 'fixed',
+              top: menuPos.top,
+              bottom: menuPos.bottom,
+              right: menuPos.right,
+              zIndex: 10100,
+            }}
+            className="min-w-[168px] rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-card)] dark:bg-[var(--dark-card)] shadow-xl"
           >
-            Assembly
-          </button>
-          <button
-            onClick={() => handleInsertClick('BREAK')}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            Break
-          </button>
-          <button
-            onClick={() => handleInsertClick('LUNCH')}
-            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            Lunch
-          </button>
-        </div>
+            {insertType ? (
+              <div className="p-3 flex flex-col gap-2 w-[220px]">
+                <div className="font-medium text-[var(--agora-blue)]" style={{ fontSize: 'var(--text-small)' }}>
+                  Insert {typeLabel}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <TimeInput
+                    ref={startInputRef}
+                    label="Start time"
+                    value={startTime}
+                    onChange={setStartTime}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-light-text-muted dark:text-dark-text-muted">to</span>
+                  <TimeInput
+                    ref={endInputRef}
+                    label="End time"
+                    value={endTime}
+                    onChange={setEndTime}
+                    className="flex-1"
+                  />
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleConfirm}
+                    disabled={!startTime || !endTime || startTime >= endTime}
+                    className="flex-1 text-xs py-1"
+                  >
+                    Insert
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancel}
+                    className="text-xs py-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-1">
+                {(['ASSEMBLY', 'BREAK', 'LUNCH'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => handleInsertClick(type)}
+                    className="w-full text-left px-3 py-2 text-[var(--agora-blue)] hover:bg-[color-mix(in_srgb,var(--agora-blue)_16%,white)] dark:hover:bg-[color-mix(in_srgb,var(--agora-blue)_18%,var(--dark-card))] transition-colors"
+                    style={{ fontSize: 'var(--text-body)' }}
+                  >
+                    {type === 'ASSEMBLY' ? 'Assembly' : type === 'BREAK' ? 'Break' : 'Lunch'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </BodyPortal>
       )}
-    </div>
+    </>
   );
 }
 

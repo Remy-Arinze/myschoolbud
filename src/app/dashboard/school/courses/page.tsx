@@ -30,8 +30,10 @@ import {
 import { CreateClassModal } from '@/components/modals/CreateClassModal';
 import { DeleteClassModal } from '@/components/modals/DeleteClassModal';
 import { EditClassModal } from '@/components/modals/EditClassModal';
+import { GenerateClassesModal } from '@/components/modals/GenerateClassesModal';
 import { TertiaryDepartments } from '@/components/tertiary/TertiaryDepartments';
 import toast from 'react-hot-toast';
+import { useGetSchoolSettingsQuery } from '@/lib/store/api/schoolSettingsApi';
 
 export default function ClassesPage() {
   const router = useRouter();
@@ -39,6 +41,7 @@ export default function ClassesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showAddClass, setShowAddClass] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     classId: string;
@@ -104,18 +107,25 @@ export default function ClassesPage() {
 
   const classes = classesResponse?.data || [];
 
+  const { data: settingsResponse } = useGetSchoolSettingsQuery(undefined, { skip: !schoolId });
+  const preferredArmNames = settingsResponse?.data?.structureConfig?.defaultClassArmNames;
+
   // Mutations
   const [deleteClass, { isLoading: isDeletingClass }] = useDeleteClassMutation();
   const [updateClass] = useUpdateClassMutation();
   const [generateDefaultClasses, { isLoading: isGenerating }] = useGenerateDefaultClassesMutation();
 
-  // Handle generating default classes
-  const handleGenerateClasses = async () => {
+  const confirmGenerateClasses = async (armNames: string[]) => {
     if (!schoolId || !currentType) return;
 
     try {
-      const result = await generateDefaultClasses({ schoolId, schoolType: currentType }).unwrap();
+      const result = await generateDefaultClasses({
+        schoolId,
+        schoolType: currentType,
+        armNames,
+      }).unwrap();
       toast.success(result.message || `Successfully generated ${result.data?.created || 0} classes`);
+      setShowGenerateModal(false);
     } catch (error: any) {
       const message = error?.data?.message || 'Failed to generate classes';
       toast.error(message);
@@ -249,7 +259,7 @@ export default function ClassesPage() {
               <PermissionGate resource={PermissionResource.CLASSES} type={PermissionType.WRITE}>
                 <div className="flex flex-row items-center gap-3 w-full md:w-auto">
                   <AutoGenerateButton
-                    onClick={handleGenerateClasses}
+                    onClick={() => setShowGenerateModal(true)}
                     isLoading={isGenerating}
                     label="Auto-Generate"
                     variant="secondary"
@@ -518,6 +528,15 @@ export default function ClassesPage() {
             schoolId={schoolId}
           />
         )}
+
+        <GenerateClassesModal
+          isOpen={showGenerateModal}
+          onClose={() => setShowGenerateModal(false)}
+          onConfirm={confirmGenerateClasses}
+          isGenerating={isGenerating}
+          schoolType={currentType}
+          preferredArmNames={preferredArmNames}
+        />
 
         {/* Delete Class Modal */}
         <DeleteClassModal

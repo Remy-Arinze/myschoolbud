@@ -33,7 +33,6 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { AutoGenerateButton } from '@/components/ui/AutoGenerateButton';
-import { LoisOrb } from '@/components/ai/LoisOrb';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
@@ -67,6 +66,7 @@ import {
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import { useAutoGenerateSubjects } from '@/hooks/useAutoGenerateSubjects';
+import { GenerateSubjectsModal } from '@/components/modals/GenerateSubjectsModal';
 import { getTerminology } from '@/lib/utils/terminology';
 import toast from 'react-hot-toast';
 import React from 'react';
@@ -132,8 +132,8 @@ export default function SubjectsPage() {
   );
 
   // Wrap handleAutoGenerate so that the subject list refreshes after generation
-  const handleAutoGenerate = useCallback(async () => {
-    await _handleAutoGenerate();
+  const handleAutoGenerate = useCallback(async (agoraSubjectIds: string[]) => {
+    await _handleAutoGenerate(agoraSubjectIds);
     refetchSubjects();
   }, [_handleAutoGenerate, refetchSubjects]);
 
@@ -799,15 +799,15 @@ export default function SubjectsPage() {
           />
         )}
 
-        {/* Auto-Generate Confirmation Modal */}
-        {showConfirmModal && (
-          <AutoGenerateModal
-            schoolTypeLabel={schoolTypeLabel}
-            isGenerating={isGenerating}
-            onConfirm={handleAutoGenerate}
-            onClose={closeConfirmModal}
-          />
-        )}
+        <GenerateSubjectsModal
+          isOpen={showConfirmModal}
+          onClose={closeConfirmModal}
+          onConfirm={handleAutoGenerate}
+          isGenerating={isGenerating}
+          schoolId={schoolId}
+          schoolType={currentType === 'PRIMARY' || currentType === 'SECONDARY' ? currentType : null}
+          schoolTypeLabel={schoolTypeLabel}
+        />
 
         {/* Global Delete Confirmation Modal */}
         <ConfirmModal
@@ -2125,89 +2125,6 @@ function AssignTeacherModal({
           <Button variant="ghost" onClick={onClose} className="w-full">
             Close
           </Button>
-        </div>
-      </FadeInUp>
-    </div>
-  );
-}
-
-// Auto-Generate Confirmation Modal
-function AutoGenerateModal({
-  schoolTypeLabel,
-  isGenerating,
-  onConfirm,
-  onClose,
-}: {
-  schoolTypeLabel: string;
-  isGenerating: boolean;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <FadeInUp from={{ opacity: 0, scale: 0.95 }} to={{ opacity: 1, scale: 1 }} duration={0.25}
-        className="bg-white dark:bg-dark-surface rounded-lg p-6 max-w-md w-full mx-4"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-              <LoisOrb size="sm" />
-            </div>
-            <p className="font-medium text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-section-title)' }}>
-              Auto-Generate Subjects
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={isGenerating}
-            className="text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary disabled:opacity-50"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <p className="text-light-text-secondary dark:text-dark-text-secondary">
-            This will add standard {schoolTypeLabel} subjects to your school.
-            Existing subjects with the same name or code will be skipped.
-          </p>
-
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-blue-800 dark:text-blue-300">
-                You can delete any unwanted subjects after generation.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="primary"
-              onClick={onConfirm}
-              disabled={isGenerating}
-              className="flex-1"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <LoisOrb size="xs" className="mr-2" />
-                  Generate Subjects
-                </>
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              disabled={isGenerating}
-            >
-              Cancel
-            </Button>
-          </div>
         </div>
       </FadeInUp>
     </div>

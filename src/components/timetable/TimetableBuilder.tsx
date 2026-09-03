@@ -27,6 +27,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Clock, GripVertical, X, Loader2, Plus, BookOpen, Info } from 'lucide-react';
 import { FadeInUp } from '@/components/ui/FadeInUp';
+import { BodyPortal } from '@/components/ui/BodyPortal';
 import { LoisOrb } from '@/components/ai/LoisOrb';
 import Link from 'next/link';
 import {
@@ -538,7 +539,7 @@ export function TimetableBuilder({
                             </td>
                             <td
                               colSpan={DAYS.length}
-                              className="py-4 px-4 text-center font-medium text-light-text-secondary dark:text-dark-text-secondary bg-gray-50 dark:bg-dark-surface/50"
+                              className="py-4 px-4 text-center font-medium bg-[color-mix(in_srgb,var(--agora-blue)_16%,white)] dark:bg-[color-mix(in_srgb,var(--agora-blue)_22%,var(--dark-card))] text-[var(--agora-blue)]"
                             >
                               {breakLabel}
                             </td>
@@ -709,7 +710,7 @@ export function TimetableBuilder({
                               </td>
                               <td
                                 colSpan={DAYS.length}
-                                className="py-4 px-4 text-center font-medium text-light-text-secondary dark:text-dark-text-secondary bg-gray-50 dark:bg-dark-surface/50"
+                                className="py-4 px-4 text-center font-medium bg-[color-mix(in_srgb,var(--agora-blue)_16%,white)] dark:bg-[color-mix(in_srgb,var(--agora-blue)_22%,var(--dark-card))] text-[var(--agora-blue)]"
                               >
                                 {breakLabel}
                               </td>
@@ -781,7 +782,8 @@ export function TimetableBuilder({
 
       {/* Auto-Generate Confirmation Modal */}
       {showAutoGenerateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <BodyPortal>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10050]">
           <FadeInUp from={{ opacity: 0, scale: 0.95 }} to={{ opacity: 1, scale: 1 }} duration={0.25} className="bg-white dark:bg-dark-surface rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
@@ -846,6 +848,7 @@ export function TimetableBuilder({
             </div>
           </FadeInUp>
         </div>
+        </BodyPortal>
       )}
     </DndContext>
   );

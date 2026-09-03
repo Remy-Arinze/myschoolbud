@@ -16,6 +16,8 @@
  *   "830"      → 08:30
  *   "0830"     → 08:30
  *   "8:30"     → 08:30
+ *   "8:30am"   → 08:30
+ *   "8:00pm"   → 20:00
  *   "8:3"      → 08:03  (ambiguous; we treat as HH:M → HH:0M)
  *   "083"      → 08:03
  *   "8.30"     → 08:30  (dot separator)
@@ -32,50 +34,73 @@ import { cn } from '@/lib/utils';
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 const HH_MM_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const FLEX_TIME_RE = /^(\d{1,2}):([0-5]\d)$/;
+const MERIDIEM_RE = /\s*([ap])\.?m\.?\s*$/i;
+
+/** True when the typed string looks finished (safe to commit before blur). */
+export function isCompleteTimeInput(raw: string): boolean {
+  const t = raw.trim();
+  if (/^\d{1,2}:\d{2}\s*([ap]\.?m\.?)?$/i.test(t)) return true;
+  if (/^\d{3,4}\s*([ap]\.?m\.?)?$/i.test(t)) return true;
+  if (/^\d{1,2}\s*[ap]\.?m\.?$/i.test(t)) return true;
+  return false;
+}
 
 /** Attempt to normalise a raw string to "HH:mm". Returns null on failure. */
 export function parseTimeInput(raw: string): string | null {
-  const s = raw.trim().replace('.', ':'); // allow "8.30"
+  let s = raw.trim();
+  if (!s) return null;
 
-  // Already valid HH:mm
-  if (HH_MM_RE.test(s)) return s;
+  const meridiemMatch = s.match(MERIDIEM_RE);
+  const isAm = !!meridiemMatch && meridiemMatch[1].toLowerCase() === 'a';
+  const isPm = !!meridiemMatch && meridiemMatch[1].toLowerCase() === 'p';
+  if (meridiemMatch && meridiemMatch.index !== undefined) {
+    s = s.slice(0, meridiemMatch.index).trim();
+  }
 
-  // Remove all non-digits
-  const digits = s.replace(/\D/g, '');
-
-  if (digits.length === 0) return null;
+  s = s.replace('.', ':'); // allow "8.30"
 
   let h: number;
   let m: number;
 
-  if (digits.length === 1) {
-    // "8" → 08:00
-    h = parseInt(digits, 10);
-    m = 0;
-  } else if (digits.length === 2) {
-    // "08" → 08:00  |  "30" ambiguous — treat as HH
-    h = parseInt(digits, 10);
-    m = 0;
-  } else if (digits.length === 3) {
-    // "830" → 08:30  |  "083" → 08:03
-    // Try H:MM first
-    h = parseInt(digits[0], 10);
-    m = parseInt(digits.slice(1), 10);
-    if (m > 59) {
-      // Try HH:0M
-      h = parseInt(digits.slice(0, 2), 10);
-      m = parseInt(digits[2], 10);
-    }
-  } else if (digits.length === 4) {
-    // "0830" → 08:30
-    h = parseInt(digits.slice(0, 2), 10);
-    m = parseInt(digits.slice(2), 10);
+  const colon = FLEX_TIME_RE.exec(s);
+  if (colon) {
+    h = parseInt(colon[1], 10);
+    m = parseInt(colon[2], 10);
   } else {
-    // More than 4 digits — not a valid time
-    return null;
+    const digits = s.replace(/\D/g, '');
+    if (digits.length === 0) return null;
+
+    if (digits.length === 1) {
+      h = parseInt(digits, 10);
+      m = 0;
+    } else if (digits.length === 2) {
+      h = parseInt(digits, 10);
+      m = 0;
+    } else if (digits.length === 3) {
+      h = parseInt(digits[0], 10);
+      m = parseInt(digits.slice(1), 10);
+      if (m > 59) {
+        h = parseInt(digits.slice(0, 2), 10);
+        m = parseInt(digits[2], 10);
+      }
+    } else if (digits.length === 4) {
+      h = parseInt(digits.slice(0, 2), 10);
+      m = parseInt(digits.slice(2), 10);
+    } else {
+      return null;
+    }
   }
 
-  if (isNaN(h) || isNaN(m) || h > 23 || m > 59) return null;
+  if (isNaN(h) || isNaN(m) || m > 59) return null;
+
+  if (isAm || isPm) {
+    if (h < 1 || h > 12) return null;
+    if (isPm && h !== 12) h += 12;
+    if (isAm && h === 12) h = 0;
+  } else if (h > 23) {
+    return null;
+  }
 
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
@@ -114,16 +139,16 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
     // Internal display value (what the user sees while typing)
     const [displayValue, setDisplayValue] = useState(value);
     const [hasError, setHasError] = useState(false);
+    const isFocusedRef = useRef(false);
     const autoId = useId();
     const id = idProp ?? autoId;
 
     // Keep display in sync when the parent changes value externally
-    // (e.g. auto-fill, reset)
+    // (e.g. auto-fill, reset). Skip while focused so typing isn't overwritten.
     const prevValueRef = useRef(value);
     if (prevValueRef.current !== value) {
       prevValueRef.current = value;
-      // Only sync if the display isn't mid-edit (i.e. display already matches)
-      if (isValidTime(value) || value === '') {
+      if (!isFocusedRef.current && (isValidTime(value) || value === '')) {
         setDisplayValue(value);
         setHasError(false);
       }
@@ -134,24 +159,29 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
         const raw = e.target.value;
         setDisplayValue(raw);
 
-        // Native picker always gives valid "HH:mm" — commit immediately
-        if (HH_MM_RE.test(raw)) {
-          setHasError(false);
-          onChange(raw);
-          return;
+        if (isCompleteTimeInput(raw)) {
+          const parsed = parseTimeInput(raw);
+          if (parsed) {
+            setHasError(false);
+            onChange(parsed);
+            return;
+          }
         }
 
-        // Clear error while typing
         if (hasError) setHasError(false);
       },
       [hasError, onChange]
     );
 
+    const handleFocus = useCallback(() => {
+      isFocusedRef.current = true;
+    }, []);
+
     const handleBlur = useCallback(() => {
+      isFocusedRef.current = false;
       const raw = displayValue.trim();
 
       if (raw === '') {
-        // Allow clearing
         setHasError(false);
         onChange('');
         return;
@@ -159,7 +189,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
 
       const parsed = parseTimeInput(raw);
       if (parsed) {
-        setDisplayValue(parsed); // normalise display
+        setDisplayValue(parsed);
         setHasError(false);
         onChange(parsed);
       } else {
@@ -210,6 +240,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
           title={showError ? 'Invalid time — use HH:MM (e.g. 08:30)' : label}
           value={displayValue}
           onChange={handleChange}
+          onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           disabled={disabled}
@@ -217,18 +248,18 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
           spellCheck={false}
           className={cn(
             'w-full px-2 py-1.5 text-[10px] sm:text-xs rounded transition-colors',
-            'bg-white dark:bg-dark-surface',
+            'bg-[var(--light-input)] dark:bg-[var(--dark-input)]',
             'text-light-text-primary dark:text-dark-text-primary',
             showError
               ? 'border border-red-500 dark:border-red-400 focus:outline-none focus:ring-1 focus:ring-red-500'
-              : 'border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400',
+              : 'border border-[var(--light-border)] dark:border-[var(--dark-border)] focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
         />
         {showError && (
           <p
             role="alert"
-            className="absolute left-0 top-full mt-0.5 text-[10px] text-red-600 dark:text-red-400 whitespace-nowrap z-10 bg-white dark:bg-dark-surface px-1 rounded shadow"
+            className="absolute left-0 top-full mt-0.5 text-[10px] text-red-600 dark:text-red-400 whitespace-nowrap z-10 bg-[var(--light-card)] dark:bg-[var(--dark-card)] px-1 rounded shadow"
           >
             Use HH:MM (e.g. 08:30)
           </p>

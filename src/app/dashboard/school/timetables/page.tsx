@@ -17,10 +17,8 @@ import {
   MousePointerClick,
   GripVertical,
   AlertTriangle,
-  ChevronDown,
   GraduationCap,
   Info,
-  CheckCircle,
 } from 'lucide-react';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
@@ -55,7 +53,7 @@ import { EditableTimetableTable } from '@/components/timetable/EditableTimetable
 import { TeacherSelectionPopup } from '@/components/timetable/TeacherSelectionPopup';
 import { TimetablePreviewModal } from '@/components/timetable/TimetablePreviewModal';
 import { getScheduleFromBellTemplates } from '@/lib/utils/nigerianSchoolSchedule';
-import { ConfirmModal } from '@/components/ui/Modal';
+import { ConfirmModal, Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 import { useAutoGenerateWithTeachers, type GeneratedPeriodWithTeacher } from '@/hooks/useAutoGenerateWithTeachers';
 import { useRuntimePolicies, useWorkingDays } from '@/hooks/useRuntimePolicies';
@@ -210,6 +208,7 @@ export default function TimetablesPage() {
   // Reset selected class when school type changes
   useEffect(() => {
     setSelectedClassId('');
+    setIsEditMode(false);
   }, [currentType]);
 
   const paramsProcessed = useRef(false);
@@ -726,6 +725,7 @@ export default function TimetablesPage() {
       toast.success('Timetable deleted successfully');
       setDeleteConfirmModal(null);
       setSelectedClassId('');
+      setIsEditMode(false);
       refetchTimetables();
     } catch (error: any) {
       toast.error(error?.data?.message || 'Failed to delete timetable');
@@ -786,6 +786,11 @@ export default function TimetablesPage() {
   const selectedTerm = allTerms.find((t) => t.id === termId);
   const isClassTabLoading =
     isLoadingSchool || isLoadingActiveSession || (!!termId && isLoadingTimetables);
+
+  const closeTimetableModal = () => {
+    setSelectedClassId('');
+    setIsEditMode(false);
+  };
 
   // Get classes that have timetables
   const classesWithTimetables = useMemo(() => {
@@ -903,26 +908,13 @@ export default function TimetablesPage() {
                 return (
                   <Card
                     key={cls.id}
-                    className={`cursor-pointer transition-all duration-200 ${selectedClassId === cls.id
-                        ? 'ring-2 ring-blue-600 shadow-md bg-blue-50/30 dark:bg-blue-900/10'
-                        : 'hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800'
-                      }`}
-                    onClick={() => {
-                      if (selectedClassId === cls.id) {
-                        setSelectedClassId('');
-                      } else {
-                        setSelectedClassId(cls.id);
-                      }
-                    }}
+                    className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800"
+                    onClick={() => setSelectedClassId(cls.id)}
                   >
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle>{cls.name}</CardTitle>
-                        {selectedClassId === cls.id ? (
-                          <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        ) : (
-                          <BookOpen className="h-5 w-5 text-light-text-muted dark:text-dark-text-muted" />
-                        )}
+                        <BookOpen className="h-5 w-5 text-light-text-muted dark:text-dark-text-muted" />
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -933,7 +925,7 @@ export default function TimetablesPage() {
                         </div>
                         <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400" style={{ fontSize: 'var(--text-small)' }}>
                           <MousePointerClick className="h-3.5 w-3.5" />
-                          <span>Click to expand timetable</span>
+                          <span>Click to view timetable</span>
                         </div>
                         <div className="flex gap-2">
                           <Button
@@ -987,147 +979,138 @@ export default function TimetablesPage() {
           </>
         )}
 
-        {/* Timetable Builder for Selected Class */}
-        {selectedClassId && termId && (
-          <Card className="mt-6">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>
-                  Timetable for {selectedClass?.name}
-                </CardTitle>
-                <div className="flex gap-2">
-                  <PermissionGate resource={PermissionResource.TIMETABLES} type={PermissionType.WRITE}>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setIsEditMode(true)}
-                      className="px-4 min-w-fit"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Timetable
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setDeleteConfirmModal({
-                          classId: selectedClassId,
-                          className: selectedClass?.name || '',
-                          termId,
-                        });
-                      }}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 min-w-fit"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Timetable
-                    </Button>
-                  </PermissionGate>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => router.push(`/dashboard/school/courses/${selectedClassId}`)}
-                    className="px-4 min-w-fit"
-                  >
-                    View Class Details
-                  </Button>
-                </div>
+        <Modal
+          isOpen={!!selectedClassId && !!termId}
+          onClose={closeTimetableModal}
+          size="full"
+          title={`Timetable for ${selectedClass?.name || 'class'}`}
+          contentClassName="p-4 md:p-6"
+        >
+          <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+            <PermissionGate resource={PermissionResource.TIMETABLES} type={PermissionType.WRITE}>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsEditMode(true)}
+                className="px-4 min-w-fit"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Timetable
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDeleteConfirmModal({
+                    classId: selectedClassId,
+                    className: selectedClass?.name || '',
+                    termId,
+                  });
+                }}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 min-w-fit"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Timetable
+              </Button>
+            </PermissionGate>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push(`/dashboard/school/courses/${selectedClassId}`)}
+              className="px-4 min-w-fit"
+            >
+              View Class Details
+            </Button>
+          </div>
+          {isLoadingTimetable ? (
+            <div className="py-12 text-center">
+              <Loader2 className="h-12 w-12 text-light-text-muted dark:text-dark-text-muted mx-auto mb-4 animate-spin" />
+              <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-body)' }}>
+                Loading timetable...
+              </p>
+            </div>
+          ) : timetable.length === 0 ? (
+            <div className="py-12 text-center">
+              <EmptyStateIcon type="statistics" />
+              <p className="text-light-text-secondary dark:text-dark-text-secondary mb-4" style={{ fontSize: 'var(--text-body)' }}>
+                No timetable periods found for {selectedClass?.name}.
+              </p>
+              <PermissionGate resource={PermissionResource.TIMETABLES} type={PermissionType.WRITE}>
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className="whitespace-nowrap px-4 min-w-fit"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Create Timetable</span>
+                  <span className="sm:hidden">Create</span>
+                </Button>
+              </PermissionGate>
+            </div>
+          ) : (
+            <>
+              <div className="inline-flex items-center gap-2 mb-4 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <GripVertical className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <p className="text-blue-700 dark:text-blue-300" style={{ fontSize: 'var(--text-small)' }}>
+                  <span className="font-medium">Tip:</span> Drag subjects from the left panel and drop them onto the timetable slots to assign them.
+                </p>
               </div>
-            </CardHeader>
-            <CardContent>
-              {isLoadingTimetable ? (
-                <div className="py-12 text-center">
-                  <Loader2 className="h-12 w-12 text-light-text-muted dark:text-dark-text-muted mx-auto mb-4 animate-spin" />
-                  <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-body)' }}>
-                    Loading timetable...
-                  </p>
-                </div>
-              ) : timetable.length === 0 ? (
-                <div className="py-12 text-center">
-                  <EmptyStateIcon type="statistics" />
-                  <p className="text-light-text-secondary dark:text-dark-text-secondary mb-4" style={{ fontSize: 'var(--text-body)' }}>
-                    No timetable periods found for {selectedClass?.name}.
-                  </p>
-                  <PermissionGate resource={PermissionResource.TIMETABLES} type={PermissionType.WRITE}>
-                    <Button 
-                      onClick={() => setShowCreateModal(true)} 
-                      className="whitespace-nowrap px-4 min-w-fit"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      <span className="hidden sm:inline">Create Timetable</span>
-                      <span className="sm:hidden">Create</span>
-                    </Button>
-                  </PermissionGate>
-                </div>
-              ) : (
-                <>
-                  {/* Drag and drop hint */}
-                  <div className="inline-flex items-center gap-2 mb-4 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <GripVertical className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                    <p className="text-blue-700 dark:text-blue-300" style={{ fontSize: 'var(--text-small)' }}>
-                      <span className="font-medium">Tip:</span> Drag subjects from the left panel and drop them onto the timetable slots to assign them.
-                    </p>
-                  </div>
-                  {/* Show warning for SECONDARY if subjects have no teachers */}
-                  {currentType === 'SECONDARY' && subjectsWithoutTeachers.length > 0 && (
-                    <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-amber-800 dark:text-amber-300" style={{ fontSize: 'var(--text-body)' }}>
-                            Some subjects have no teachers assigned
-                          </p>
-                          <p className="text-amber-700 dark:text-amber-400 mt-1" style={{ fontSize: 'var(--text-small)' }}>
-                            {subjectsWithoutTeachers.map(s => s.name).join(', ')}
-                          </p>
-                          <Link
-                            href="/dashboard/school/subjects"
-                            className="text-amber-700 dark:text-amber-400 underline hover:no-underline mt-1 inline-block"
-                            style={{ fontSize: 'var(--text-small)' }}
-                          >
-                            Go to Subjects page to add teachers →
-                          </Link>
-                        </div>
-                      </div>
+              {currentType === 'SECONDARY' && subjectsWithoutTeachers.length > 0 && (
+                <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-amber-800 dark:text-amber-300" style={{ fontSize: 'var(--text-body)' }}>
+                        Some subjects have no teachers assigned
+                      </p>
+                      <p className="text-amber-700 dark:text-amber-400 mt-1" style={{ fontSize: 'var(--text-small)' }}>
+                        {subjectsWithoutTeachers.map(s => s.name).join(', ')}
+                      </p>
+                      <Link
+                        href="/dashboard/school/subjects"
+                        className="text-amber-700 dark:text-amber-400 underline hover:no-underline mt-1 inline-block"
+                        style={{ fontSize: 'var(--text-small)' }}
+                      >
+                        Go to Subjects page to add teachers →
+                      </Link>
                     </div>
-                  )}
-
-                  <TimetableBuilder
-                    schoolType={currentType}
-                    subjects={subjects.map((s) => ({ id: s.id, name: s.name, code: s.code, type: 'subject' as const }))}
-                    courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, type: 'course' as const }))}
-                    timetable={timetable}
-                    classArmId={''} // Not used when classId is provided
-                    termId={termId}
-                    onPeriodUpdate={handlePeriodUpdate}
-                    onPeriodDelete={handlePeriodDelete}
-                    onAutoGenerate={currentType === 'SECONDARY' ? handleAutoGenerateWithPreview : handleAutoGenerate}
-                    isLoading={isCreating || isUpdating || isDeleting}
-                    // SECONDARY-specific props
-                    subjectsWithTeachers={currentType === 'SECONDARY' ? subjects.map(s => ({
-                      id: s.id,
-                      name: s.name,
-                      code: s.code,
-                      type: 'subject' as const,
-                      teachers: s.teachers,
-                    })) : undefined}
-                    onTeacherSelectionNeeded={currentType === 'SECONDARY' ? handleTeacherSelectionNeeded : undefined}
-                    onEditPeriodTeacher={currentType === 'SECONDARY' ? handleEditPeriodTeacher : undefined}
-                  />
-                  {isEditMode && (
-                    <EditableTimetableTable
-                      timetable={timetable}
-                      subjects={subjects}
-                      courses={courses}
-                      schoolType={currentType}
-                      onSave={handleBulkSave}
-                      onClose={() => setIsEditMode(false)}
-                      isLoading={isUpdating || isReplacing}
-                    />
-                  )}
-                </>
+                  </div>
+                </div>
               )}
-            </CardContent>
-          </Card>
+
+              <TimetableBuilder
+                schoolType={currentType}
+                subjects={subjects.map((s) => ({ id: s.id, name: s.name, code: s.code, type: 'subject' as const }))}
+                courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, type: 'course' as const }))}
+                timetable={timetable}
+                classArmId={''}
+                termId={termId}
+                onPeriodUpdate={handlePeriodUpdate}
+                onPeriodDelete={handlePeriodDelete}
+                onAutoGenerate={currentType === 'SECONDARY' ? handleAutoGenerateWithPreview : handleAutoGenerate}
+                isLoading={isCreating || isUpdating || isDeleting}
+                subjectsWithTeachers={currentType === 'SECONDARY' ? subjects.map(s => ({
+                  id: s.id,
+                  name: s.name,
+                  code: s.code,
+                  type: 'subject' as const,
+                  teachers: s.teachers,
+                })) : undefined}
+                onTeacherSelectionNeeded={currentType === 'SECONDARY' ? handleTeacherSelectionNeeded : undefined}
+                onEditPeriodTeacher={currentType === 'SECONDARY' ? handleEditPeriodTeacher : undefined}
+              />
+            </>
+          )}
+        </Modal>
+        {isEditMode && selectedClassId && (
+          <EditableTimetableTable
+            timetable={timetable}
+            subjects={subjects}
+            courses={courses}
+            schoolType={currentType}
+            onSave={handleBulkSave}
+            onClose={() => setIsEditMode(false)}
+            isLoading={isUpdating || isReplacing}
+          />
         )}
 
         {/* Create Timetable Modal */}

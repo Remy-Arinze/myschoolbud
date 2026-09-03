@@ -13,7 +13,7 @@ interface ModalProps {
   title?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | 'full';
   showCloseButton?: boolean;
   className?: string;
   contentClassName?: string;
@@ -39,6 +39,7 @@ export function Modal({
     xl: 'max-w-4xl',
     '2xl': 'max-w-5xl',
     '4xl': 'max-w-7xl',
+    full: 'max-w-[96vw]',
   };
 
   const backdropRef = useRef<HTMLDivElement>(null);

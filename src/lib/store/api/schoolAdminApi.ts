@@ -2351,12 +2351,12 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
     // Generate default classes for a school type (Primary 1-6, JSS1-SS3, Year 1-4)
     generateDefaultClasses: builder.mutation<
       ResponseDto<{ created: number; message: string }>,
-      { schoolId: string; schoolType: 'PRIMARY' | 'SECONDARY' | 'TERTIARY' }
+      { schoolId: string; schoolType: 'PRIMARY' | 'SECONDARY' | 'TERTIARY'; armNames?: string[] }
     >({
-      query: ({ schoolId, schoolType }) => ({
+      query: ({ schoolId, schoolType, armNames }) => ({
         url: `/schools/${schoolId}/timetable/generate-default-classes`,
         method: 'POST',
-        body: { schoolType },
+        body: { schoolType, ...(armNames?.length ? { armNames } : {}) },
       }),
       invalidatesTags: [
         { type: 'Class', id: 'LIST' },
@@ -2612,14 +2612,25 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
     }),
     autoGenerateSubjects: builder.mutation<
       ResponseDto<{ created: number; skipped: number; subjects: Subject[] }>,
+      { schoolId: string; schoolType: 'PRIMARY' | 'SECONDARY'; agoraSubjectIds?: string[] }
+    >({
+      query: ({ schoolId, schoolType, agoraSubjectIds }) => ({
+        url: `/schools/${schoolId}/timetable/subjects/auto-generate`,
+        method: 'POST',
+        body: { schoolType, ...(agoraSubjectIds ? { agoraSubjectIds } : {}) },
+      }),
+      invalidatesTags: ['Timetable', 'Subject'],
+    }),
+    previewAutoGenerateSubjects: builder.query<
+      ResponseDto<{
+        subjects: { id: string; name: string; code?: string; category?: string }[];
+      }>,
       { schoolId: string; schoolType: 'PRIMARY' | 'SECONDARY' }
     >({
       query: ({ schoolId, schoolType }) => ({
-        url: `/schools/${schoolId}/timetable/subjects/auto-generate`,
-        method: 'POST',
-        body: { schoolType },
+        url: `/schools/${schoolId}/timetable/subjects/auto-generate/preview`,
+        params: { schoolType },
       }),
-      invalidatesTags: ['Timetable', 'Subject'],
     }),
 
     // Class-Subject-Teacher Assignment endpoints (for SECONDARY schools)
@@ -4264,6 +4275,7 @@ export const {
   useAssignTeacherToSubjectMutation,
   useRemoveTeacherFromSubjectMutation,
   useAutoGenerateSubjectsMutation,
+  usePreviewAutoGenerateSubjectsQuery,
   useGetSubjectClassAssignmentsQuery,
   useBulkAssignTeachersToClassesMutation,
   useRemoveClassSubjectAssignmentMutation,
