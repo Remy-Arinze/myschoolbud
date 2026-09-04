@@ -21,6 +21,10 @@ export interface AuthState {
     // Admin-specific context (only for SCHOOL_ADMIN role)
     adminRole?: string | null;       // e.g., 'principal', 'school_owner', 'headmistress'
     adminSchoolType?: string | null; // e.g., 'PRIMARY', 'SECONDARY' — locks dashboard to this type
+    lifecycleStatus?: string | null;
+    deactivatesAt?: string | null;
+    deactivationReason?: string | null;
+    deactivatedAt?: string | null;
   } | null;
   tenantId: string | null;
 }

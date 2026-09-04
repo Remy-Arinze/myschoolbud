@@ -12,6 +12,7 @@ import { GlobalAiAssistant } from '@/components/ai/GlobalAiAssistant';
 import { NotificationProvider } from '@/components/notifications/NotificationProvider';
 import { LoisWorkspaceProvider } from '@/components/ai/LoisWorkspace';
 import { LoisInsightDeepLink } from '@/components/ai/LoisInsightDeepLink';
+import { SchoolLifecycleBanners, SchoolLifecycleProvider } from '@/components/lifecycle/SchoolLifecycleProvider';
 
 function MainContent({ children, showNavbar, userRole }: { children: React.ReactNode, showNavbar: boolean, userRole?: string }) {
   const ambientBg =
@@ -26,6 +27,7 @@ function MainContent({ children, showNavbar, userRole }: { children: React.React
         "px-4 pb-20 md:px-8"
       )}
     >
+      <SchoolLifecycleBanners />
       {children}
     </main>
   );
@@ -77,7 +79,9 @@ export default function DashboardLayout({
   return (
     <ProtectedRoute>
       <SidebarProvider animate={true}>
-        <DashboardContent>{children}</DashboardContent>
+        <SchoolLifecycleProvider>
+          <DashboardContent>{children}</DashboardContent>
+        </SchoolLifecycleProvider>
       </SidebarProvider>
     </ProtectedRoute>
   );

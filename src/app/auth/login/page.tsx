@@ -12,7 +12,8 @@ import Link from 'next/link';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { WordedLogo } from '@/components/layout/WordedLogo';
 import { OtpVerification } from '@/components/auth/OtpVerification';
-import { getReturnToParameter, getRoleBasedRedirect } from '@/utils/security/redirect-validator';
+import { getReturnToParameter } from '@/utils/security/redirect-validator';
+import { postLoginPath } from '@/lib/auth/postLoginPath';
 import { maybeRedirectToSchoolPortal } from '@/lib/portal/finishLogin';
 import { usePortal } from '@/components/portal/PortalProvider';
 import { apexOrigin } from '@/lib/portal/host';
@@ -79,8 +80,8 @@ function LoginContent() {
       return;
     }
 
-    // Priority 3: Role-based default redirect
-    const roleRedirect = getRoleBasedRedirect(user.role);
+    // Priority 3: Role + school lifecycle
+    const roleRedirect = postLoginPath(user);
     console.log('Redirecting to role-based URL:', roleRedirect);
     router.push(roleRedirect);
   };

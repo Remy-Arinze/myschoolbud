@@ -279,13 +279,15 @@ export default function SchoolsPage() {
                                     ? 'bg-red-500/10 text-red-500'
                                     : school.registrationStatus === 'REJECTED'
                                       ? 'bg-gray-500/10 text-gray-500'
-                                      : school.isActive
+                                      : school.lifecycleStatus === 'CLOSING'
+                                        ? 'bg-amber-500/10 text-amber-600'
+                                        : school.isActive
                                         ? 'bg-green-500/10 text-green-500'
                                         : 'bg-orange-500/10 text-orange-500'
                                 )}
                                 style={{ fontSize: 'var(--text-small)', fontFamily: 'var(--font-outfit), sans-serif' }}
                               >
-                                {(!school.registrationStatus || school.registrationStatus === 'UNAPPROVED' || school.registrationStatus === 'PENDING') ? 'Unapproved' : school.registrationStatus === 'REJECTED' ? 'Rejected' : school.isActive ? 'Active' : 'Inactive'}
+                                {(!school.registrationStatus || school.registrationStatus === 'UNAPPROVED' || school.registrationStatus === 'PENDING') ? 'Unapproved' : school.registrationStatus === 'REJECTED' ? 'Rejected' : school.lifecycleStatus === 'CLOSING' ? 'Closing' : school.isActive ? 'Active' : 'Deactivated'}
                               </span>
                               <button
                                 onClick={(e) => {
@@ -375,13 +377,15 @@ export default function SchoolsPage() {
                                     ? 'bg-red-500/10 text-red-500'
                                     : school.registrationStatus === 'REJECTED'
                                       ? 'bg-gray-500/10 text-gray-500'
-                                      : school.isActive
+                                      : school.lifecycleStatus === 'CLOSING'
+                                        ? 'bg-amber-500/10 text-amber-600'
+                                        : school.isActive
                                         ? 'bg-green-500/10 text-green-500'
                                         : 'bg-orange-500/10 text-orange-500'
                                 )}
                                 style={{ fontSize: 'var(--text-small)', fontFamily: 'var(--font-outfit), sans-serif' }}
                               >
-                                {(!school.registrationStatus || school.registrationStatus === 'UNAPPROVED' || school.registrationStatus === 'PENDING') ? 'Unapproved' : school.registrationStatus === 'REJECTED' ? 'Rejected' : school.isActive ? 'Active' : 'Inactive'}
+                                {(!school.registrationStatus || school.registrationStatus === 'UNAPPROVED' || school.registrationStatus === 'PENDING') ? 'Unapproved' : school.registrationStatus === 'REJECTED' ? 'Rejected' : school.lifecycleStatus === 'CLOSING' ? 'Closing' : school.isActive ? 'Active' : 'Deactivated'}
                               </span>
                             </div>
 

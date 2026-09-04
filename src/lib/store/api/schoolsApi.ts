@@ -60,6 +60,10 @@ export interface School {
   email: string | null;
   logo: string | null;
   isActive: boolean;
+  lifecycleStatus?: string;
+  deactivationReason?: string | null;
+  deactivatesAt?: string | null;
+  deactivatedAt?: string | null;
   hasPrimary: boolean;
   hasSecondary: boolean;
   hasTertiary: boolean;
@@ -302,11 +306,23 @@ export const schoolsApi = apiSlice.injectEndpoints({
       ],
     }),
 
-    // Deactivate school
-    deactivateSchool: builder.mutation<ResponseDto<School>, string>({
-      query: (id) => ({
+    // Schedule a 7-day school close
+    deactivateSchool: builder.mutation<ResponseDto<School>, { id: string; reason: string }>({
+      query: ({ id, reason }) => ({
         url: `/schools/${id}/deactivate`,
         method: 'PATCH',
+        body: { reason },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'School', id },
+        'School',
+      ],
+    }),
+
+    cancelSchoolClose: builder.mutation<ResponseDto<School>, string>({
+      query: (id) => ({
+        url: `/schools/${id}/close/cancel`,
+        method: 'POST',
       }),
       invalidatesTags: (result, error, id) => [
         { type: 'School', id },
@@ -561,6 +577,7 @@ export const {
   useRejectSchoolMutation,
   useActivateSchoolMutation,
   useDeactivateSchoolMutation,
+  useCancelSchoolCloseMutation,
   useDeleteSchoolMutation,
   useCreateSchoolMutation,
   useUpdateSchoolMutation,

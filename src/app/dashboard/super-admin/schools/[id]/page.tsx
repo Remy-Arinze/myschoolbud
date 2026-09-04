@@ -24,7 +24,7 @@ import {
   useRejectSchool,
   useActivateSchool,
   useDeactivateSchool,
-  useDeleteSchool,
+  useCancelSchoolClose,
   useConvertTeacherToAdmin,
   SchoolAdmin,
   Teacher,
@@ -65,7 +65,6 @@ export default function SchoolDetailPage() {
   const [activeSchoolTab, setActiveSchoolTab] = useState<'people' | 'lois'>(defaultTab as 'people' | 'lois');
 
   // State for modals
-  const [showDeleteSchoolModal, setShowDeleteSchoolModal] = useState(false);
   const [showAddPrincipalModal, setShowAddPrincipalModal] = useState(false);
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
   const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
@@ -77,7 +76,9 @@ export default function SchoolDetailPage() {
   const [showRejectSchoolModal, setShowRejectSchoolModal] = useState(false);
   const [showActivateSchoolModal, setShowActivateSchoolModal] = useState(false);
   const [showDeactivateSchoolModal, setShowDeactivateSchoolModal] = useState(false);
+  const [showCancelCloseModal, setShowCancelCloseModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [closeReason, setCloseReason] = useState('');
 
   // Track which item is being edited (null means adding new)
   const [editingPrincipalId, setEditingPrincipalId] = useState<string | null>(null);
@@ -129,7 +130,7 @@ export default function SchoolDetailPage() {
   const { rejectSchool, isLoading: isRejecting } = useRejectSchool();
   const { activateSchool, isLoading: isActivating } = useActivateSchool();
   const { deactivateSchool, isLoading: isDeactivating } = useDeactivateSchool();
-  const { deleteSchool, isLoading: isDeletingSchool } = useDeleteSchool();
+  const { cancelSchoolClose, isLoading: isCancellingClose } = useCancelSchoolClose();
   const { convertTeacherToAdmin, isLoading: isConvertingTeacher } = useConvertTeacherToAdmin(schoolId);
 
   // Get principal (admin with exact "Principal" role - case-insensitive)
@@ -151,16 +152,6 @@ export default function SchoolDetailPage() {
   const addons = getAddonsData(schoolId);
 
   // Handlers
-  const handleDeleteSchool = async () => {
-    if (!school) return;
-    try {
-      await deleteSchool(school.id);
-      router.push('/dashboard/super-admin/schools');
-    } catch (err) {
-      // Error handled in hook
-    }
-  };
-
   const handleVerifySchool = async () => {
     if (!school) return;
     try {
@@ -195,10 +186,22 @@ export default function SchoolDetailPage() {
   };
 
   const handleDeactivateSchool = async () => {
+    if (!school || closeReason.trim().length < 8) return;
+    try {
+      await deactivateSchool(school.id, closeReason.trim());
+      setShowDeactivateSchoolModal(false);
+      setCloseReason('');
+      refetch();
+    } catch (err) {
+      // Error handled in hook
+    }
+  };
+
+  const handleCancelClose = async () => {
     if (!school) return;
     try {
-      await deactivateSchool(school.id);
-      setShowDeactivateSchoolModal(false);
+      await cancelSchoolClose(school.id);
+      setShowCancelCloseModal(false);
       refetch();
     } catch (err) {
       // Error handled in hook
@@ -514,15 +517,16 @@ export default function SchoolDetailPage() {
         <SchoolHeader
           school={school}
           onEdit={() => router.push(`/dashboard/super-admin/schools/${schoolId}/edit`)}
-          onDelete={() => setShowDeleteSchoolModal(true)}
           onVerify={handleVerifySchool}
           onReject={() => setShowRejectSchoolModal(true)}
           onActivate={() => setShowActivateSchoolModal(true)}
           onDeactivate={() => setShowDeactivateSchoolModal(true)}
+          onCancelClose={() => setShowCancelCloseModal(true)}
           isVerifying={isVerifying}
           isRejecting={isRejecting}
           isActivating={isActivating}
           isDeactivating={isDeactivating}
+          isCancellingClose={isCancellingClose}
         />
 
         {/* School Details */}
@@ -885,17 +889,6 @@ export default function SchoolDetailPage() {
         })()}
 
         <ConfirmModal
-          isOpen={showDeleteSchoolModal}
-          onClose={() => setShowDeleteSchoolModal(false)}
-          onConfirm={handleDeleteSchool}
-          title="Delete School"
-          message={`Are you sure you want to delete "${school.name}"? This action cannot be undone and will delete all associated data including students, teachers, and administrators.`}
-          confirmText="Delete School"
-          variant="danger"
-          isLoading={isDeletingSchool}
-        />
-
-        <ConfirmModal
           isOpen={showRejectSchoolModal}
           onClose={() => setShowRejectSchoolModal(false)}
           onConfirm={handleRejectSchool}
@@ -923,9 +916,9 @@ export default function SchoolDetailPage() {
           isOpen={showActivateSchoolModal}
           onClose={() => setShowActivateSchoolModal(false)}
           onConfirm={handleActivateSchool}
-          title="Activate School"
-          message={`Are you sure you want to activate "${school.name}"? This will allow users from this school to log in and perform actions.`}
-          confirmText="Activate"
+          title="Reactivate School"
+          message={`Reactivate "${school.name}"? Students who already transferred stay at their new school. Records are kept.`}
+          confirmText="Reactivate"
           variant="primary"
           isLoading={isActivating}
         />
@@ -934,11 +927,35 @@ export default function SchoolDetailPage() {
           isOpen={showDeactivateSchoolModal}
           onClose={() => setShowDeactivateSchoolModal(false)}
           onConfirm={handleDeactivateSchool}
-          title="Deactivate School"
-          message={`Are you sure you want to deactivate "${school.name}"? This will prevent users from this school from performing actions like starting sessions or creating classes.`}
-          confirmText="Deactivate"
+          title="Schedule school close"
+          message={`"${school.name}" will stay available for 7 days. After that it is deactivated and records are retained. Teachers become read-only. Students get a transfer code that does not expire.`}
+          confirmText="Schedule close"
           variant="danger"
           isLoading={isDeactivating}
+        >
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Reason (required)
+            </label>
+            <textarea
+              value={closeReason}
+              onChange={(e) => setCloseReason(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-700 h-24 resize-none"
+              placeholder="Why is this school closing?"
+              required
+            />
+          </div>
+        </ConfirmModal>
+
+        <ConfirmModal
+          isOpen={showCancelCloseModal}
+          onClose={() => setShowCancelCloseModal(false)}
+          onConfirm={handleCancelClose}
+          title="Cancel school close"
+          message={`Cancel the scheduled close for "${school.name}"? The school will remain active.`}
+          confirmText="Cancel close"
+          variant="primary"
+          isLoading={isCancellingClose}
         />
 
         {principal && (

@@ -30,7 +30,7 @@ export default function TermsOfService() {
                     </div>
 
                     <p className="text-[var(--dark-text-secondary)] text-lg mb-12 leading-relaxed">
-                        Last updated: March 5, 2026. Please read these terms carefully before using the Myschoolbud platform.
+                        Last updated: September 4, 2026. Please read these terms carefully before using the Myschoolbud platform.
                     </p>
 
                     <div className="space-y-12 text-[var(--dark-text-secondary)] leading-relaxed text-sm md:text-base">
@@ -75,6 +75,20 @@ export default function TermsOfService() {
                             <p>
                                 Access to the Platform is tiered. Paid plans grant access to Myschoolbud AI via a token-based system. Tokens are consumed based on the complexity of the AI task (e.g., grading an essay vs. generating a quiz). Unused tokens expire at the end of the billing cycle unless specified otherwise in your plan.
                             </p>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h2 className="text-2xl font-bold text-[var(--dark-text-primary)] font-heading">6. School close, retain, and transfer</h2>
+                            <p>
+                                Schools are never hard-deleted from the Platform. A school owner or Super Admin may schedule a close with a written reason. The school remains fully usable for 7 days and the close can be cancelled in that period. After deactivation:
+                            </p>
+                            <ul className="list-disc pl-6 space-y-2">
+                                <li>Academic and student records are retained.</li>
+                                <li>Teachers have read-only access and cannot reactivate the school.</li>
+                                <li>Students are shown that the current school is suspended. They may switch to another live enrollment if they have one, or transfer out using a closure transfer code that does not expire.</li>
+                                <li>A closure transfer code is used only when the transfer is completed and the student has a new active enrollment elsewhere. Starting, rejecting, or abandoning a transfer does not consume the code.</li>
+                                <li>The school owner, a principal, or a Super Admin may reactivate the school.</li>
+                            </ul>
                         </section>
 
                         <section className="space-y-4 border-t border-[var(--dark-border)] pt-12">

@@ -30,7 +30,7 @@ export default function PrivacyPolicy() {
                     </div>
 
                     <p className="text-[var(--dark-text-secondary)] text-lg mb-12 leading-relaxed">
-                        Effective Date: March 5, 2026. Your privacy and data security are the foundation of everything we build at Myschoolbud.
+                        Effective Date: September 4, 2026. Your privacy and data security are the foundation of everything we build at Myschoolbud.
                     </p>
 
                     <div className="space-y-12 text-[var(--dark-text-secondary)] leading-relaxed text-sm md:text-base">
@@ -63,6 +63,18 @@ export default function PrivacyPolicy() {
                             <p>
                                 Myschoolbud AI processes academic submissions (essays, quizzes) to provide grading assistance. This data is used only within your institutional context and is not used to train global models in a way that would expose personally identifiable information (PII) to other tenants.
                             </p>
+                        </section>
+
+                        <section className="space-y-4">
+                            <h2 className="text-2xl font-bold text-[var(--dark-text-primary)] font-heading">5. School closure and record retention</h2>
+                            <p>
+                                Myschoolbud does not permanently delete a school or student academic records when a school closes. Closing is a deactivation. The school owner or a Super Admin can schedule a close; both use a 7-day delay and must provide a reason. The close can be cancelled during that window.
+                            </p>
+                            <ul className="list-disc pl-6 space-y-2">
+                                <li>After deactivation, teachers keep read-only access to existing records.</li>
+                                <li>Students can request a transfer access code that does not expire. The code is consumed only after a transfer is completed and the student has an active enrollment at another school.</li>
+                                <li>An authorised school admin or Super Admin can reactivate a deactivated school. Students who already transferred remain at their new school.</li>
+                            </ul>
                         </section>
 
                         <section className="space-y-4 border-t border-[var(--dark-border)] pt-12">

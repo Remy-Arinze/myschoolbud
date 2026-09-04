@@ -4,6 +4,7 @@ import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.
 import { SchoolProfileTab } from '@/components/settings/SchoolProfileTab';
 import { StructureSettingsSection } from '@/components/settings/tabs/StructureSettingsSection';
 import { PortalBrandingSection } from '@/components/settings/tabs/PortalBrandingSection';
+import { CloseSchoolSection } from '@/components/settings/tabs/CloseSchoolSection';
 
 interface SchoolSettingsTabProps {
   token: string | null;
@@ -16,6 +17,7 @@ export function SchoolSettingsTabContent({ token, router }: SchoolSettingsTabPro
       <SchoolProfileTab token={token} router={router} />
       {!token && <PortalBrandingSection />}
       {!token && <StructureSettingsSection />}
+      {!token && <CloseSchoolSection />}
     </div>
   );
 }

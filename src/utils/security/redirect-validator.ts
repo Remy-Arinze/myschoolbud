@@ -20,6 +20,8 @@ const DEFAULT_OPTIONS: RedirectValidationOptions = {
     '/dashboard/school',
     '/dashboard/teacher',
     '/dashboard/student',
+    '/dashboard/student/school-suspended',
+    '/dashboard/school/reactivate',
     '/auth/login',
     '/auth/register',
     '/auth/forgot-password',

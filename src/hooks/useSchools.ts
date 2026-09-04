@@ -19,6 +19,7 @@ import {
   useRejectSchoolMutation,
   useActivateSchoolMutation,
   useDeactivateSchoolMutation,
+  useCancelSchoolCloseMutation,
   useDeleteSchoolMutation,
   useConvertTeacherToAdminMutation,
   CreateSchoolDto,
@@ -715,14 +716,14 @@ export function useDeactivateSchool() {
   const [deactivateSchoolMutation, { isLoading }] = useDeactivateSchoolMutation();
 
   const deactivateSchool = useCallback(
-    async (schoolId: string) => {
+    async (schoolId: string, reason: string) => {
       try {
-        const result = await deactivateSchoolMutation(schoolId).unwrap();
+        const result = await deactivateSchoolMutation({ id: schoolId, reason }).unwrap();
         if (result.success) {
-          toast.success(result.message || 'School deactivated successfully');
+          toast.success(result.message || 'School close scheduled');
           return result.data;
         } else {
-          throw new Error(result.message || 'Failed to deactivate school');
+          throw new Error(result.message || 'Failed to schedule school close');
         }
       } catch (error: any) {
         const errorMessage = getErrorMessage(error);
@@ -737,6 +738,31 @@ export function useDeactivateSchool() {
     deactivateSchool,
     isLoading,
   };
+}
+
+export function useCancelSchoolClose() {
+  const [cancelSchoolCloseMutation, { isLoading }] = useCancelSchoolCloseMutation();
+
+  const cancelSchoolClose = useCallback(
+    async (schoolId: string) => {
+      try {
+        const result = await cancelSchoolCloseMutation(schoolId).unwrap();
+        if (result.success) {
+          toast.success(result.message || 'School close cancelled');
+          return result.data;
+        } else {
+          throw new Error(result.message || 'Failed to cancel school close');
+        }
+      } catch (error: any) {
+        const errorMessage = getErrorMessage(error);
+        toast.error(errorMessage);
+        throw error;
+      }
+    },
+    [cancelSchoolCloseMutation]
+  );
+
+  return { cancelSchoolClose, isLoading };
 }
 
 /**

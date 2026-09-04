@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '@/lib/store/slices/authSlice';
-import { getRoleBasedRedirect } from '@/utils/security/redirect-validator';
+import { postLoginPath } from '@/lib/auth/postLoginPath';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -48,7 +48,7 @@ function CompleteContent() {
         if (data.data.user.tenantId) {
           localStorage.setItem('tenantId', data.data.user.tenantId);
         }
-        router.replace(getRoleBasedRedirect(data.data.user.role));
+        router.replace(postLoginPath(data.data.user));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Sign-in failed');
       }

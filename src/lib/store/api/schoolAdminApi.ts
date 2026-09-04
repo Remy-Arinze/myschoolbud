@@ -1688,6 +1688,41 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       },
       invalidatesTags: ['School'],
     }),
+    scheduleSchoolClose: builder.mutation<ResponseDto<School>, { reason: string }>({
+      query: (body) => ({
+        url: '/school-admin/school/close',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['School'],
+    }),
+    cancelSchoolClose: builder.mutation<ResponseDto<School>, void>({
+      query: () => ({
+        url: '/school-admin/school/close/cancel',
+        method: 'POST',
+      }),
+      invalidatesTags: ['School'],
+    }),
+    reactivateMySchool: builder.mutation<ResponseDto<School>, void>({
+      query: () => ({
+        url: '/school-admin/school/reactivate',
+        method: 'POST',
+      }),
+      invalidatesTags: ['School'],
+    }),
+    getClosureTac: builder.mutation<ResponseDto<{ tac: string; status: string; kind: string }>, void>({
+      query: () => ({
+        url: '/students/me/closure-tac',
+        method: 'POST',
+      }),
+    }),
+    switchStudentSchool: builder.mutation<ResponseDto<any>, { schoolId: string }>({
+      query: (body) => ({
+        url: '/auth/switch-school',
+        method: 'POST',
+        body,
+      }),
+    }),
     // Request edit token for sensitive changes
     requestEditToken: builder.mutation<ResponseDto<{ message: string }>, Partial<School>>({
       query: (changes) => ({
@@ -4183,6 +4218,11 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
 
 export const {
   useGetMySchoolQuery,
+  useScheduleSchoolCloseMutation,
+  useCancelSchoolCloseMutation,
+  useReactivateMySchoolMutation,
+  useGetClosureTacMutation,
+  useSwitchStudentSchoolMutation,
   useUploadSchoolLogoMutation,
   useUpdateMySchoolMutation,
   useRequestEditTokenMutation,

@@ -4,24 +4,26 @@ import { FadeInUp } from '@/components/ui/FadeInUp';
 import { Button } from '@/components/ui/Button';
 import { EntityAvatar } from '@/components/ui/EntityAvatar';
 import { School } from '@/hooks/useSchools';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { BackButton } from '@/components/ui/BackButton';
 
 interface SchoolHeaderProps {
   school: School;
   onEdit: () => void;
-  onDelete: () => void;
   onVerify?: () => void;
   onReject?: () => void;
   onActivate?: () => void;
   onDeactivate?: () => void;
+  onCancelClose?: () => void;
   isVerifying?: boolean;
   isRejecting?: boolean;
   isActivating?: boolean;
   isDeactivating?: boolean;
+  isCancellingClose?: boolean;
 }
 
-export function SchoolHeader({ school, onEdit, onDelete, onVerify, onReject, onActivate, onDeactivate, isVerifying, isRejecting, isActivating, isDeactivating }: SchoolHeaderProps) {
+export function SchoolHeader({ school, onEdit, onVerify, onReject, onActivate, onDeactivate, onCancelClose, isVerifying, isRejecting, isActivating, isDeactivating, isCancellingClose }: SchoolHeaderProps) {
+  const lifecycle = school.lifecycleStatus || (school.isActive ? 'ACTIVE' : 'DEACTIVATED');
   return (
     <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} className="mb-8">
       <BackButton className="mb-4" />
@@ -54,12 +56,19 @@ export function SchoolHeader({ school, onEdit, onDelete, onVerify, onReject, onA
                 >
                   Rejected
                 </span>
-              ) : !school.isActive ? (
+              ) : lifecycle === 'CLOSING' ? (
+                <span
+                  className="px-3 py-1 bg-amber-500/10 text-amber-600 rounded-full text-xs font-medium"
+                  style={{ fontFamily: 'var(--font-outfit), sans-serif' }}
+                >
+                  Closing
+                </span>
+              ) : lifecycle === 'DEACTIVATED' || !school.isActive ? (
                 <span
                   className="px-3 py-1 bg-orange-500/10 text-orange-500 rounded-full text-xs font-medium"
                   style={{ fontFamily: 'var(--font-outfit), sans-serif' }}
                 >
-                  Inactive
+                  Deactivated
                 </span>
               ) : (
                 <span
@@ -103,8 +112,7 @@ export function SchoolHeader({ school, onEdit, onDelete, onVerify, onReject, onA
             </>
           )}
 
-          {school.registrationStatus === 'VERIFIED' && (
-            school.isActive ? (
+          {school.registrationStatus === 'VERIFIED' && lifecycle === 'ACTIVE' && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -114,9 +122,23 @@ export function SchoolHeader({ school, onEdit, onDelete, onVerify, onReject, onA
                 className="text-orange-600 border-orange-200 hover:bg-orange-50 font-medium"
                 style={{ fontFamily: 'var(--font-outfit), sans-serif' }}
               >
-                {isDeactivating ? 'Deactivating…' : 'Deactivate'}
+                {isDeactivating ? 'Scheduling…' : 'Schedule close'}
               </Button>
-            ) : (
+          )}
+          {school.registrationStatus === 'VERIFIED' && lifecycle === 'CLOSING' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onCancelClose}
+                isLoading={isCancellingClose}
+                disabled={isCancellingClose}
+                className="font-medium"
+                style={{ fontFamily: 'var(--font-outfit), sans-serif' }}
+              >
+                {isCancellingClose ? 'Cancelling…' : 'Cancel close'}
+              </Button>
+          )}
+          {school.registrationStatus === 'VERIFIED' && lifecycle === 'DEACTIVATED' && (
               <Button
                 variant="primary"
                 size="sm"
@@ -126,13 +148,12 @@ export function SchoolHeader({ school, onEdit, onDelete, onVerify, onReject, onA
                 className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
                 style={{ fontFamily: 'var(--font-outfit), sans-serif' }}
               >
-                {isActivating ? 'Activating…' : 'Activate'}
+                {isActivating ? 'Reactivating…' : 'Reactivate'}
               </Button>
-            )
           )}
 
           {((school.registrationStatus === 'UNAPPROVED' && (onVerify || onReject)) ||
-            (school.registrationStatus === 'VERIFIED' && (onActivate || onDeactivate))) && (
+            (school.registrationStatus === 'VERIFIED' && (onActivate || onDeactivate || onCancelClose))) && (
               <div className="w-px h-6 bg-light-border dark:bg-dark-border mx-2" />
             )}
 
@@ -144,15 +165,6 @@ export function SchoolHeader({ school, onEdit, onDelete, onVerify, onReject, onA
             title="Edit School"
           >
             <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            className="text-light-text-secondary dark:text-dark-text-secondary hover:text-red-500 p-2"
-            title="Delete School"
-          >
-            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
