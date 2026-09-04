@@ -1,9 +1,17 @@
 export const RESERVED_SLUGS = new Set([
   'www', 'www2', 'app', 'api', 'admin', 'auth', 'mail', 'status', 'help',
-  'docs', 'staging', 'cdn', 'static', 'public', 'assets',
+  'docs', 'staging', 'dev', 'cdn', 'static', 'public', 'assets',
 ]);
 
-const ROOT_DOMAINS = ['myschoolbud.com'];
+const DEFAULT_ROOTS = ['dev.myschoolbud.com', 'myschoolbud.com'];
+
+export function portalRootDomains(): string[] {
+  const fromEnv = (process.env.NEXT_PUBLIC_PORTAL_ROOT_DOMAINS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return Array.from(new Set([...fromEnv, ...DEFAULT_ROOTS])).sort((a, b) => b.length - a.length);
+}
 
 export function normalizeSlug(raw: string): string {
   return raw
@@ -22,7 +30,7 @@ export function extractPortalSlug(host: string): string | null {
     const sub = hostname.slice(0, -'.localhost'.length);
     return sub && !sub.includes('.') ? sub : null;
   }
-  for (const root of ROOT_DOMAINS) {
+  for (const root of portalRootDomains()) {
     if (hostname === root || hostname === `www.${root}`) return null;
     if (hostname.endsWith(`.${root}`)) {
       const sub = hostname.slice(0, -`.${root}`.length);
@@ -35,12 +43,8 @@ export function extractPortalSlug(host: string): string | null {
 
 export function isApexHost(host: string): boolean {
   const hostname = host.split(':')[0].toLowerCase();
-  return (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === 'myschoolbud.com' ||
-    hostname === 'www.myschoolbud.com'
-  );
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+  return portalRootDomains().some((root) => hostname === root || hostname === `www.${root}`);
 }
 
 export function apexOrigin(): string {
@@ -48,6 +52,11 @@ export function apexOrigin(): string {
     const host = window.location.hostname;
     if (host === 'localhost' || host.endsWith('.localhost') || host === '127.0.0.1') {
       return `${window.location.protocol}//localhost:${window.location.port || '3000'}`;
+    }
+    for (const root of portalRootDomains()) {
+      if (host === root || host === `www.${root}` || host.endsWith(`.${root}`)) {
+        return `${window.location.protocol}//${root}`;
+      }
     }
   }
   return process.env.NEXT_PUBLIC_APEX_URL || 'https://myschoolbud.com';

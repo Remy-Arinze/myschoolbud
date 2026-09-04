@@ -4,6 +4,12 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 test.describe('School branded portals', () => {
   test('slug-available rejects reserved and short slugs', async ({ request }) => {
+    const reservedDev = await request.get(`${API}/public/portals/slug-available?slug=dev`);
+    expect(reservedDev.ok()).toBeTruthy();
+    const reservedDevBody = await reservedDev.json();
+    expect(reservedDevBody.data.available).toBe(false);
+    expect(reservedDevBody.data.reason).toBe('reserved');
+
     const reserved = await request.get(`${API}/public/portals/slug-available?slug=www`);
     expect(reserved.ok()).toBeTruthy();
     const reservedBody = await reserved.json();
