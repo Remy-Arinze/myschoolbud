@@ -11,6 +11,6 @@ export { ImageCropModal, type ImageCropModalProps } from './ImageCropModal';
 export { Checkbox } from './Checkbox';
 export { Label } from './Label';
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
-
+export { SectionTabs, type SectionTab } from './SectionTabs';
 export { Progress } from './Progress';
 export { CountrySelector } from './CountrySelector';

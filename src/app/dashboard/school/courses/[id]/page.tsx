@@ -63,6 +63,7 @@ import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { ViewToggle } from '@/components/ui/ViewToggle';
+import { SectionTabs } from '@/components/ui/SectionTabs';
 
 type TabType = 'students' | 'teachers' | 'timetable' | 'resources' | 'curriculum';
 
@@ -111,7 +112,7 @@ export default function ClassDetailPage() {
   const terminology = getTerminology(schoolType || 'SECONDARY');
   const registrationLink =
     schoolId && typeof window !== 'undefined'
-      ? `${window.location.origin}/admission/${schoolId}`
+      ? `${window.location.origin}/apply`
       : '';
 
   // Get class data first (to know the school type for session query)
@@ -566,26 +567,17 @@ export default function ClassDetailPage() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-light-border dark:border-dark-border">
-          <div className="flex items-center justify-between">
-            <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors whitespace-nowrap text-xs ${activeTab === tab.id
-                    ? 'border-b-2 border-[#2490FD] dark:border-[#2490FD] text-[#2490FD] dark:text-[#2490FD]'
-                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
-                    }`}
-                  style={{ fontSize: 'var(--text-small)' }}
-                >
-                  {tab.icon}
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            {activeTab === 'students' && (
+        <SectionTabs
+          ariaLabel="Class sections"
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabs={tabs.map((tab) => ({
+            key: tab.id,
+            label: tab.label,
+            icon: tab.icon,
+          }))}
+          trailing={
+            activeTab === 'students' ? (
               <ViewToggle
                 value={studentsView}
                 onChange={(mode) => {
@@ -593,9 +585,9 @@ export default function ClassDetailPage() {
                   setStudentsPage(1);
                 }}
               />
-            )}
-          </div>
-        </div>
+            ) : undefined
+          }
+        />
 
         {/* Tab Content */}
         <div className="min-h-[400px]">

@@ -62,6 +62,14 @@ export default defineConfig({
       },
     },
     {
+      name: 'portals',
+      testMatch: /portals\/.*\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        headless: true,
+      },
+    },
+    {
       name: 'content',
       testMatch: /content\/.*\.spec\.ts/,
       use: {

@@ -83,6 +83,7 @@ import { ConfirmModal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ActivityLog } from '@/components/dashboard/ActivityLog';
 import { useTeacherDashboard } from '@/hooks/useTeacherDashboard';
+import { SectionTabs } from '@/components/ui/SectionTabs';
 
 type TabType = 'overview' | 'curriculum' | 'students' | 'grades' | 'timetable' | 'resources' | 'assessments' | 'roll-call' | 'scheme-of-work';
 
@@ -512,30 +513,23 @@ export default function ClassDetailPage() {
           </div>
         </FadeInUp>
 
-        {/* Tabs */}
-        <div className="mb-6 border-b border-light-border dark:border-dark-border">
-          <div className="flex space-x-1 overflow-x-auto">
-            {tabs.filter(tab => tab.available).map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  const url = new URL(window.location.href);
-                  url.searchParams.set('tab', tab.id);
-                  window.history.pushState({}, '', url);
-                }}
-                className={`flex items-center gap-2 px-4 py-3 font-semibold transition-colors whitespace-nowrap ${activeTab === tab.id
-                  ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                  : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
-                  }`}
-                style={{ fontSize: 'var(--text-tiny)' }}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <SectionTabs
+          ariaLabel="Class sections"
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', tab);
+            window.history.pushState({}, '', url);
+          }}
+          tabs={tabs
+            .filter((tab) => tab.available)
+            .map((tab) => ({
+              key: tab.id,
+              label: tab.label,
+              icon: tab.icon,
+            }))}
+        />
 
         {/* Tab Content */}
         <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.2}>

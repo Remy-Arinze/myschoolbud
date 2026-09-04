@@ -41,7 +41,16 @@ export interface School {
   id: string;
   schoolId: string;
   name: string;
-  
+  slug?: string | null;
+  portalUrl?: string | null;
+  customDomain?: string | null;
+  customDomainStatus?: string | null;
+  branding?: {
+    accentColor: string | null;
+    faviconUrl: string | null;
+    loginTagline: string | null;
+    hidePlatformMark: boolean;
+  } | null;
   domain: string | null;
   address: string | null;
   city: string | null;

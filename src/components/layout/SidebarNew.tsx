@@ -8,9 +8,8 @@ import { SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { LogOut } from 'lucide-react';
-import Link from 'next/link';
 import Image from 'next/image';
-import { WordedLogo } from '@/components/layout/WordedLogo';
+import { SchoolBrandMark } from '@/components/layout/SchoolBrandMark';
 import { getActivePluginsForTeacher } from '@/lib/plugins';
 import { usePermissionFilteredSidebar } from '@/hooks/useSidebarConfig';
 import { SchoolTypeSwitcher } from '@/components/dashboard/SchoolTypeSwitcher';
@@ -21,12 +20,7 @@ import '@/lib/store/api/notificationsApi';
 function LogoSection() {
   return (
     <div className="mb-4 flex items-center group">
-      <Link
-        href="/"
-        className="flex items-center py-1 px-3 relative z-20"
-      >
-        <WordedLogo size="md" priority />
-      </Link>
+      <SchoolBrandMark size="md" />
     </div>
   );
 }

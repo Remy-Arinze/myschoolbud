@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { Fragment } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Bot,
@@ -17,7 +15,7 @@ import {
   Building2,
   HardDrive,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { SectionTabs, type SectionTab } from '@/components/ui/SectionTabs';
 
 export type SchoolSettingsTab =
   | 'school'
@@ -43,13 +41,7 @@ const PROFILE_BASE = '/dashboard/school/settings/profile';
  * 4. Operations — fees, comms, curriculum/AI
  * 5. Compliance — security (infrequent, last)
  */
-const TABS: {
-  key: SchoolSettingsTab;
-  label: string;
-  href: string;
-  icon?: React.ReactNode;
-  dividerAfter?: boolean;
-}[] = [
+const TABS: SectionTab<SchoolSettingsTab>[] = [
   { key: 'school', label: 'School', href: `${PROFILE_BASE}?tab=school`, icon: <Building2 className="h-4 w-4" /> },
   { key: 'calendar', label: 'Academic Calendar', href: `${PROFILE_BASE}?tab=calendar`, icon: <Calendar className="h-4 w-4" />, dividerAfter: true },
   { key: 'permissions', label: 'People & Permissions', href: `${PROFILE_BASE}?tab=permissions`, icon: <Users className="h-4 w-4" /> },
@@ -71,29 +63,12 @@ interface SchoolSettingsTabsProps {
 
 export function SchoolSettingsTabs({ activeTab, className }: SchoolSettingsTabsProps) {
   return (
-    <nav className={cn('mb-6', className)} aria-label="Settings sections">
-      <div className="settings-section-tabs">
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
-            <Fragment key={tab.key}>
-              <Link
-                href={tab.href}
-                aria-current={isActive ? 'page' : undefined}
-                className="settings-section-tab"
-                style={{ fontSize: 'var(--text-body)' }}
-              >
-                {tab.icon}
-                {tab.label}
-              </Link>
-              {tab.dividerAfter && (
-                <div className="settings-section-tab-divider" aria-hidden />
-              )}
-            </Fragment>
-          );
-        })}
-      </div>
-    </nav>
+    <SectionTabs
+      ariaLabel="Settings sections"
+      tabs={TABS}
+      activeTab={activeTab}
+      className={className}
+    />
   );
 }
 

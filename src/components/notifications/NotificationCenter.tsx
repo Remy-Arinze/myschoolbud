@@ -71,12 +71,18 @@ export function NotificationCenter({
   const showLoading = isLoading || (isFetching && items.length === 0);
 
   const onEnablePush = async () => {
-    const result = await enablePush();
-    if (result.ok) toast.success('Browser alerts enabled');
-    else if (result.reason === 'denied') toast.error('Notification permission denied');
-    else if (result.reason === 'no-vapid') toast.error('Push is not configured on the server yet');
-    else if (result.reason === 'unsupported') toast.error('This browser does not support push');
-    else toast.error('Could not enable alerts');
+    try {
+      const result = await enablePush();
+      if (result.ok) toast.success('Browser alerts enabled');
+      else if (result.reason === 'denied') toast.error('Notification permission denied');
+      else if (result.reason === 'no-vapid') toast.error('Push is not configured on the server yet');
+      else if (result.reason === 'unsupported') toast.error('This browser does not support push');
+      else if (result.reason === 'push-service') {
+        toast.error('Could not register browser push. Restart the app if you just updated, then try again.');
+      } else toast.error('Could not enable alerts');
+    } catch {
+      toast.error('Could not enable alerts');
+    }
   };
 
   return (

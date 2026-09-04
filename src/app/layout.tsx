@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 import { RumProvider } from '@/lib/observability/RumProvider';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { PortalProvider } from '@/components/portal/PortalProvider';
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -155,12 +156,14 @@ export default function RootLayout({
       <body className={montserrat.className} suppressHydrationWarning={true}>
         <ThemeProvider>
           <StoreProvider>
+            <PortalProvider>
             <RumProvider>
               <ErrorBoundary>
                 {children}
               </ErrorBoundary>
               <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
             </RumProvider>
+            </PortalProvider>
           </StoreProvider>
         </ThemeProvider>
       </body>

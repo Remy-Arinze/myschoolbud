@@ -131,7 +131,12 @@ export function useSubscription(): SubscriptionManagement {
     }
 
     try {
-      const result = await initializePayment({ tier, isYearly, callbackUrl }).unwrap();
+      const resolvedCallback =
+        callbackUrl ||
+        (typeof window !== 'undefined'
+          ? `${window.location.origin}/dashboard/school/subscription/callback`
+          : undefined);
+      const result = await initializePayment({ tier, isYearly, callbackUrl: resolvedCallback }).unwrap();
 
       if (result.success && result.data?.authorizationUrl) {
         return { success: true, url: result.data.authorizationUrl };

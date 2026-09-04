@@ -39,6 +39,7 @@
     --font-sans: 'Poppins', system-ui, sans-serif;
     /* Agora Brand Colors */
     --agora-blue: #007FFF;
+    --school-accent: var(--agora-blue);
     /* Main accent blue */
     --agora-success: #059669;
     /* emerald-600 for better contrast in light mode */
@@ -346,7 +347,8 @@
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04);
   }
 
-  /* School admin settings tabs — one-line scroll; selected uses sidebar active fill */
+  /* Shared section tabs — one-line scroll; selected uses sidebar active fill */
+  .section-tabs,
   .settings-section-tabs {
     display: flex;
     flex-wrap: nowrap;
@@ -358,10 +360,12 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  .section-tabs::-webkit-scrollbar,
   .settings-section-tabs::-webkit-scrollbar {
     display: none;
   }
 
+  .section-tab,
   .settings-section-tab {
     display: inline-flex;
     align-items: center;
@@ -370,24 +374,31 @@
     white-space: nowrap;
     border-radius: 0.5rem;
     padding: 0.375rem 0.75rem;
+    font-family: inherit;
     font-size: var(--text-body);
     font-weight: 500;
+    line-height: 1.25;
     color: #4b5563;
     text-decoration: none;
+    background-color: transparent;
+    cursor: pointer;
     border: 1px solid transparent;
     transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
   }
 
+  .section-tab:hover,
   .settings-section-tab:hover {
     background-color: var(--dashboard-nav-hover-bg);
     color: var(--agora-text);
   }
 
+  .section-tab:focus-visible,
   .settings-section-tab:focus-visible {
     outline: 2px solid var(--agora-blue);
     outline-offset: 2px;
   }
 
+  .section-tab[aria-current='page'],
   .settings-section-tab[aria-current='page'] {
     font-weight: 600;
     color: var(--agora-text);
@@ -395,11 +406,13 @@
     border-color: var(--dashboard-sidebar-active-border);
   }
 
+  .section-tab[aria-current='page']:hover,
   .settings-section-tab[aria-current='page']:hover {
     background-color: var(--light-sidebar-active);
     color: var(--agora-text);
   }
 
+  .section-tab-divider,
   .settings-section-tab-divider {
     width: 1px;
     height: 1rem;
@@ -408,26 +421,31 @@
     background-color: var(--light-border);
   }
 
+  .dark .section-tab,
   .dark .settings-section-tab {
     color: var(--dark-text-secondary);
   }
 
+  .dark .section-tab:hover,
   .dark .settings-section-tab:hover {
     background-color: rgba(255, 255, 255, 0.05);
     color: var(--dark-text-primary);
   }
 
+  .dark .section-tab[aria-current='page'],
   .dark .settings-section-tab[aria-current='page'] {
     color: var(--dark-text-primary);
     background-color: var(--dark-sidebar-active);
     border-color: var(--dark-sidebar-active-border);
   }
 
+  .dark .section-tab[aria-current='page']:hover,
   .dark .settings-section-tab[aria-current='page']:hover {
     background-color: var(--dark-sidebar-active);
     color: var(--dark-text-primary);
   }
 
+  .dark .section-tab-divider,
   .dark .settings-section-tab-divider {
     background-color: rgba(255, 255, 255, 0.12);
   }

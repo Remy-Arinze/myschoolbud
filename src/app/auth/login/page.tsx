@@ -13,6 +13,9 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { WordedLogo } from '@/components/layout/WordedLogo';
 import { OtpVerification } from '@/components/auth/OtpVerification';
 import { getReturnToParameter, getRoleBasedRedirect } from '@/utils/security/redirect-validator';
+import { maybeRedirectToSchoolPortal } from '@/lib/portal/finishLogin';
+import { usePortal } from '@/components/portal/PortalProvider';
+import { apexOrigin } from '@/lib/portal/host';
 
 function LoginContent() {
   const router = useRouter();
@@ -28,7 +31,20 @@ function LoginContent() {
     emailOrPublicId: '',
     password: '',
   });
+  const { branding, isPortalHost } = usePortal();
+  const registerSchoolHref = isPortalHost
+    ? `${apexOrigin()}/auth/register-school`
+    : '/auth/register-school';
   const sessionExpired = searchParams?.get('expired') === 'true';
+
+  const portalHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const portalSchoolId =
+      branding?.schoolId ||
+      (typeof window !== 'undefined' ? sessionStorage.getItem('msbPortalSchoolId') : null);
+    if (portalSchoolId) headers['x-portal-school-id'] = portalSchoolId;
+    return headers;
+  };
   const intendedPlan = searchParams?.get('plan');
 
   // Get secure return-to parameter
@@ -79,9 +95,7 @@ function LoginContent() {
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/auth/login`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: portalHeaders(),
           // Include credentials to receive httpOnly cookie from server
           credentials: 'include',
           body: JSON.stringify({
@@ -130,6 +144,10 @@ function LoginContent() {
         // Legacy flow (should not happen with new implementation)
         if (data.data.accessToken && data.data.user) {
           console.warn('Legacy login flow detected - OTP was bypassed!', data.data);
+          if (maybeRedirectToSchoolPortal(data.data)) {
+            return;
+          }
+
           dispatch(
             setCredentials({
               accessToken: data.data.accessToken,
@@ -178,9 +196,7 @@ function LoginContent() {
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/auth/verify-login-otp`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: portalHeaders(),
           credentials: 'include',
           body: JSON.stringify({
             sessionId: otpSessionId,
@@ -203,6 +219,9 @@ function LoginContent() {
       }
 
       if (data.success && data.data) {
+        if (maybeRedirectToSchoolPortal(data.data)) {
+          return;
+        }
         dispatch(
           setCredentials({
             accessToken: data.data.accessToken,
@@ -245,9 +264,7 @@ function LoginContent() {
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/auth/login`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: portalHeaders(),
           credentials: 'include',
           body: JSON.stringify({
             emailOrPublicId: formData.emailOrPublicId,
@@ -307,15 +324,34 @@ function LoginContent() {
           <>
             {/* Logo */}
             <div className="flex items-center justify-center mb-8">
-              <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-                <WordedLogo size="sm" priority />
-              </Link>
+              {branding?.logo ? (
+                <div className="flex flex-col items-center gap-2">
+                  <img src={branding.logo} alt={branding.name} className="h-14 w-14 object-contain rounded" />
+                  <span className="text-xl font-bold text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)]">
+                    {branding.name}
+                  </span>
+                </div>
+              ) : (
+                <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95 cursor-pointer">
+                  <WordedLogo size="sm" priority />
+                </Link>
+              )}
             </div>
 
             {/* Heading */}
             <h1 className="text-3xl font-bold text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] mb-3 text-center">
-              Sign in to your account
+              {branding ? `Sign in to ${branding.name}` : 'Sign in to your account'}
             </h1>
+            {branding?.loginTagline && (
+              <p className="text-center text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] mb-2">
+                {branding.loginTagline}
+              </p>
+            )}
+            {branding && !branding.hidePlatformMark && (
+              <p className="text-center text-xs text-[var(--light-text-muted)] dark:text-[var(--dark-text-muted)] mb-2">
+                Powered by Myschoolbud
+              </p>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
               {sessionExpired && (
@@ -419,7 +455,7 @@ function LoginContent() {
                 <div className="text-sm text-[var(--light-text-muted)] dark:text-[var(--dark-text-muted)]">
                   Don't have an account?{' '}
                   <Link
-                    href="/auth/register-school"
+                    href={registerSchoolHref}
                     className="text-[var(--agora-blue)] hover:text-[#2490FD] hover:underline transition-colors"
                   >
                     Register your school

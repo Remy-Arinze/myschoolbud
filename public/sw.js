@@ -20,14 +20,23 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Myschoolbud', {
-      body: data.body || '',
-      icon: '/assets/logos/agora_main.png',
-      badge: '/assets/favicon-32x32.png',
-      data: { link: data.link || '/dashboard', notificationId: data.notificationId },
-      tag: data.notificationId || data.type || 'agora-notification',
-      renotify: true,
-    })
+    Promise.all([
+      self.registration.showNotification(data.title || 'Myschoolbud', {
+        body: data.body || '',
+        icon: '/assets/logos/agora_main.png',
+        badge: '/assets/favicon-32x32.png',
+        data: { link: data.link || '/dashboard', notificationId: data.notificationId },
+        tag: data.notificationId || data.type || 'agora-notification',
+        renotify: true,
+        silent: false,
+        sound: '/sounds/universfield-new-notification-051-494246.mp3',
+      }),
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        for (const client of clients) {
+          client.postMessage({ type: 'PLAY_NOTIFICATION_SOUND' });
+        }
+      }),
+    ])
   );
 });
 

@@ -87,6 +87,7 @@ export function StructureSettingsSection() {
         </div>
       </SettingsSection>
 
+      {/* Class Structure Defaults — hidden until redesign
       <SettingsSection title="Class Structure Defaults" description="Default arm names when creating new class levels.">
         <div className="space-y-4">
           <div>
@@ -107,6 +108,7 @@ export function StructureSettingsSection() {
           </div>
         </div>
       </SettingsSection>
+      */}
 
       <SettingsSection title="Faculties & Departments" description="Tertiary schools only.">
         <label className="flex items-center gap-2">
@@ -115,6 +117,7 @@ export function StructureSettingsSection() {
         </label>
       </SettingsSection>
 
+      {/* Subject Registry — hidden until redesign
       <SettingsSection title="Subject Registry" description="Default curriculum source for new subjects.">
         <select
           className="w-full rounded-lg border px-3 py-2 bg-transparent"
@@ -126,6 +129,7 @@ export function StructureSettingsSection() {
           <option value="CUSTOM_ONLY">Custom subjects only</option>
         </select>
       </SettingsSection>
+      */}
 
       <PermissionGate resource={PermissionResource.SETTINGS} type={PermissionType.WRITE}>
         <Button onClick={handleSave} disabled={isSaving}>

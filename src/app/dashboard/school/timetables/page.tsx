@@ -62,6 +62,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ExamTimetablesTab } from '@/components/timetable/ExamTimetablesTab';
 import { buildTermOptions } from '@/lib/academic/buildTermOptions';
+import { SectionTabs } from '@/components/ui/SectionTabs';
 
 // Types for teacher selection state
 interface TeacherSelectionState {
@@ -851,28 +852,24 @@ export default function TimetablesPage() {
           </div>
         </FadeInUp>
 
-        <nav className="mb-6" aria-label="Timetable sections">
-          <div className="settings-section-tabs">
-            <Link
-              href={timetableTabHref('class')}
-              aria-current={activeTab === 'class' ? 'page' : undefined}
-              className="settings-section-tab"
-              style={{ fontSize: 'var(--text-body)' }}
-            >
-              <Clock className="h-4 w-4" />
-              Class schedules
-            </Link>
-            <Link
-              href={timetableTabHref('exam')}
-              aria-current={activeTab === 'exam' ? 'page' : undefined}
-              className="settings-section-tab"
-              style={{ fontSize: 'var(--text-body)' }}
-            >
-              <GraduationCap className="h-4 w-4" />
-              Exam timetable
-            </Link>
-          </div>
-        </nav>
+        <SectionTabs
+          ariaLabel="Timetable sections"
+          activeTab={activeTab}
+          tabs={[
+            {
+              key: 'class',
+              label: 'Class schedules',
+              href: timetableTabHref('class'),
+              icon: <Clock className="h-4 w-4" />,
+            },
+            {
+              key: 'exam',
+              label: 'Exam timetable',
+              href: timetableTabHref('exam'),
+              icon: <GraduationCap className="h-4 w-4" />,
+            },
+          ]}
+        />
 
         {activeTab === 'class' && (
           <>

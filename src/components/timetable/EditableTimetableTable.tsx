@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
-import { TimeInput } from '@/components/ui/TimeInput';
+import { TimeInput, parseTimeInput } from '@/components/ui/TimeInput';
 import { X, Save, Loader2, Plus, ChevronDown, Trash2 } from 'lucide-react';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import { LoisOrb } from '@/components/ai/LoisOrb';
@@ -118,6 +118,37 @@ function typeLabel(type: PeriodType) {
   if (type === 'LUNCH') return 'Lunch';
   if (type === 'ASSEMBLY') return 'Assembly';
   return 'Lesson';
+}
+
+const DURATION_PRESETS = [10, 15, 20, 30, 40, 45, 60] as const;
+
+function suggestInsertTimes(
+  type: ActionType,
+  afterSlotId: string | null,
+  rows: SlotRow[],
+  schoolType: EditableTimetableTableProps['schoolType'],
+): { start: string; end: string } {
+  const duration = defaultDuration(type, schoolType);
+  const fallbackStart = schoolType === 'PRIMARY' ? '07:30' : '08:00';
+
+  if (afterSlotId === null) {
+    const first = rows[0];
+    if (!first) {
+      return { start: fallbackStart, end: addMinutes(fallbackStart, duration) ?? '08:00' };
+    }
+    const start = addMinutes(first.startTime, -duration);
+    if (start) return { start, end: first.startTime };
+    return { start: fallbackStart, end: addMinutes(fallbackStart, duration) ?? first.startTime };
+  }
+
+  const index = rows.findIndex((row) => row.slotId === afterSlotId);
+  const current = index >= 0 ? rows[index] : rows[rows.length - 1];
+  if (!current) {
+    return { start: fallbackStart, end: addMinutes(fallbackStart, duration) ?? '08:00' };
+  }
+  const end = addMinutes(current.endTime, duration);
+  if (end) return { start: current.endTime, end };
+  return { start: current.endTime, end: '23:59' };
 }
 
 type HydratePeriod = {
@@ -373,63 +404,52 @@ export function EditableTimetableTable({
     setEditablePeriods(next);
   };
 
-  const insertAction = (type: ActionType, afterSlotId: string | null) => {
-    const duration = defaultDuration(type, schoolType);
-    const currentRows = rows;
+  const insertAction = (
+    type: ActionType,
+    afterSlotId: string | null,
+    startTime: string,
+    endTime: string,
+  ) => {
+    if (!startTime || !endTime || startTime >= endTime) {
+      setActionNotice('Start time must be before end time.');
+      return;
+    }
+    const duration = durationOf(startTime, endTime);
+    if (duration < 5) {
+      setActionNotice('That period must be at least 5 minutes.');
+      return;
+    }
 
-    let insertStart: string;
-    let insertEnd: string | null;
+    const currentRows = rows;
+    if (currentRows.some((r) => r.startTime === startTime && r.endTime === endTime && r.type === type)) {
+      setActionNotice(`${typeLabel(type)} at ${formatRange(startTime, endTime)} is already on the timetable.`);
+      return;
+    }
+
     let laterIds = new Set<string>();
+    let shiftBy = 0;
 
     if (afterSlotId === null) {
       const first = currentRows[0];
-      if (!first) {
-        insertStart = schoolType === 'PRIMARY' ? '07:30' : '08:00';
-        insertEnd = addMinutes(insertStart, duration);
-      } else {
-        insertEnd = first.startTime;
-        const before = addMinutes(insertEnd, -duration);
-        if (before) {
-          insertStart = before;
-        } else {
-          insertStart = '00:00';
-          insertEnd = addMinutes(insertStart, duration);
-          laterIds = new Set(currentRows.map((r) => r.slotId));
-        }
+      if (first && toMinutes(first.startTime) < toMinutes(endTime)) {
+        laterIds = new Set(currentRows.map((r) => r.slotId));
+        shiftBy = toMinutes(endTime) - toMinutes(first.startTime);
       }
     } else {
       const index = currentRows.findIndex((r) => r.slotId === afterSlotId);
-      const current = index >= 0 ? currentRows[index] : currentRows[currentRows.length - 1];
-      if (!current) {
-        insertStart = schoolType === 'PRIMARY' ? '07:30' : '08:00';
-        insertEnd = addMinutes(insertStart, duration);
-      } else {
-        insertStart = current.endTime;
-        insertEnd = addMinutes(insertStart, duration);
-        const later = currentRows.slice(index + 1);
-        const nextRow = later[0];
-        const fitsInGap = Boolean(insertEnd && nextRow && toMinutes(nextRow.startTime) >= toMinutes(insertEnd));
-        if (!fitsInGap) {
-          laterIds = new Set(later.map((r) => r.slotId));
-        }
+      const later = currentRows.slice(Math.max(index, 0) + 1);
+      const nextRow = later[0];
+      if (nextRow && toMinutes(nextRow.startTime) < toMinutes(endTime)) {
+        laterIds = new Set(later.map((r) => r.slotId));
+        shiftBy = toMinutes(endTime) - toMinutes(nextRow.startTime);
       }
     }
 
-    if (!insertEnd) {
-      setActionNotice('That period would run past 23:59. Shorten an earlier slot first.');
-      return;
-    }
-
-    if (currentRows.some((r) => r.startTime === insertStart && r.endTime === insertEnd && r.type === type)) {
-      setActionNotice(`${typeLabel(type)} at ${formatRange(insertStart, insertEnd)} is already on the timetable.`);
-      return;
-    }
-
     let next = editablePeriods;
-    if (laterIds.size > 0) {
-      const shifted = shiftSlots(next, laterIds, duration);
+    if (laterIds.size > 0 && shiftBy !== 0) {
+      const shifted = shiftSlots(next, laterIds, shiftBy);
       if (!shifted) {
-        setActionNotice('Later periods would run past 23:59. Shorten an earlier slot first.');
+        setActionNotice('Later periods would run past 23:59. Shorten an earlier slot or use a shorter duration.');
         return;
       }
       next = shifted;
@@ -439,8 +459,8 @@ export function EditableTimetableTable({
     const newPeriods: EditablePeriod[] = DAYS.map((day) => ({
       slotId,
       dayOfWeek: day,
-      startTime: insertStart,
-      endTime: insertEnd,
+      startTime,
+      endTime,
       type,
     }));
 
@@ -523,7 +543,7 @@ export function EditableTimetableTable({
               )}
             </div>
             <p className="mt-2 text-light-text-secondary dark:text-dark-text-secondary max-w-3xl" style={{ fontSize: 'var(--text-small)' }}>
-              Insert assembly, break, or lunch after a period — later slots shift so the day stays contiguous. Lengthen a slot by changing its end time. Trash removes a row and pulls the afternoon forward.
+              Insert assembly, break, or lunch after a period — suggested times are filled in, and you can change the length. Later slots shift so the day stays contiguous.
             </p>
           </div>
           <button
@@ -539,7 +559,9 @@ export function EditableTimetableTable({
             <InsertButton
               label="Insert at start of day"
               schoolType={schoolType}
-              onInsert={(type) => insertAction(type, null)}
+              getSuggestedTimes={(type) => suggestInsertTimes(type, null, rows, schoolType)}
+              nextStart={rows[0]?.startTime}
+              onInsert={(type, start, end) => insertAction(type, null, start, end)}
             />
             {actionNotice && (
               <p className="text-xs text-amber-700 dark:text-amber-300">{actionNotice}</p>
@@ -672,7 +694,10 @@ export function EditableTimetableTable({
                           </button>
                           <InsertButton
                             schoolType={schoolType}
-                            onInsert={(type) => insertAction(type, row.slotId)}
+                            getSuggestedTimes={(type) => suggestInsertTimes(type, row.slotId, rows, schoolType)}
+                            previousEnd={row.endTime}
+                            nextStart={rows[rowIndex + 1]?.startTime}
+                            onInsert={(type, start, end) => insertAction(type, row.slotId, start, end)}
                           />
                         </div>
                       </td>
@@ -819,22 +844,44 @@ export function EditableTimetableTable({
 }
 
 interface InsertButtonProps {
-  onInsert: (type: ActionType) => void;
+  onInsert: (type: ActionType, startTime: string, endTime: string) => void;
+  getSuggestedTimes: (type: ActionType) => { start: string; end: string };
   label?: string;
   schoolType: EditableTimetableTableProps['schoolType'];
+  previousEnd?: string;
+  nextStart?: string;
 }
 
-function InsertButton({ onInsert, label = 'Insert', schoolType }: InsertButtonProps) {
+function InsertButton({
+  onInsert,
+  getSuggestedTimes,
+  label = 'Insert',
+  schoolType,
+  previousEnd,
+  nextStart,
+}: InsertButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [insertType, setInsertType] = useState<ActionType | null>(null);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const startInputRef = useRef<HTMLInputElement>(null);
+  const endInputRef = useRef<HTMLInputElement>(null);
+
+  const reset = () => {
+    setIsOpen(false);
+    setInsertType(null);
+    setStartTime('');
+    setEndTime('');
+  };
 
   const updatePosition = useCallback(() => {
     const el = anchorRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const estimatedHeight = 140;
+    const estimatedHeight = insertType ? 280 : 150;
     const spaceBelow = window.innerHeight - rect.bottom;
     const openUp = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
     setMenuPos({
@@ -842,10 +889,10 @@ function InsertButton({ onInsert, label = 'Insert', schoolType }: InsertButtonPr
       bottom: openUp ? window.innerHeight - rect.top + 4 : undefined,
       right: Math.max(8, window.innerWidth - rect.right),
     });
-  }, []);
+  }, [insertType]);
 
   useLayoutEffect(() => {
-    if (!isOpen) {
+    if (!isOpen && !insertType) {
       setMenuPos(null);
       return;
     }
@@ -857,37 +904,74 @@ function InsertButton({ onInsert, label = 'Insert', schoolType }: InsertButtonPr
       window.removeEventListener('resize', handler);
       document.removeEventListener('scroll', handler, true);
     };
-  }, [isOpen, updatePosition]);
+  }, [isOpen, insertType, updatePosition]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen && !insertType) return;
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       if (anchorRef.current?.contains(target)) return;
       if (popoverRef.current?.contains(target)) return;
-      setIsOpen(false);
+      reset();
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  }, [isOpen, insertType]);
+
+  const handleTypeClick = (type: ActionType) => {
+    const suggested = getSuggestedTimes(type);
+    setInsertType(type);
+    setStartTime(suggested.start);
+    setEndTime(suggested.end);
+    setIsOpen(false);
+  };
+
+  const applyDuration = (minutes: number) => {
+    if (!startTime) return;
+    const nextEnd = addMinutes(startTime, minutes);
+    if (nextEnd) {
+      setEndTime(nextEnd);
+    }
+  };
+
+  const handleConfirm = () => {
+    const parsedStart = parseTimeInput(startInputRef.current?.value ?? '') ?? startTime;
+    const parsedEnd = parseTimeInput(endInputRef.current?.value ?? '') ?? endTime;
+    if (!insertType || !parsedStart || !parsedEnd || parsedStart >= parsedEnd) return;
+    if (durationOf(parsedStart, parsedEnd) < 5) return;
+    onInsert(insertType, parsedStart, parsedEnd);
+    reset();
+  };
+
+  const selectedDuration = startTime && endTime && startTime < endTime ? durationOf(startTime, endTime) : 0;
+  const willShift = Boolean(nextStart && endTime && toMinutes(nextStart) < toMinutes(endTime));
+  const shiftMinutes = willShift && nextStart ? toMinutes(endTime) - toMinutes(nextStart) : 0;
+  const overlapsPrevious = Boolean(previousEnd && startTime && toMinutes(startTime) < toMinutes(previousEnd));
+  const canInsert = Boolean(insertType && startTime && endTime && startTime < endTime && selectedDuration >= 5);
 
   return (
     <>
       <div ref={anchorRef}>
         <button
           type="button"
-          onClick={() => setIsOpen((open) => !open)}
+          onClick={() => {
+            if (insertType || isOpen) {
+              reset();
+              return;
+            }
+            setIsOpen(true);
+          }}
           className="inline-flex items-center gap-1 px-2 py-1.5 rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-input)] dark:bg-[var(--dark-input)] text-light-text-primary dark:text-dark-text-primary hover:bg-[var(--light-hover)] dark:hover:bg-[var(--dark-hover)] transition-colors"
           title="Insert assembly, break, or lunch"
           aria-label={label}
-          aria-expanded={isOpen}
+          aria-expanded={isOpen || Boolean(insertType)}
         >
           <Plus className="h-3.5 w-3.5" />
           <span className="font-medium" style={{ fontSize: 'var(--text-tiny)' }}>{label}</span>
-          <ChevronDown className={`h-3.5 w-3.5 text-light-text-secondary dark:text-dark-text-secondary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-3.5 w-3.5 text-light-text-secondary dark:text-dark-text-secondary transition-transform ${isOpen || insertType ? 'rotate-180' : ''}`} />
         </button>
       </div>
-      {isOpen && menuPos && (
+      {(isOpen || insertType) && menuPos && (
         <BodyPortal>
           <div
             ref={popoverRef}
@@ -900,28 +984,107 @@ function InsertButton({ onInsert, label = 'Insert', schoolType }: InsertButtonPr
             }}
             className="min-w-[168px] rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-card)] dark:bg-[var(--dark-card)] shadow-xl"
           >
-            <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-light-text-muted dark:text-dark-text-muted">
-              {label === 'Insert' ? 'After this period' : 'Before first period'}
-            </div>
-            <div className="py-1">
-              {(['ASSEMBLY', 'BREAK', 'LUNCH'] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => {
-                    onInsert(type);
-                    setIsOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 text-[var(--agora-blue)] hover:bg-[color-mix(in_srgb,var(--agora-blue)_16%,white)] dark:hover:bg-[color-mix(in_srgb,var(--agora-blue)_18%,var(--dark-card))] transition-colors"
-                  style={{ fontSize: 'var(--text-body)' }}
-                >
-                  {typeLabel(type)}
-                  <span className="ml-2 text-[10px] text-light-text-muted dark:text-dark-text-muted">
-                    {defaultDuration(type, schoolType)} min
-                  </span>
-                </button>
-              ))}
-            </div>
+            {insertType ? (
+              <div className="p-3 flex flex-col gap-2 w-[248px]">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-medium text-[var(--agora-blue)]" style={{ fontSize: 'var(--text-small)' }}>
+                    Insert {typeLabel(insertType)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInsertType(null);
+                      setIsOpen(true);
+                    }}
+                    className="text-[10px] text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary"
+                  >
+                    Change
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {DURATION_PRESETS.map((minutes) => {
+                    const active = selectedDuration === minutes;
+                    return (
+                      <button
+                        key={minutes}
+                        type="button"
+                        onClick={() => applyDuration(minutes)}
+                        className={`px-1.5 py-0.5 rounded text-[10px] border transition-colors ${
+                          active
+                            ? 'bg-[var(--agora-blue)] text-white border-[var(--agora-blue)]'
+                            : 'border-[var(--light-border)] dark:border-[var(--dark-border)] text-light-text-secondary dark:text-dark-text-secondary hover:border-[var(--agora-blue)]'
+                        }`}
+                      >
+                        {minutes}m
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <TimeInput
+                    ref={startInputRef}
+                    label="Start time"
+                    value={startTime}
+                    onChange={setStartTime}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-light-text-muted dark:text-dark-text-muted">to</span>
+                  <TimeInput
+                    ref={endInputRef}
+                    label="End time"
+                    value={endTime}
+                    onChange={setEndTime}
+                    className="flex-1"
+                  />
+                </div>
+                <p className="text-[10px] text-light-text-muted dark:text-dark-text-muted">
+                  {selectedDuration > 0 ? `${selectedDuration} min` : 'Set a start and end'}
+                  {willShift && ` · later slots shift ${shiftMinutes} min`}
+                  {overlapsPrevious && ' · overlaps the previous period'}
+                </p>
+                <div className="flex gap-1">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleConfirm}
+                    disabled={!canInsert}
+                    className="flex-1 text-xs py-1"
+                  >
+                    Insert
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={reset}
+                    className="text-xs py-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-light-text-muted dark:text-dark-text-muted">
+                  {label === 'Insert' ? 'After this period' : 'Before first period'}
+                </div>
+                <div className="py-1">
+                  {(['ASSEMBLY', 'BREAK', 'LUNCH'] as const).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => handleTypeClick(type)}
+                      className="w-full text-left px-3 py-2 text-[var(--agora-blue)] hover:bg-[color-mix(in_srgb,var(--agora-blue)_16%,white)] dark:hover:bg-[color-mix(in_srgb,var(--agora-blue)_18%,var(--dark-card))] transition-colors"
+                      style={{ fontSize: 'var(--text-body)' }}
+                    >
+                      {typeLabel(type)}
+                      <span className="ml-2 text-[10px] text-light-text-muted dark:text-dark-text-muted">
+                        {defaultDuration(type, schoolType)} min suggested
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </BodyPortal>
       )}

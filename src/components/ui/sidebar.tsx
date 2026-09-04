@@ -5,7 +5,7 @@ import Link, { LinkProps } from "next/link";
 import React, { useState, createContext, useContext, useRef, useEffect } from "react";
 import gsap from "gsap";
 import { Menu, X } from "lucide-react";
-import { WordedLogo } from "@/components/layout/WordedLogo";
+import { SchoolBrandMark } from "@/components/layout/SchoolBrandMark";
 
 interface Links {
   label: string;
@@ -23,6 +23,10 @@ interface SidebarContextProps {
 const SidebarContext = createContext<SidebarContextProps | undefined>(
   undefined
 );
+
+function MobileBrand() {
+  return <SchoolBrandMark size="sm" />;
+}
 
 export const useSidebar = () => {
   const context = useContext(SidebarContext);
@@ -161,9 +165,7 @@ export const MobileSidebar = ({
           {...props}
         >
           <div className="flex justify-start items-center">
-            <Link href="/" className="flex items-center">
-              <WordedLogo size="sm" />
-            </Link>
+            <MobileBrand />
           </div>
           <div className="flex justify-end z-20">
             <Menu

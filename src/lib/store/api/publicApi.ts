@@ -37,6 +37,7 @@ export interface RegisterSchoolDto {
   ownerLastName: string;
   ownerEmail: string;
   ownerPhone: string;
+  slug?: string;
 }
 
 export interface RegisterSchoolResponseDto {
@@ -89,8 +90,17 @@ export const publicApi = createApi({
             phone: body.ownerPhone,
           },
           registrationNote: body.registrationNote,
+          slug: body.slug,
         },
       }),
+    }),
+    checkSlugAvailable: builder.query<{ available: boolean; slug: string; reason?: string }, string>({
+      query: (slug) => `/public/portals/slug-available?slug=${encodeURIComponent(slug)}`,
+      transformResponse: (response: ResponseDto<{ available: boolean; slug: string; reason?: string }>) => response.data,
+    }),
+    getPortalByHost: builder.query<any, string>({
+      query: (host) => `/public/portals/by-host?host=${encodeURIComponent(host)}`,
+      transformResponse: (response: ResponseDto<any>) => response.data,
     }),
     getPublicSchool: builder.query<any, string>({
       query: (id) => `/public/schools/${id}`,
@@ -113,5 +123,5 @@ export const publicApi = createApi({
   }),
 });
 
-export const { useGetPublicSchoolsQuery, useGetPlatformStatsQuery, useRegisterSchoolMutation, useGetPublicSchoolQuery, useGetAdmissionConfigQuery, useSubmitAdmissionApplicationMutation } = publicApi;
+export const { useGetPublicSchoolsQuery, useGetPlatformStatsQuery, useRegisterSchoolMutation, useGetPublicSchoolQuery, useGetAdmissionConfigQuery, useSubmitAdmissionApplicationMutation, useCheckSlugAvailableQuery, useLazyCheckSlugAvailableQuery, useGetPortalByHostQuery } = publicApi;
 

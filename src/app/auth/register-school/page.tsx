@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { WordedLogo } from '@/components/layout/WordedLogo';
 import { Alert } from '@/components/ui/Alert';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { CountrySelector } from '@/components/ui/CountrySelector';
-import { useRegisterSchoolMutation } from '@/lib/store/api/publicApi';
+import { useRegisterSchoolMutation, useLazyCheckSlugAvailableQuery } from '@/lib/store/api/publicApi';
+import { apexOrigin, extractPortalSlug } from '@/lib/portal/host';
 
 export default function RegisterSchoolPage() {
     const [registerSchool, { isLoading }] = useRegisterSchoolMutation();
@@ -34,7 +35,41 @@ export default function RegisterSchoolPage() {
         ownerLastName: '',
         ownerEmail: '',
         ownerPhone: '',
+        slug: '',
     });
+    const [slugTouched, setSlugTouched] = useState(false);
+    const [slugStatus, setSlugStatus] = useState<{ available?: boolean; reason?: string } | null>(null);
+    const [checkSlug] = useLazyCheckSlugAvailableQuery();
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        if (extractPortalSlug(window.location.host)) {
+            window.location.replace(`${apexOrigin()}/auth/register-school`);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!slugTouched) {
+            setFormData((prev) => ({ ...prev, slug: normalizeSlug(prev.name) }));
+        }
+    }, [formData.name, slugTouched]);
+
+    useEffect(() => {
+        const slug = formData.slug;
+        if (!slug || slug.length < 3) {
+            setSlugStatus(null);
+            return;
+        }
+        const t = setTimeout(async () => {
+            try {
+                const result = await checkSlug(slug).unwrap();
+                setSlugStatus(result);
+            } catch {
+                setSlugStatus({ available: false, reason: 'invalid' });
+            }
+        }, 300);
+        return () => clearTimeout(t);
+    }, [formData.slug, checkSlug]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
@@ -58,6 +93,10 @@ export default function RegisterSchoolPage() {
         // Basic validation
         if (!formData.hasPrimary && !formData.hasSecondary && !formData.hasTertiary) {
             setError('Please select at least one school type.');
+            return;
+        }
+        if (formData.slug && slugStatus && slugStatus.available === false) {
+            setError('That portal address is not available. Please choose another.');
             return;
         }
 
@@ -196,6 +235,35 @@ export default function RegisterSchoolPage() {
                                 />
                             </div>
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block font-medium text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] mb-1" style={{ fontSize: 'var(--text-body)' }}>
+                            Portal address (optional)
+                        </label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                name="slug"
+                                type="text"
+                                value={formData.slug}
+                                onChange={(e) => {
+                                    setSlugTouched(true);
+                                    setFormData((prev) => ({ ...prev, slug: normalizeSlug(e.target.value) }));
+                                }}
+                                className="flex-1 px-4 py-2 border-2 rounded-lg bg-[var(--light-input)] dark:bg-[var(--dark-input)] text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#2490FD] border-[var(--light-border)] dark:border-[var(--dark-border)]"
+                                placeholder="beulah"
+                            />
+                            <span className="text-sm text-[var(--light-text-muted)] dark:text-[var(--dark-text-muted)] whitespace-nowrap">
+                                .myschoolbud.com
+                            </span>
+                        </div>
+                        {formData.slug && (
+                            <p className="mt-1 text-sm text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)]">
+                                Teachers will sign in at <strong>{formData.slug}.myschoolbud.com</strong>
+                                {slugStatus?.available === true && ' — available'}
+                                {slugStatus?.available === false && ' — not available'}
+                            </p>
+                        )}
                     </div>
 
                     {/* School Type */}

@@ -19,6 +19,7 @@ const DEFAULT_OPTIONS: RedirectValidationOptions = {
     '/dashboard/super-admin',
     '/dashboard/school',
     '/dashboard/teacher',
+    '/dashboard/student',
     '/auth/login',
     '/auth/register',
     '/auth/forgot-password',

@@ -115,7 +115,7 @@ function StudentsPageContent() {
   const { currentType } = useSchoolType();
   const registrationLink =
     schoolId && typeof window !== 'undefined'
-      ? `${window.location.origin}/admission/${schoolId}`
+      ? `${window.location.origin}/apply`
       : '';
 
   // Resend invitation mutation

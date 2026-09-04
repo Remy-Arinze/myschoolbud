@@ -460,7 +460,7 @@ export default function ApplicationsPage() {
   const schoolName = schoolResponse?.data?.name;
   const registrationLink =
     schoolId && typeof window !== 'undefined'
-      ? `${window.location.origin}/admission/${schoolId}`
+      ? `${window.location.origin}/apply`
       : '';
 
   // Get school type

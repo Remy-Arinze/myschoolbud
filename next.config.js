@@ -24,6 +24,12 @@ const nextConfig = {
       'http://localhost:4000',
       // OpenObserve RUM & logs
       'https://console-observe.agora-schools.com',
+      // Web Push registration (Chrome/Edge FCM, Firefox, Safari)
+      'https://fcm.googleapis.com',
+      'https://fcmregistrations.googleapis.com',
+      'https://firebaseinstallations.googleapis.com',
+      'https://updates.push.services.mozilla.com',
+      'https://web.push.apple.com',
     ];
     if (apiUrl && !connectSources.includes(apiUrl)) {
       connectSources.push(apiUrl);
@@ -42,7 +48,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https: blob:",
-              "media-src 'self' https://res.cloudinary.com",
+              "media-src 'self' blob: https://res.cloudinary.com",
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self'",

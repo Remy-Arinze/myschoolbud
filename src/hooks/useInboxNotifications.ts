@@ -6,6 +6,7 @@ import { RootState } from '@/lib/store/store';
 import toast from 'react-hot-toast';
 import { apiSlice } from '@/lib/store/api/apiSlice';
 import { useDispatch } from 'react-redux';
+import { playNotificationSound } from '@/lib/notifications/playNotificationSound';
 
 /**
  * Unified SSE inbox listener for SCHOOL_ADMIN, TEACHER, and STUDENT.
@@ -60,6 +61,7 @@ export function useInboxNotifications() {
         // Always refresh badge / inbox on new inbox rows
         if (data.type === 'INBOX_CREATED') {
           dispatch(apiSlice.util.invalidateTags(['Notification']));
+          playNotificationSound();
           if (data.title) {
             toast(data.title, {
               duration: 5000,
