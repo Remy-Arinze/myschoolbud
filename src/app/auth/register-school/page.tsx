@@ -8,7 +8,7 @@ import { Alert } from '@/components/ui/Alert';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { CountrySelector } from '@/components/ui/CountrySelector';
 import { useRegisterSchoolMutation, useLazyCheckSlugAvailableQuery } from '@/lib/store/api/publicApi';
-import { apexOrigin, extractPortalSlug } from '@/lib/portal/host';
+import { apexOrigin, extractPortalSlug, normalizeSlug } from '@/lib/portal/host';
 
 export default function RegisterSchoolPage() {
     const [registerSchool, { isLoading }] = useRegisterSchoolMutation();
