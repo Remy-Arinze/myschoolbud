@@ -1107,6 +1107,7 @@ export default function TimetablesPage() {
             subjects={subjects}
             courses={courses}
             schoolType={currentType}
+            workingDays={workingDays}
             onSave={handleBulkSave}
             onClose={() => setIsEditMode(false)}
             isLoading={isUpdating || isReplacing}

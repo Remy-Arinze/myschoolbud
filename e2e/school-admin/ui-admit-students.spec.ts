@@ -11,13 +11,18 @@ test.describe('UI: admit more students per class', () => {
   for (const schoolType of ['PRIMARY', 'SECONDARY'] as const) {
     test(`adds one more student to each ${schoolType} class via UI`, async ({ page }) => {
       await page.goto('/dashboard/school/students');
-      await expect(page.getByRole('heading', { name: /^students$/i })).toBeVisible({
-        timeout: 30_000,
+      // Page shell can render before heading text; use actionable UI signal instead.
+      await expect(page.getByRole('button', { name: /add student/i })).toBeVisible({
+        timeout: 45_000,
       });
+      await expect(page.getByText(/loading students/i)).toHaveCount(0, { timeout: 45_000 });
 
       await switchSchoolType(page, schoolType);
       await page.goto('/dashboard/school/students');
-      await expect(page.getByRole('heading', { name: /^students$/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /add student/i })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByText(/loading students/i)).toHaveCount(0, { timeout: 45_000 });
 
       // Open modal once to discover class arm options for this type
       await page.getByRole('button', { name: /add student/i }).click();
@@ -37,6 +42,7 @@ test.describe('UI: admit more students per class', () => {
       // Close modal before looping
       await page.getByRole('button', { name: /^cancel$/i }).click();
 
+      const runSalt = Date.now() % 1_000_000;
       let index = 0;
       for (const opt of options) {
         index += 1;
@@ -44,9 +50,9 @@ test.describe('UI: admit more students per class', () => {
           schoolType === 'PRIMARY'
             ? `pri${opt.label.match(/\d+/)?.[0] || index}a`
             : opt.label.replace(/\s+/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const email = `remyarinze+e2e-ui-${slug}-3@gmail.com`;
+        const email = `remyarinze+e2e-ui-${slug}-${runSalt}@gmail.com`;
         // Keep NG mobiles unique across PRIMARY/SECONDARY runs (avoid 409 phone conflicts)
-        const phoneBase = schoolType === 'PRIMARY' ? 2100000 : 3100000;
+        const phoneBase = (schoolType === 'PRIMARY' ? 2100000 : 3100000) + runSalt;
         const studentPhone = `801${String(phoneBase + index).slice(-7)}`;
         const parentPhone = `809${String(phoneBase + index).slice(-7)}`;
 

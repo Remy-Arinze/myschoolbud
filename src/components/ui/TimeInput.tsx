@@ -127,13 +127,18 @@ export interface TimeInputProps {
   label?: string;
   /** If true, an error style is shown even before the user blurs */
   forceError?: boolean;
+  /**
+   * When true, onChange fires only on blur (or Enter).
+   * Use this when a live commit would remount the field or cascade other times.
+   */
+  commitOnBlur?: boolean;
   /** id — auto-generated if omitted */
   id?: string;
 }
 
 export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
   function TimeInput(
-    { value, onChange, onError, disabled, className, label, forceError, id: idProp },
+    { value, onChange, onError, disabled, className, label, forceError, commitOnBlur, id: idProp },
     ref
   ) {
     // Internal display value (what the user sees while typing)
@@ -159,7 +164,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
         const raw = e.target.value;
         setDisplayValue(raw);
 
-        if (isCompleteTimeInput(raw)) {
+        if (!commitOnBlur && isCompleteTimeInput(raw)) {
           const parsed = parseTimeInput(raw);
           if (parsed) {
             setHasError(false);
@@ -170,7 +175,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
 
         if (hasError) setHasError(false);
       },
-      [hasError, onChange]
+      [hasError, onChange, commitOnBlur]
     );
 
     const handleFocus = useCallback(() => {
@@ -183,6 +188,10 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
 
       if (raw === '') {
         setHasError(false);
+        if (commitOnBlur) {
+          setDisplayValue(value);
+          return;
+        }
         onChange('');
         return;
       }
@@ -195,8 +204,11 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(
       } else {
         setHasError(true);
         onError?.(raw);
+        if (commitOnBlur && (isValidTime(value) || value === '')) {
+          setDisplayValue(value);
+        }
       }
-    }, [displayValue, onChange, onError]);
+    }, [displayValue, onChange, onError, commitOnBlur, value]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLInputElement>) => {

@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { getScheduleFromBellTemplates, type SchedulePeriod } from '@/lib/utils/nigerianSchoolSchedule';
-import type { TimetablePeriod, DayOfWeek } from '@/lib/store/api/schoolAdminApi';
+import type { DayOfWeek } from '@/lib/store/api/schoolAdminApi';
 import { DEFAULT_WORKING_DAYS } from '@/lib/calendar/instructionalDays';
 
 const FALLBACK_DAYS: DayOfWeek[] = [...DEFAULT_WORKING_DAYS];
@@ -14,6 +14,18 @@ interface Subject {
   code?: string;
 }
 
+interface ExistingPeriod {
+  dayOfWeek: DayOfWeek;
+  startTime: string;
+  endTime: string;
+  type?: string;
+  subjectId?: string;
+  subjectName?: string;
+  courseId?: string;
+  courseName?: string;
+  teacherId?: string;
+}
+
 interface GeneratedPeriod {
   dayOfWeek: DayOfWeek;
   startTime: string;
@@ -22,6 +34,7 @@ interface GeneratedPeriod {
   subjectName?: string;
   courseId?: string;
   courseName?: string;
+  teacherId?: string;
   type: 'LESSON' | 'BREAK' | 'LUNCH' | 'ASSEMBLY';
 }
 
@@ -29,7 +42,7 @@ interface UseAutoGenerateTimetableOptions {
   schoolType: 'PRIMARY' | 'SECONDARY' | 'TERTIARY' | null;
   subjects: Subject[];
   courses?: Subject[];
-  existingPeriods: TimetablePeriod[];
+  existingPeriods: ExistingPeriod[];
   maxSameSubjectPerDay?: number; // Default: 2
   freePeriodsPerDay?: number; // Default: 1-2
   workingDays?: DayOfWeek[];
@@ -89,6 +102,7 @@ export function useAutoGenerateTimetable({
         subjectName: p.subjectName || undefined,
         courseId: p.courseId || undefined,
         courseName: p.courseName || undefined,
+        teacherId: p.teacherId || undefined,
         type: (p.type as 'LESSON' | 'BREAK' | 'LUNCH' | 'ASSEMBLY') || 'LESSON',
       });
     });
