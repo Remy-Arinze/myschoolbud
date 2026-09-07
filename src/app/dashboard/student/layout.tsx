@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { useDashboardBodyClass } from '@/hooks/useDashboardBodyClass';
 import { DASHBOARD_BODY_CLASSES } from '@/lib/constants/dashboard-theme';
+import { BudFloatingCta } from '@/components/bud/BudFloatingCta';
 
 export default function StudentDashboardLayout({ children }: { children: ReactNode }) {
     useDashboardBodyClass(DASHBOARD_BODY_CLASSES.student);
@@ -18,6 +19,7 @@ export default function StudentDashboardLayout({ children }: { children: ReactNo
 
             <div className="relative z-10 w-full h-full student-glass-content">
                 {children}
+                <BudFloatingCta />
             </div>
         </div>
     );

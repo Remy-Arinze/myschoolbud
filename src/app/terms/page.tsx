@@ -306,14 +306,21 @@ export default function TermsOfService() {
                     processor fees shown at checkout. Paystack is the payment processor; we do not store full card
                     numbers.
                 </p>
-                <LegalH3>11.3 Grace period and non-payment</LegalH3>
+                <LegalH3>11.3 Bud (student learning companion)</LegalH3>
+                <p>
+                    Bud is an optional, student-paid add-on. It is not included in school fees or the Institution&apos;s
+                    Myschoolbud subscription. A student (or a parent using the student&apos;s checkout email) may
+                    subscribe separately via Paystack. Cancelling or locking a school plan does not cancel Bud.
+                    Students can rename the companion in chat. Bud does not write formal assessments.
+                </p>
+                <LegalH3>11.4 Grace period and non-payment</LegalH3>
                 <p>
                     After a paid period ends, the Institution may have a grace period (currently 14 days) to renew.
                     During or after that period we may restrict admin write actions, require a renewal or downgrade, or
                     apply a billing lock to enrolments that exceed the new plan. A billing lock is not a deletion of the
                     student&apos;s Academic Identity.
                 </p>
-                <LegalH3>11.4 Downgrades, cancellations, and refunds</LegalH3>
+                <LegalH3>11.5 Downgrades, cancellations, and refunds</LegalH3>
                 <p>
                     An Institution may downgrade to the free tier where the product allows it. Downgrading may disable
                     paid tools (including Lois) and lock excess students until the count fits the plan or the school
@@ -325,7 +332,7 @@ export default function TermsOfService() {
                     </a>{' '}
                     with the payment reference.
                 </p>
-                <LegalH3>11.5 School fees versus our subscription</LegalH3>
+                <LegalH3>11.6 School fees versus our subscription</LegalH3>
                 <p>
                     Tuition and other school fees charged to parents are the Institution&apos;s matter. Debt balances
                     stored on the Platform are school bookkeeping, not charges payable to Myschoolbud.

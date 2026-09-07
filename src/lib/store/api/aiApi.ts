@@ -130,6 +130,16 @@ export const aiApi = apiSlice.injectEndpoints({
                     questionTypes?: ('multiple_choice' | 'short_answer' | 'essay')[];
                     difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
                     curriculum?: string;
+                    schemeOfWorkId?: string;
+                    weekIds?: string[];
+                    weeks?: Array<{
+                        weekNumber: number;
+                        topic: string;
+                        stableKey?: string;
+                        subTopics?: string[];
+                        learningOutcomes?: string[];
+                        assessmentType?: string | null;
+                    }>;
                 };
             }
         >({

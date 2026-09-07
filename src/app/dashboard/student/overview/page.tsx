@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { TodayWithBudCard } from '@/components/bud/TodayWithBudCard';
 import {
   useGetUpcomingEventsQuery,
   useGetMyStudentCalendarQuery,
@@ -324,6 +325,8 @@ export default function StudentOverviewPage() {
             </div>
           </FadeInUp>
         )}
+
+        <TodayWithBudCard />
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Main Column */}

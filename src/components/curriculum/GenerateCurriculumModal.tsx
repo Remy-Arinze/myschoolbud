@@ -12,7 +12,6 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { LoisOrb } from '@/components/ai/LoisOrb';
 import type { CurriculumSummary } from '@/lib/store/api/schoolAdminApi';
-import { useCurriculum } from '@/hooks/useCurriculum';
 
 interface GenerateCurriculumModalProps {
   isOpen: boolean;
@@ -38,13 +37,11 @@ export function GenerateCurriculumModal({
   const [selectedSubjects, setSelectedSubjects] = useState<Set<string>>(
     new Set(subjects.map(s => s.subjectId))
   );
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [results, setResults] = useState<{
+  const [isGenerating] = useState(false);
+  const [results] = useState<{
     success: string[];
     failed: { subjectId: string; error: string }[];
   } | null>(null);
-
-  const { handleBulkGenerate } = useCurriculum({ schoolId, classLevelId, termId });
 
   const toggleSubject = (subjectId: string) => {
     const newSelected = new Set(selectedSubjects);
@@ -65,33 +62,7 @@ export function GenerateCurriculumModal({
   };
 
   const handleGenerate = async () => {
-    if (selectedSubjects.size === 0) return;
-
-    setIsGenerating(true);
-    setResults(null);
-
-    const result = await handleBulkGenerate({
-      classLevelId,
-      termId,
-      teacherId,
-      subjectIds: Array.from(selectedSubjects),
-    });
-
-    setIsGenerating(false);
-
-    if (result) {
-      setResults({
-        success: result.created,
-        failed: result.failed,
-      });
-
-      if (result.created.length > 0 && result.failed.length === 0) {
-        setTimeout(() => {
-          onSuccess?.();
-          onClose();
-        }, 1500);
-      }
-    }
+    return;
   };
 
   const getSubjectName = (subjectId: string) => {
@@ -106,8 +77,15 @@ export function GenerateCurriculumModal({
       size="lg"
     >
       <div className="space-y-6">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+          <p className="font-semibold">This generator is retired.</p>
+          <p className="mt-1 text-light-text-secondary">
+            Import a published Bud library curriculum or set up a scheme of work from the class curriculum setup. Legacy curriculum writes are closed.
+          </p>
+          <Button className="mt-3" onClick={onClose}>Close</Button>
+        </div>
         {/* Description */}
-        <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+        <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary hidden">
           Select subjects to auto-generate a starter curriculum based on AI recommendations.
           This will create a structured 13-week scheme of work for each selected subject.
         </p>

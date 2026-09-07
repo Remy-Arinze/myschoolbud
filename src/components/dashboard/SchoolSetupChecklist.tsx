@@ -129,11 +129,10 @@ export function SchoolSetupChecklist() {
                 />
               </div>
               {collapsed && nextStep && (
-                <div
-                  className="mt-1.5 font-medium text-[var(--agora-blue)] truncate"
-                  style={{ fontSize: 'var(--text-small)' }}
-                >
-                  Next: {nextStep.title}
+                <div className="mt-1.5" style={{ fontSize: 'var(--text-small)' }}>
+                  <span className="overview-cta-nudge font-medium text-[var(--agora-blue)] max-w-full">
+                    <span className="truncate">Next: {nextStep.title}</span>
+                  </span>
                 </div>
               )}
             </div>

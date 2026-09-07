@@ -151,10 +151,18 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
         }
 
         // Construct combined topic and objectives from selected weeks
-        const selectedItems = curriculumItems.filter(item => selectedWeeks.includes(item.weekNumber));
+        const selectedItems = curriculumItems.filter(
+            (item: any) =>
+                selectedWeeks.includes(item.weekNumber) &&
+                item.status !== 'SKIPPED' &&
+                item.weekStatus !== 'SKIPPED',
+        );
         const combinedTopics = selectedItems.map(item => item.topic).join(', ');
         const combinedObjectives = selectedItems.flatMap(item => item.objectives).join('; ');
-        
+        const gradeLevel =
+            teacherProfileResponse?.data?.classLevelName ||
+            teacherProfileResponse?.data?.schoolType ||
+            'JSS_1';
         const fullPrompt = `Topics: ${combinedTopics}. Learning Objectives: ${combinedObjectives}`;
 
         try {
@@ -163,21 +171,33 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
                 body: {
                     topic: fullPrompt,
                     subject: selectedSubject.name,
-                    gradeLevel: teacherProfileResponse?.data?.schoolType === 'PRIMARY' ? 'Primary' : 'Grade', // Use appropriate context
+                    gradeLevel,
                     questionCount: aiCount,
                     questionTypes: ['multiple_choice', 'short_answer'],
-                    difficulty: 'medium'
+                    difficulty: 'medium',
+                    schemeOfWorkId: curriculumResponse?.data?.id,
+                    weekIds: selectedItems.map((item: any) => item.id),
+                    weeks: selectedItems.map((item: any) => ({
+                        weekNumber: item.weekNumber,
+                        topic: item.topic,
+                        stableKey: item.stableKey || item.stableKeys?.[0],
+                        subTopics: item.subTopics,
+                        learningOutcomes: item.objectives,
+                        assessmentType: item.assessment,
+                    })),
                 }
             }).unwrap();
 
             if (result && result.questions) {
                 const aiQuestions = result.questions.map((q: any, i: number) => ({
-                    text: q.question,
-                    type: q.type === 'multiple_choice' ? 'MULTIPLE_CHOICE' : (q.type === 'short_answer' ? 'SHORT_ANSWER' : 'ESSAY'),
+                    text: q.question || q.text,
+                    type: q.type === 'multiple_choice' || q.type === 'MULTIPLE_CHOICE' ? 'MULTIPLE_CHOICE' : (q.type === 'short_answer' || q.type === 'SHORT_ANSWER' ? 'SHORT_ANSWER' : 'ESSAY'),
                     options: q.options || [],
                     correctAnswer: q.correctAnswer,
                     points: q.points || 1,
-                    order: i
+                    order: i,
+                    stableKey: q.stableKey,
+                    source: 'AI',
                 }));
                 setQuestions(aiQuestions);
                 setUseAi(false);
@@ -228,9 +248,13 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
                     hasIntegrity,
                     violationThreshold,
                     pointsPerViolation: hasIntegrity ? pointsPerViolation : 0,
+                    schemeOfWorkId: curriculumResponse?.data?.id,
+                    weekIds: curriculumItems.filter((item: any) => selectedWeeks.includes(item.weekNumber)).map((item: any) => item.id),
+                    stableKeys: questions.map((q: any) => q.stableKey).filter(Boolean),
                     questions: questions.map(q => ({
                         ...q,
-                        options: q.type === 'MULTIPLE_CHOICE' ? q.options : undefined
+                        options: q.type === 'MULTIPLE_CHOICE' ? q.options : undefined,
+                        source: (q as any).source || 'TEACHER',
                     }))
                 }
             }).unwrap();
@@ -517,6 +541,14 @@ export function CreateAssessmentModal({ isOpen, onClose, schoolId, classId, acti
                                                             <div className="text-xs">
                                                                 <span className="font-bold text-blue-600 dark:text-blue-400">Week {item.weekNumber}:</span>
                                                                 <p className="line-clamp-2">{item.topic}</p>
+                                                                {(item.objectives || []).length > 0 && (
+                                                                    <p className="text-[10px] text-light-text-muted mt-1 line-clamp-2">
+                                                                        {(item.objectives as string[]).slice(0, 2).join(' · ')}
+                                                                    </p>
+                                                                )}
+                                                                {(item.status === 'SKIPPED' || item.weekStatus === 'SKIPPED') && (
+                                                                    <p className="text-[10px] text-amber-600 font-bold mt-1">Skipped — excluded from generation</p>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     ))

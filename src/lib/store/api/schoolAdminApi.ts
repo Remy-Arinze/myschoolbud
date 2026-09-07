@@ -234,6 +234,10 @@ export interface SchemeOfWorkWeek {
   lessonNoteUrl?: string | null;
   lessonNoteFileName?: string | null;
   deliveryConfidence?: number;
+  isCurrent?: boolean;
+  weekStatus?: 'PENDING' | 'IN_PROGRESS' | 'DELIVERED' | 'SKIPPED' | 'COMBINED';
+  stableKeys?: string[];
+  stableKey?: string;
 }
 
 export interface SchemeOfWork {
@@ -267,6 +271,9 @@ export interface UpdateSchemeOfWorkWeekDto {
   teacherNotes?: string;
   deliveryNote?: string;
   catchUpReason?: SchemeDeliveryCatchUpReason;
+  classArmId?: string;
+  weekStatus?: 'PENDING' | 'IN_PROGRESS' | 'DELIVERED' | 'SKIPPED' | 'COMBINED';
+  combinedIntoWeekId?: string;
 }
 
 export enum PermissionType {
@@ -488,6 +495,9 @@ export interface CurriculumItem {
   updatedAt: string;
   // Legacy
   week?: number;
+  weekStatus?: 'PENDING' | 'IN_PROGRESS' | 'DELIVERED' | 'SKIPPED' | 'COMBINED';
+  stableKey?: string;
+  stableKeys?: string[];
 }
 
 // ============================================
@@ -1166,6 +1176,9 @@ export interface CreateAssessmentDto {
   violationThreshold?: number;
   pointsPerViolation?: number;
 
+  schemeOfWorkId?: string;
+  weekIds?: string[];
+  stableKeys?: string[];
   questions: {
     text: string;
     type: QuestionType;
@@ -1173,6 +1186,9 @@ export interface CreateAssessmentDto {
     correctAnswer?: string;
     points: number;
     order: number;
+    stableKey?: string;
+    source?: 'AI' | 'TEACHER';
+    bloomLevel?: string;
   }[];
 }
 

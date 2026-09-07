@@ -54,7 +54,8 @@ export function CurriculumSetupModal({
   termId,
   creditsRemaining,
 }: CurriculumSetupModalProps) {
-  const [activeTab, setActiveTab] = useState<'AGORA' | 'CUSTOM'>('AGORA');
+  const [activeTab, setActiveTab] = useState<'AGORA' | 'CUSTOM' | 'MERGE'>('AGORA');
+  const [mergeWeightAgora, setMergeWeightAgora] = useState(70);
   const [selectedAgoraId, setSelectedAgoraId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -75,12 +76,12 @@ export function CurriculumSetupModal({
       subjectId: subject.subjectId,
       gradeLevel: classLevelName // Match the enum e.g. "JSS_1"
     },
-    { skip: !isOpen || activeTab !== 'AGORA' }
+    { skip: !isOpen || (activeTab !== 'AGORA' && activeTab !== 'MERGE') }
   );
 
   const { data: schoolDocsResponse, isLoading: isLoadingDocs } = useGetSchoolCurriculumDocsQuery(
     { schoolId, subjectId: subject.subjectId },
-    { skip: !isOpen || activeTab !== 'CUSTOM' }
+    { skip: !isOpen || (activeTab !== 'CUSTOM' && activeTab !== 'MERGE') }
   );
   const schoolDocs = schoolDocsResponse?.data || [];
 
@@ -111,6 +112,11 @@ export function CurriculumSetupModal({
       return;
     }
 
+    if (activeTab === 'MERGE' && (!selectedAgoraId || selectedSourceIds.length === 0)) {
+      toast.error('Pick a Bud library version and at least one parsed school document');
+      return;
+    }
+
     try {
       if (activeTab === 'CUSTOM' && file) {
         // INTELLIGENT SPLIT FLOW: Upload and start parsing
@@ -137,10 +143,12 @@ export function CurriculumSetupModal({
         body: {
           classLevelId,
           subjectId: subject.subjectId,
-          termId: activeTab === 'AGORA' ? termId : undefined,
-          mode: activeTab === 'AGORA' ? 'AGORA_ONLY' : 'SCHOOL_ONLY',
-          agoraCurriculumId: activeTab === 'AGORA' ? selectedAgoraId : undefined,
-          schoolCurriculumDocIds: activeTab === 'CUSTOM' ? selectedSourceIds : undefined,
+          termId: activeTab === 'CUSTOM' ? undefined : termId,
+          mode: activeTab === 'AGORA' ? 'AGORA_ONLY' : activeTab === 'MERGE' ? 'MERGED' : 'SCHOOL_ONLY',
+          agoraCurriculumId: activeTab !== 'CUSTOM' ? selectedAgoraId : undefined,
+          schoolCurriculumDocIds: activeTab !== 'AGORA' ? selectedSourceIds : undefined,
+          mergeWeightAgora: activeTab === 'MERGE' ? mergeWeightAgora : undefined,
+          mergeWeightSchool: activeTab === 'MERGE' ? 100 - mergeWeightAgora : undefined,
           forceOverwrite: false
         },
       }).unwrap();
@@ -163,10 +171,12 @@ export function CurriculumSetupModal({
               body: {
                 classLevelId,
                 subjectId: subject.subjectId,
-                termId: activeTab === 'AGORA' ? termId : undefined,
-                mode: activeTab === 'AGORA' ? 'AGORA_ONLY' : 'SCHOOL_ONLY',
-                agoraCurriculumId: activeTab === 'AGORA' ? selectedAgoraId : undefined,
-                schoolCurriculumDocIds: activeTab === 'CUSTOM' ? selectedSourceIds : undefined,
+                termId: activeTab === 'CUSTOM' ? undefined : termId,
+                mode: activeTab === 'AGORA' ? 'AGORA_ONLY' : activeTab === 'MERGE' ? 'MERGED' : 'SCHOOL_ONLY',
+                agoraCurriculumId: activeTab !== 'CUSTOM' ? selectedAgoraId : undefined,
+                schoolCurriculumDocIds: activeTab !== 'AGORA' ? selectedSourceIds : undefined,
+                mergeWeightAgora: activeTab === 'MERGE' ? mergeWeightAgora : undefined,
+                mergeWeightSchool: activeTab === 'MERGE' ? 100 - mergeWeightAgora : undefined,
                 forceOverwrite: true
               },
             }).unwrap();
@@ -228,7 +238,7 @@ export function CurriculumSetupModal({
             </div>
 
             <div className="flex items-center gap-3">
-              {((activeTab === 'AGORA' && selectedAgoraId) || activeTab === 'CUSTOM') && (
+              {((activeTab === 'AGORA' && selectedAgoraId) || activeTab === 'CUSTOM' || activeTab === 'MERGE') && (
                 <Button 
                   className={cn(
                     "px-8 h-10 rounded-xl font-black uppercase tracking-[0.15em] shadow-lg shadow-blue-500/10 transition-all hover:scale-[1.02] active:scale-[0.98]",
@@ -241,7 +251,9 @@ export function CurriculumSetupModal({
                     isUploadingDoc ||
                     (activeTab === 'CUSTOM' &&
                       ((!file && selectedSourceIds.length === 0) || creditsRemaining < 50)) ||
-                    (activeTab === 'AGORA' && !selectedAgoraId)
+                    (activeTab === 'AGORA' && !selectedAgoraId) ||
+                    (activeTab === 'MERGE' &&
+                      (!selectedAgoraId || selectedSourceIds.length === 0 || creditsRemaining < 50))
                   }
                 >
                   {isSubmitting || isUploadingDoc ? (
@@ -249,11 +261,11 @@ export function CurriculumSetupModal({
                   ) : activeTab === 'AGORA' ? (
                     <Plus className="h-4 w-4 mr-2" />
                   ) : <Zap className="h-4 w-4 mr-2" />}
-                  {activeTab === 'AGORA' ? 'Use Template' : file ? 'Scan & Split' : '⚡ Compile Academic Year'}
+                  {activeTab === 'AGORA' ? 'Use Template' : activeTab === 'MERGE' ? 'Confirm merge' : file ? 'Scan & Split' : '⚡ Compile Academic Year'}
                 </Button>
               )}
 
-              {((activeTab === 'AGORA' && selectedAgoraId) || activeTab === 'CUSTOM') && (
+              {((activeTab === 'AGORA' && selectedAgoraId) || activeTab === 'CUSTOM' || activeTab === 'MERGE') && (
                 <div className="h-8 w-[1px] bg-light-border dark:bg-dark-border mx-1" />
               )}
 
@@ -268,7 +280,7 @@ export function CurriculumSetupModal({
 
           {/* Simple Tab Styling - matching Class Detail Page */}
           <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
-            {(['AGORA', 'CUSTOM'] as const).map((tab) => (
+            {(['AGORA', 'CUSTOM', 'MERGE'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -281,7 +293,7 @@ export function CurriculumSetupModal({
                 style={{ fontSize: 'var(--text-tiny)' }}
               >
                 {tab === 'AGORA' && <BookOpen className="h-3.5 w-3.5" />}
-                {tab === 'AGORA' ? 'Bud library' : 'Custom'}
+                {tab === 'AGORA' ? 'Bud library' : tab === 'MERGE' ? 'Merge' : 'Custom'}
               </button>
             ))}
           </div>
@@ -413,6 +425,50 @@ export function CurriculumSetupModal({
               </div>
              ) : (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {activeTab === 'MERGE' && (
+                  <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 space-y-4">
+                    <div>
+                      <h3 className="font-black uppercase tracking-tight" style={{ fontSize: 'var(--text-small)' }}>
+                        Confirm merge coverage
+                      </h3>
+                      <p className="text-light-text-muted font-bold" style={{ fontSize: 'var(--text-tiny)' }}>
+                        Library topics keep their stable keys. Weights decide how much school-local content overlays the Bud library. You confirm this mix before Lois drafts the scheme.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                        <span>Bud library {mergeWeightAgora}%</span>
+                        <span>School {100 - mergeWeightAgora}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={40}
+                        max={90}
+                        value={mergeWeightAgora}
+                        onChange={(e) => setMergeWeightAgora(Number(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(agoraLibrary as any[]).slice(0, 4).map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setSelectedAgoraId(item.id)}
+                          className={cn(
+                            'text-left p-3 rounded-xl border-2',
+                            selectedAgoraId === item.id
+                              ? 'border-blue-500 bg-blue-500/10'
+                              : 'border-light-border dark:border-dark-border'
+                          )}
+                        >
+                          <p className="font-black text-xs uppercase">v{item.version} · {item.subject?.name}</p>
+                          <p className="text-[10px] text-light-text-muted">Select the library version to keep keys from</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="md:col-span-2 space-y-8">
                     
@@ -437,14 +493,14 @@ export function CurriculumSetupModal({
                              <div
                                key={doc.id}
                                onClick={() => {
-                                 if (doc.status !== 'COMPLETED') return;
+                                 if (doc.status !== 'PARSED' && doc.status !== 'COMPLETED') return;
                                  setSelectedSourceIds(prev =>
                                    prev.includes(doc.id) ? prev.filter(id => id !== doc.id) : [...prev, doc.id]
                                  );
                                }}
                                className={cn(
                                  "relative p-4 rounded-xl border-2 transition-all group",
-                                 doc.status !== 'COMPLETED' ? "opacity-60 cursor-not-allowed grayscale" : "cursor-pointer",
+                                 doc.status !== 'PARSED' && doc.status !== 'COMPLETED' ? "opacity-60 cursor-not-allowed grayscale" : "cursor-pointer",
                                  selectedSourceIds.includes(doc.id)
                                    ? "border-purple-500 bg-purple-500/5 shadow-md shadow-purple-500/5"
                                    : "border-light-border dark:border-dark-border hover:border-purple-500/30"
@@ -464,7 +520,7 @@ export function CurriculumSetupModal({
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                       <span className={cn(
                                         "px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-widest",
-                                        doc.status === 'COMPLETED' ? "bg-agora-success/10 text-agora-success" :
+                                        doc.status === 'PARSED' || doc.status === 'COMPLETED' ? "bg-agora-success/10 text-agora-success" :
                                         doc.status === 'FAILED' ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
                                       )}>
                                         {doc.status}

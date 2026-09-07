@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { 
   CheckCircle2, 
   BookOpen, 
@@ -201,7 +202,7 @@ export function SchemeOfWorkView({
       await updateWeek({
         schoolId,
         weekId: week.id,
-        data: { isDelivered: false },
+        data: { isDelivered: false, classArmId: classId },
       }).unwrap();
       toast.success('Delivery cleared for this week');
     } catch (err: any) {
@@ -224,6 +225,7 @@ export function SchemeOfWorkView({
         weekId: deliveryTarget.id,
         data: {
           isDelivered: true,
+          classArmId: classId,
           deliveryNote: deliveryNote.trim() || undefined,
           catchUpReason: isPast ? (catchUpReason as SchemeDeliveryCatchUpReason) : undefined,
         },
@@ -425,6 +427,64 @@ export function SchemeOfWorkView({
                     ),
                   )}
                 </ul>
+                {role === 'TEACHER' && !isReadOnly && !isFuture && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isUpdating}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await updateWeek({
+                            schoolId,
+                            weekId: week.id,
+                            data: { isDelivered: false, classArmId: classId, weekStatus: 'SKIPPED' },
+                          }).unwrap();
+                          toast.success('Week skipped for this class arm');
+                        } catch (err: any) {
+                          toast.error(err?.data?.message || 'Could not skip week');
+                        }
+                      }}
+                    >
+                      Skip for this arm
+                    </Button>
+                    {weeks[index + 1] && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isUpdating}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await updateWeek({
+                              schoolId,
+                              weekId: week.id,
+                              data: {
+                                isDelivered: false,
+                                classArmId: classId,
+                                weekStatus: 'COMBINED',
+                                combinedIntoWeekId: weeks[index + 1].id,
+                              },
+                            }).unwrap();
+                            toast.success('Topics moved onto the next week');
+                          } catch (err: any) {
+                            toast.error(err?.data?.message || 'Could not combine weeks');
+                          }
+                        }}
+                      >
+                        Combine into next week
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {role === 'STUDENT' && (week.isDelivered || week.isCurrent || week.weekStatus === 'DELIVERED') && (
+                  <Link href={`/dashboard/student/bud/review?weekId=${week.id}`}>
+                    <Button size="sm" className="mt-2 bg-amber-600 hover:bg-amber-500 text-white">
+                      Review with Bud
+                    </Button>
+                  </Link>
+                )}
               </div>
 
               <div className="space-y-4">

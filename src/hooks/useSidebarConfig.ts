@@ -28,6 +28,7 @@ import {
   User,
   Settings,
   Bot,
+  Sparkles,
   LucideIcon,
   Megaphone,
   Bell,
@@ -172,6 +173,7 @@ export function useSidebarConfig(): {
         {
           items: [
             { label: 'Overview', href: '/dashboard/student/overview', icon: LayoutDashboard },
+            { label: 'Bud', href: '/dashboard/student/bud', icon: Sparkles },
             { label: 'Notifications', href: '/dashboard/student/notifications', icon: Bell },
             { label: 'Classes', href: '/dashboard/student/classes', icon: BookOpen },
             { label: 'Timetables', href: '/dashboard/student/timetables', icon: Clock },

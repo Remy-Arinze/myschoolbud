@@ -20,7 +20,7 @@ const TOC = [
     { id: 'sensitive', label: '7. Health and photos' },
     { id: 'admissions', label: '8. Admissions' },
     { id: 'identity', label: '9. Identity, transfers, closure' },
-    { id: 'ai', label: '10. Lois and AI' },
+    { id: 'ai', label: '10. Lois, Bud, and AI' },
     { id: 'cookies', label: '11. Cookies and telemetry' },
     { id: 'payments', label: '12. Payments' },
     { id: 'sharing', label: '13. Who we share with' },
@@ -260,12 +260,19 @@ export default function PrivacyPolicy() {
                 </p>
             </LegalSection>
 
-            <LegalSection id="ai" title="10. Lois and AI processing">
+            <LegalSection id="ai" title="10. Lois, Bud, and AI processing">
                 <p>
                     Lois may send prompts, lesson context, essays, or school-knowledge snippets to a large-language
                     model provider (currently OpenAI and/or Azure OpenAI, depending on our configuration) so we can
                     return a completion. We also store usage logs and chat history so the school can manage credits
                     and continue a conversation.
+                </p>
+                <p>
+                    Bud is an optional student-paid study companion. A student (or a parent using a guardian email at
+                    checkout) can subscribe separately from the school&apos;s Myschoolbud plan. Bud stores a companion
+                    name, review decks, card ratings, and short chat turns against that student&apos;s own scheme
+                    topics. School billing lock or downgrade does not cancel Bud. Children&apos;s use is under the
+                    school/parent relationship described in section 6; Bud does not write formal assessments.
                 </p>
                 <LegalList>
                     <li>

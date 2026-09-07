@@ -171,6 +171,8 @@ export function CreateCurriculumModal({
     }
 
     try {
+      toast.error('Legacy curriculum create is retired. Use scheme of work setup.');
+      return;
       await createCurriculum({
         schoolId,
         curriculumData,
