@@ -11,6 +11,7 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function PublicAdmissionPage() {
   const params = useParams();
@@ -374,7 +375,10 @@ export default function PublicAdmissionPage() {
                   Submit Application
                 </Button>
                 <p className="text-center text-xs text-gray-500 mt-4">
-                  By submitting this form, you agree to the school&apos;s admission terms and conditions.
+                  By submitting this form, you agree to the school&apos;s admission terms and to Myschoolbud&apos;s{' '}
+                  <Link href="/terms" className="text-blue-600 hover:underline">Terms of Service</Link>
+                  {' '}and{' '}
+                  <Link href="/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link>.
                 </p>
               </div>
             </form>

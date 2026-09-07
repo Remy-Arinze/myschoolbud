@@ -15,6 +15,16 @@ import { WordedLogo } from '@/components/layout/WordedLogo';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+function isTokenDeadMessage(message: string) {
+  const msg = message.toLowerCase();
+  return (
+    msg.includes('expired') ||
+    msg.includes('already been used') ||
+    msg.includes('invalid or expired reset token') ||
+    msg.includes('invalid or expired')
+  );
+}
+
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -25,12 +35,41 @@ function ResetPasswordContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isCheckingToken, setIsCheckingToken] = useState(!!token);
   const [resendDone, setResendDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tokenExpired, setTokenExpired] = useState(false);
+  const [tokenExpired, setTokenExpired] = useState(!token);
 
   useEffect(() => {
-    if (!token) setTokenExpired(true);
+    if (!token) {
+      setTokenExpired(true);
+      setIsCheckingToken(false);
+      return;
+    }
+
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/auth/validate-reset-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.data?.valid === false) {
+          setTokenExpired(true);
+        }
+      } catch {
+        // Network errors should not look like an expired link
+      } finally {
+        if (!cancelled) setIsCheckingToken(false);
+      }
+    };
+    void check();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,7 +78,6 @@ function ResetPasswordContent() {
     setError(null);
   };
 
-  // One-click resend — uses the expired token to look up the user server-side
   const handleResend = async () => {
     setIsResending(true);
     try {
@@ -52,7 +90,6 @@ function ResetPasswordContent() {
         setResendDone(true);
         toast.success('A new password setup email has been sent. Please check your inbox.');
       } else {
-        // If the server can't help (token too old etc.) fall back to forgot-password
         router.push('/auth/forgot-password');
       }
     } catch {
@@ -66,9 +103,18 @@ function ResetPasswordContent() {
     e.preventDefault();
     setError(null);
 
-    if (!token) { setTokenExpired(true); return; }
-    if (formData.newPassword.length < 8) { setError('Password must be at least 8 characters long'); return; }
-    if (formData.newPassword !== formData.confirmPassword) { setError('Passwords do not match'); return; }
+    if (!token) {
+      setTokenExpired(true);
+      return;
+    }
+    if (formData.newPassword.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+    if (formData.newPassword !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -79,21 +125,16 @@ function ResetPasswordContent() {
       });
 
       const data = await response.json();
+      const msg = data.message || 'Failed to set password';
 
       if (!response.ok) {
-        const msg = data.message || 'Failed to reset password';
-        // Any expiry/invalid error → show the expired UI with one-click resend
-        if (
-          msg.toLowerCase().includes('expired') ||
-          msg.toLowerCase().includes('invalid') ||
-          msg.toLowerCase().includes('already been used') ||
-          response.status === 400 ||
-          response.status === 401
-        ) {
+        if (isTokenDeadMessage(msg)) {
           setTokenExpired(true);
           return;
         }
-        throw new Error(msg);
+        setError(msg);
+        toast.error(msg);
+        return;
       }
 
       if (data.success) {
@@ -111,7 +152,14 @@ function ResetPasswordContent() {
     }
   };
 
-  // ── Expired / invalid token screen ───────────────────────────────────────
+  if (isCheckingToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   if (tokenExpired) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
@@ -126,7 +174,7 @@ function ResetPasswordContent() {
               <div className="flex items-center justify-center gap-3 mb-2">
                 <Lock className="h-6 w-6 text-orange-500" />
                 <CardTitle className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary text-center">
-                  Link Expired
+                  Link expired
                 </CardTitle>
               </div>
               <p className="text-center text-light-text-secondary dark:text-dark-text-secondary">
@@ -140,28 +188,28 @@ function ResetPasswordContent() {
                 </Alert>
               ) : (
                 <Alert variant="error">
-                  Setup links expire after 24 hours.
+                  Setup links expire 24 hours after they are sent, or after you successfully set a password.
+                  Opening the link does not use it up.
                   {token
-                    ? " Click below to get a fresh one — no email address needed."
-                    : " Use the button below to request a new link."}
+                    ? ' Click below to get a fresh one — no email address needed.'
+                    : ' Request a new link to continue.'}
                 </Alert>
               )}
 
               {!resendDone && token && (
                 <Button variant="primary" className="w-full" isLoading={isResending} disabled={isResending} onClick={handleResend}>
-                  {isResending ? 'Sending…' : 'Resend Setup Email'}
+                  {isResending ? 'Sending…' : 'Resend setup email'}
                 </Button>
               )}
 
-              {/* Fallback when token is missing entirely */}
               {!token && (
                 <Button variant="primary" className="w-full" onClick={() => router.push('/auth/forgot-password')}>
-                  Request a New Link
+                  Request a new code
                 </Button>
               )}
 
               <Button variant="ghost" className="w-full" onClick={() => router.push('/auth/login')}>
-                Back to Login
+                Back to login
               </Button>
             </CardContent>
           </Card>
@@ -170,7 +218,6 @@ function ResetPasswordContent() {
     );
   }
 
-  // ── Password form ─────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
       <FadeInUp from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="w-full max-w-md">
@@ -185,14 +232,14 @@ function ResetPasswordContent() {
             <div className="flex items-center justify-center gap-3 mb-2">
               <Lock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               <CardTitle className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">
-                Set Your Password
+                Set your password
               </CardTitle>
             </div>
             <p className="text-center text-light-text-secondary dark:text-dark-text-secondary">
-              Enter your new password to complete account setup
+              Choose a password to finish setting up your account. This link stays valid until you save a password or 24 hours pass.
             </p>
             <p className="text-center text-xs text-light-text-muted dark:text-dark-text-muted mt-2">
-              Note: If you have accounts at multiple schools, this password applies to all of them.
+              If you have accounts at more than one school, this password applies to all of them.
             </p>
           </CardHeader>
           <CardContent>
@@ -205,7 +252,7 @@ function ResetPasswordContent() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-2">
-                  New Password *
+                  New password *
                 </label>
                 <div className="relative">
                   <Input
@@ -214,11 +261,15 @@ function ResetPasswordContent() {
                     value={formData.newPassword}
                     onChange={handleChange}
                     required
-                    placeholder="Enter new password (min. 8 characters)"
+                    placeholder="At least 8 characters"
                     minLength={8}
+                    autoComplete="new-password"
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary">
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary"
+                  >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
@@ -226,7 +277,7 @@ function ResetPasswordContent() {
 
               <div>
                 <label className="block text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-2">
-                  Confirm Password *
+                  Confirm password *
                 </label>
                 <div className="relative">
                   <Input
@@ -237,9 +288,13 @@ function ResetPasswordContent() {
                     required
                     placeholder="Confirm new password"
                     minLength={8}
+                    autoComplete="new-password"
                   />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary"
+                  >
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
@@ -252,13 +307,13 @@ function ResetPasswordContent() {
                 isLoading={isSubmitting}
                 disabled={isSubmitting || !formData.newPassword || !formData.confirmPassword}
               >
-                {isSubmitting ? 'Setting Password…' : 'Set Password'}
+                {isSubmitting ? 'Saving…' : 'Set password'}
               </Button>
             </form>
 
             <div className="mt-4 text-center">
               <button onClick={() => router.push('/auth/login')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                Back to Login
+                Back to login
               </button>
             </div>
           </CardContent>
@@ -270,11 +325,13 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]">
-        <LoadingSpinner />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]">
+          <LoadingSpinner />
+        </div>
+      }
+    >
       <ResetPasswordContent />
     </Suspense>
   );
