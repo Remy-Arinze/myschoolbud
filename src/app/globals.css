@@ -53,13 +53,13 @@
     /* High-impact orange accent */
 
     /* Typography Sizes - Consistent across app */
-    --text-page-title: 1.2rem;
+    --text-page-title: 1.1rem;
     /* 24px - Page titles (h1) */
     --text-page-subtitle: .8rem;
     /* 16px - Page subtitles */
-    --text-section-title: .9rem;
+    --text-section-title: .85rem;
     /* 16px - Section titles (p tags) - smaller than page title, bigger than body */
-    --text-card-title: 1rem;
+    --text-card-title: 0.9rem;
     /* 18px - Card titles */
     --text-body: 0.8rem;
     /* 12px - Body text */
@@ -173,6 +173,100 @@
     color: var(--dark-text-primary);
   }
 
+  .sidebar-quick-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 40px;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--light-border);
+    border-radius: 8px;
+    background: var(--light-input);
+    color: var(--light-text-muted);
+    font-size: var(--text-body);
+    font-weight: 400;
+    line-height: 1;
+    text-align: left;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .dark .sidebar-quick-search {
+    border-color: var(--dark-border);
+    background: var(--dark-input);
+    color: var(--dark-text-muted);
+  }
+
+  .sidebar-quick-search:hover {
+    border-color: #d4d4d4;
+  }
+
+  .dark .sidebar-quick-search:hover {
+    border-color: #52525b;
+  }
+
+  .sidebar-quick-search:focus-visible {
+    outline: 2px solid var(--agora-blue);
+    outline-offset: 2px;
+  }
+
+  .sidebar-search-kbd {
+    margin-left: auto;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--light-text-muted);
+  }
+
+  .dark .sidebar-search-kbd {
+    color: var(--dark-text-muted);
+  }
+
+  .sidebar-command-palette {
+    background: var(--light-input);
+    border: 1px solid var(--light-border);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
+  }
+
+  .sidebar-command-input {
+    font-size: var(--text-body);
+  }
+
+  body.staff-dashboard-active .sidebar-quick-search {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    line-height: 1 !important;
+    font-weight: 400 !important;
+    font-size: var(--text-body) !important;
+    color: var(--light-text-muted) !important;
+    background: var(--light-input) !important;
+    border: 1px solid var(--light-border) !important;
+    box-shadow: none !important;
+  }
+
+  body.staff-dashboard-active .sidebar-quick-search:hover {
+    background: var(--light-input) !important;
+    border-color: #d4d4d4 !important;
+  }
+
+  .dark body.staff-dashboard-active .sidebar-quick-search {
+    color: var(--dark-text-muted) !important;
+    background: var(--dark-input) !important;
+    border-color: var(--dark-border) !important;
+  }
+
+  .dark .sidebar-command-palette {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  }
+
   /* --- Staff dashboard (teacher + school admin) — single shared theme --- */
   body.staff-dashboard-active {
     background-color: var(--light-bg);
@@ -197,7 +291,7 @@
 
   body.staff-dashboard-active:not(.dark) .sidebar-link-item {
     font-size: var(--text-body) !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
     transition: all 0.2s ease;
     border: 1px solid transparent !important;
   }
@@ -225,15 +319,15 @@
     background-color: var(--dashboard-nav-hover-bg) !important;
   }
 
-  body.staff-dashboard-active:not(.dark) .desktop-sidebar button,
-  body.staff-dashboard-active:not(.dark) .mobile-sidebar-drawer button {
+  body.staff-dashboard-active:not(.dark) .desktop-sidebar button:not(.sidebar-quick-search):not(.school-type-trigger):not(.school-type-option),
+  body.staff-dashboard-active:not(.dark) .mobile-sidebar-drawer button:not(.sidebar-quick-search):not(.school-type-trigger):not(.school-type-option) {
     color: var(--light-text-secondary) !important;
     font-size: var(--text-body) !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
   }
 
-  body.staff-dashboard-active:not(.dark) .desktop-sidebar button:hover,
-  body.staff-dashboard-active:not(.dark) .mobile-sidebar-drawer button:hover {
+  body.staff-dashboard-active:not(.dark) .desktop-sidebar button:not(.sidebar-quick-search):not(.school-type-trigger):not(.school-type-option):hover,
+  body.staff-dashboard-active:not(.dark) .mobile-sidebar-drawer button:not(.sidebar-quick-search):not(.school-type-trigger):not(.school-type-option):hover {
     color: var(--agora-text) !important;
     background-color: var(--dashboard-nav-hover-bg) !important;
   }
@@ -265,7 +359,7 @@
   .dark body.staff-dashboard-active .sidebar-link-item {
     transition: all 0.2s ease;
     font-size: var(--text-body) !important;
-    font-weight: normal !important;
+    font-weight: 600 !important;
     border: 1px solid transparent !important;
   }
 
@@ -298,15 +392,15 @@
     font-weight: 600 !important;
   }
 
-  .dark body.staff-dashboard-active .desktop-sidebar button,
-  .dark body.staff-dashboard-active .mobile-sidebar-drawer button {
+  .dark body.staff-dashboard-active .desktop-sidebar button:not(.sidebar-quick-search):not(.school-type-trigger):not(.school-type-option),
+  .dark body.staff-dashboard-active .mobile-sidebar-drawer button:not(.sidebar-quick-search):not(.school-type-trigger):not(.school-type-option) {
     color: var(--dark-text-muted) !important;
     font-size: var(--text-body) !important;
-    font-weight: normal !important;
+    font-weight: 600 !important;
   }
 
-  .dark body.staff-dashboard-active .desktop-sidebar button:hover,
-  .dark body.staff-dashboard-active .mobile-sidebar-drawer button:hover {
+  .dark body.staff-dashboard-active .desktop-sidebar button:not(.sidebar-quick-search):not(.school-type-trigger):not(.school-type-option):hover,
+  .dark body.staff-dashboard-active .mobile-sidebar-drawer button:not(.sidebar-quick-search):not(.school-type-trigger):not(.school-type-option):hover {
     color: var(--dark-text-primary) !important;
     background-color: rgba(255, 255, 255, 0.05) !important;
   }
@@ -494,7 +588,7 @@
 
   body.student-dashboard-active:not(.dark) .sidebar-link-item {
     font-size: var(--text-body) !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
     transition: all 0.2s ease;
   }
 

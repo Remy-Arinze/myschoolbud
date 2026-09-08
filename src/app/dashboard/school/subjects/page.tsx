@@ -68,6 +68,7 @@ import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import { useAutoGenerateSubjects } from '@/hooks/useAutoGenerateSubjects';
 import { GenerateSubjectsModal } from '@/components/modals/GenerateSubjectsModal';
 import { getTerminology } from '@/lib/utils/terminology';
+import { inferLevelStream, subjectOfferedInStream } from '@/lib/utils/subject-level-stream';
 import toast from 'react-hot-toast';
 import React from 'react';
 
@@ -177,12 +178,17 @@ export default function SubjectsPage() {
   const filteredSubjects = useMemo(() => {
     let filtered = subjects;
 
-    // Filter by Level Stream Group
     if (selectedLevelGroup !== 'all') {
-      const target = selectedLevelGroup.toUpperCase(); // 'JUNIOR' or 'SENIOR'
+      const target = selectedLevelGroup === 'jss' ? 'JUNIOR' : 'SENIOR';
       filtered = filtered.filter((s) => {
-        // Show if explicitly assigned to this stream OR marked as ALL (General)
-        return s.levelStream === target || s.levelStream === 'ALL' || !s.levelStream;
+        const classLevel = classLevels.find((cl) => cl.id === s.classLevelId);
+        const inferred = inferLevelStream({
+          levelStream: s.levelStream,
+          classLevelCode: classLevel?.code,
+          classLevelName: classLevel?.name || s.classLevelName,
+          code: s.code,
+        });
+        return subjectOfferedInStream(inferred, target);
       });
     }
 
@@ -208,7 +214,7 @@ export default function SubjectsPage() {
     }
 
     return filtered;
-  }, [subjects, searchQuery, selectedLevelGroup, statusFilter, categoryFilter]);
+  }, [subjects, searchQuery, selectedLevelGroup, statusFilter, categoryFilter, classLevels]);
 
   // Group subjects by class level for secondary schools
   const groupedSubjects = useMemo(() => {
@@ -223,18 +229,16 @@ export default function SubjectsPage() {
     };
 
     filteredSubjects.forEach((subject) => {
-      if (!subject.classLevelId) {
-        grouped.all.push(subject);
-      } else {
-        const classLevel = classLevels.find((cl) => cl.id === subject.classLevelId);
-        if (classLevel?.code?.startsWith('JSS')) {
-          grouped.jss.push(subject);
-        } else if (classLevel?.code?.startsWith('SS')) {
-          grouped.sss.push(subject);
-        } else {
-          grouped.all.push(subject);
-        }
-      }
+      const classLevel = classLevels.find((cl) => cl.id === subject.classLevelId);
+      const inferred = inferLevelStream({
+        levelStream: subject.levelStream,
+        classLevelCode: classLevel?.code,
+        classLevelName: classLevel?.name || subject.classLevelName,
+        code: subject.code,
+      });
+      if (inferred === 'JUNIOR') grouped.jss.push(subject);
+      else if (inferred === 'SENIOR') grouped.sss.push(subject);
+      else grouped.all.push(subject);
     });
 
     return grouped;
@@ -482,6 +486,7 @@ export default function SubjectsPage() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            {currentType === 'SECONDARY' && (
             <select
               value={selectedLevelGroup}
               onChange={(e) => setSelectedLevelGroup(e.target.value as any)}
@@ -491,6 +496,7 @@ export default function SubjectsPage() {
               <option value="jss">Junior Secondary (JSS)</option>
               <option value="sss">Senior Secondary (SSS)</option>
             </select>
+            )}
 
             <select
               value={statusFilter}
@@ -1319,6 +1325,7 @@ function SubjectModal({
   const agoraOnly = policies.subjectRegistryMode === 'AGORA_DEFAULT';
   const [pendingData, setPendingData] = useState<any>(null);
   const [isArmsExpanded, setIsArmsExpanded] = useState(false);
+  const assignmentsHydratedRef = useRef(false);
 
   const { data: armsResponse } = useGetClassArmsQuery(
     { schoolId, schoolType: 'SECONDARY' },
@@ -1331,26 +1338,34 @@ function SubjectModal({
   );
 
   const classArms = armsResponse?.data || [];
-  const initialAssignments = assignmentsResponse?.data?.assignments || {};
+  const initialAssignments = assignmentsResponse?.data?.assignments;
 
-  // Initialize assignments map
   useEffect(() => {
-    if (subject && initialAssignments && Object.keys(initialAssignments).length > 0) {
+    assignmentsHydratedRef.current = false;
+  }, [subject?.id]);
+
+  useEffect(() => {
+    if (assignmentsHydratedRef.current) return;
+
+    if (subject) {
+      if (!assignmentsResponse) return;
       const map: Record<string, string | undefined> = {};
-      // Ensure we explicitly map teacherId even if null
-      Object.entries(initialAssignments).forEach(([armId, teacherId]: [string, any]) => {
-        map[armId] = (teacherId as string) || undefined;
+      Object.entries(initialAssignments || {}).forEach(([armId, assignment]) => {
+        map[armId] = assignment?.teacherId || undefined;
       });
       setAssignmentsMap(map);
-    } else if (!subject && classArms.length > 0 && Object.keys(assignmentsMap).length === 0) {
-      // Default to "All Classes" for new subjects ONLY ONCE
-      const map: Record<string, string | undefined> = {};
-      classArms.forEach(arm => {
-        map[arm.id] = undefined;
-      });
-      setAssignmentsMap(map);
+      assignmentsHydratedRef.current = true;
+      return;
     }
-  }, [initialAssignments, classArms, subject]);
+
+    if (classArms.length === 0) return;
+    const map: Record<string, string | undefined> = {};
+    classArms.forEach((arm) => {
+      map[arm.id] = undefined;
+    });
+    setAssignmentsMap(map);
+    assignmentsHydratedRef.current = true;
+  }, [subject, classArms, initialAssignments, assignmentsResponse]);
 
   const { data: agoraSubjectsResponse, isLoading: isLoadingAgora } = useGetAgoraSubjectsQuery(
     (schoolId && currentType) ? { schoolId, schoolType: currentType } : {} as any,
@@ -1438,7 +1453,7 @@ function SubjectModal({
         delete next[armId];
       } else {
         // Find if we had a teacher before
-        const prevTeacher = initialAssignments[armId]?.teacherId;
+        const prevTeacher = initialAssignments?.[armId]?.teacherId;
         next[armId] = prevTeacher || undefined;
       }
       return next;
@@ -1461,7 +1476,7 @@ function SubjectModal({
       const next = { ...prev };
       targetArms.forEach(arm => {
         if (!(arm.id in next)) {
-          const prevTeacher = initialAssignments[arm.id]?.teacherId;
+          const prevTeacher = initialAssignments?.[arm.id]?.teacherId;
           next[arm.id] = prevTeacher || undefined;
         }
       });
@@ -1488,11 +1503,13 @@ function SubjectModal({
       deducedLevelId = distinctLeveIds.length === 1 ? distinctLeveIds[0] : '';
     }
 
-    // Build full assignments list for all arms to sync state
-    const armAssignments = classArms.map(arm => ({
-      classArmId: arm.id,
-      teacherId: assignmentsMap[arm.id] || null,
-    }));
+    const previouslyAssignedIds = new Set(Object.keys(initialAssignments || {}));
+    const armAssignments = classArms
+      .filter((arm) => arm.id in assignmentsMap || previouslyAssignedIds.has(arm.id))
+      .map((arm) => ({
+        classArmId: arm.id,
+        teacherId: arm.id in assignmentsMap ? assignmentsMap[arm.id] || null : null,
+      }));
 
     // Compute Level Stream classification
     let levelStream: 'JUNIOR' | 'SENIOR' | 'ALL' = 'ALL';
@@ -1547,11 +1564,11 @@ function SubjectModal({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <FadeInUp from={{ opacity: 0, scale: 0.95 }} to={{ opacity: 1, scale: 1 }} duration={0.25}
-          className="bg-white dark:bg-dark-surface rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl overflow-hidden"
+          className="bg-white dark:bg-dark-surface rounded-2xl max-w-2xl w-full mx-auto shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
         >
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between px-6 pt-6 pb-4 shrink-0">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
                 <BookOpen className="h-5 w-5" />
@@ -1573,7 +1590,8 @@ function SubjectModal({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 space-y-4">
             <div>
               {customOnly ? (
                 <div>
@@ -1716,7 +1734,7 @@ function SubjectModal({
                     </div>
 
                     {/* Right: Arm Picker */}
-                    <div className="col-span-3 space-y-4 max-h-[320px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800">
+                    <div className="col-span-3 space-y-4 max-h-[min(240px,40vh)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800">
                       {Array.from(new Set(classArms.map(a => a.classLevelName))).map(levelName => (
                         <div key={levelName} className="space-y-2">
                           <div className="flex items-center gap-2">
@@ -1790,7 +1808,8 @@ function SubjectModal({
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
               <Button
                 type="submit"
                 variant="primary"

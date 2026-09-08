@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { FadeInUp } from '@/components/ui/FadeInUp';
@@ -10,21 +10,19 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { Input } from '@/components/ui/Input';
-import { BookOpen, Plus, FileText, CheckCircle2, Layers, AlertCircle, Clock, Upload as UploadIcon, Trash2, Trash2 as Trash, HardDrive, Check, ChevronRight, Info, ExternalLink, FileJson, Terminal, Loader2, Library, XCircle, Edit2, Sparkles, Target, Users, ClipboardCheck } from 'lucide-react';
+import { BookOpen, Plus, FileText, CheckCircle2, Layers, AlertCircle, Clock, Upload as UploadIcon, Trash2, Trash2 as Trash, HardDrive, Check, ChevronRight, Info, ExternalLink, FileJson, Terminal, Loader2, Library, XCircle, Edit2, Sparkles, Target, Users, ClipboardCheck, RotateCcw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import {
   useGetAgoraCurriculumSourcesQuery,
   useGetAgoraCurriculaQuery,
   useGetAgoraSubjectRegistryQuery,
-  useCreateAgoraCurriculumSourceMutation,
-  useUploadAgoraCurriculumSourceMutation,
-  useUploadMultipleAgoraCurriculumSourcesMutation,
   useGetSourceStatusQuery,
   useConsolidateAgoraCurriculumMutation,
   usePublishAgoraCurriculumMutation,
   useDeleteAgoraCurriculumSourceMutation,
   useCancelAgoraCurriculumProcessingMutation,
+  useRetryAgoraCurriculumParsingMutation,
   useGetAgoraCurriculumQuery,
   useDeleteAgoraCurriculumMutation,
   useUpdateAgoraCurriculumTopicMutation,
@@ -37,9 +35,137 @@ import {
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
 import { Select } from '@/components/ui/Select';
+import { UploadCurriculumSourceModal } from '@/components/curriculum/UploadCurriculumSourceModal';
+
+const COMMON_GRADES = [
+  { label: 'JSS 1', value: 'JSS_1' },
+  { label: 'JSS 2', value: 'JSS_2' },
+  { label: 'JSS 3', value: 'JSS_3' },
+  { label: 'SS 1', value: 'SS_1' },
+  { label: 'SS 2', value: 'SS_2' },
+  { label: 'SS 3', value: 'SS_3' },
+  { label: 'Pry 1', value: 'PRIMARY_1' },
+  { label: 'Pry 2', value: 'PRIMARY_2' },
+  { label: 'Pry 3', value: 'PRIMARY_3' },
+  { label: 'Pry 4', value: 'PRIMARY_4' },
+  { label: 'Pry 5', value: 'PRIMARY_5' },
+  { label: 'Pry 6', value: 'PRIMARY_6' },
+] as const;
+
+const SUBJECT_MARKS = [
+  'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+  'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  'bg-teal-50 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
+  'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+  'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+  'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
+];
+
+function gradeLabel(value?: string) {
+  if (!value) return 'Unknown';
+  return COMMON_GRADES.find((grade) => grade.value === value)?.label || value.replace(/_/g, ' ');
+}
+
+function gradeBand(value?: string) {
+  const grade = value || '';
+  if (grade.startsWith('JSS')) return 'border-l-blue-500';
+  if (grade.startsWith('SS')) return 'border-l-violet-500';
+  if (grade.startsWith('PRIMARY')) return 'border-l-teal-500';
+  return 'border-l-slate-400';
+}
+
+function subjectInitials(name?: string) {
+  if (!name) return '?';
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
+function subjectMarkClass(name?: string) {
+  const seed = [...(name || '?')].reduce((hash, char) => char.charCodeAt(0) + ((hash << 5) - hash), 0);
+  return SUBJECT_MARKS[Math.abs(seed) % SUBJECT_MARKS.length];
+}
+
+const FULL_YEAR_TERMS = 3;
+const FULL_YEAR_WEEKS = 39;
+const CONSOLIDATING_WINDOW_MS = 10 * 60 * 1000;
+
+function activeTopics<T extends { deprecatedAt?: string | null }>(
+  curriculum?: { topics?: T[] | null },
+): T[] {
+  return (curriculum?.topics || []).filter((topic) => !topic.deprecatedAt);
+}
+
+function weekCount(curriculum?: { topics?: Array<{ deprecatedAt?: string | null }> | null }) {
+  return activeTopics(curriculum).length;
+}
+
+function isFullYearCurriculum(curriculum?: { topics?: Array<{ deprecatedAt?: string | null }> | null }) {
+  return weekCount(curriculum) >= FULL_YEAR_WEEKS;
+}
+
+function weekProgressLabel(curriculum?: { topics?: Array<{ deprecatedAt?: string | null }> | null }) {
+  const count = weekCount(curriculum);
+  if (count === 0) return '—';
+  return count >= FULL_YEAR_WEEKS ? `${FULL_YEAR_WEEKS}` : `${count}/${FULL_YEAR_WEEKS}`;
+}
+
+function durationLabel(curriculum?: { topics?: Array<{ term?: number; deprecatedAt?: string | null }> | null }) {
+  const topics = activeTopics(curriculum);
+  if (topics.length === 0) return 'Not ready';
+  const terms = new Set(topics.map((topic) => topic.term).filter(Boolean)).size || 1;
+  if (topics.length >= FULL_YEAR_WEEKS && terms >= FULL_YEAR_TERMS) {
+    return '3 terms · 39 weeks';
+  }
+  return `${terms} term${terms === 1 ? '' : 's'} · ${topics.length}/${FULL_YEAR_WEEKS} weeks`;
+}
+
+function isRecentlyUpdated(iso?: string, windowMs = CONSOLIDATING_WINDOW_MS) {
+  if (!iso) return false;
+  return Date.now() - new Date(iso).getTime() < windowMs;
+}
+
+function isConsolidationFailed(curriculum?: { consolidationNotes?: string | null }) {
+  return !!curriculum?.consolidationNotes?.startsWith('CONSOLIDATION_FAILED:');
+}
+
+function isCurriculumWorking(curriculum?: { status?: string; updatedAt?: string; consolidationNotes?: string | null; topics?: Array<{ deprecatedAt?: string | null }> | null }) {
+  return curriculum?.status === 'DRAFT' && weekCount(curriculum) === 0 && isRecentlyUpdated(curriculum.updatedAt) && !isConsolidationFailed(curriculum);
+}
+
+function isLibraryCurriculum(curriculum?: AgoraCurriculum | null) {
+  if (!curriculum || isCurriculumWorking(curriculum) || isConsolidationFailed(curriculum)) return false;
+  return isFullYearCurriculum(curriculum) || (curriculum.status === 'PUBLISHED' && weekCount(curriculum) > 0);
+}
+
+function parsedSourceWeekCount(source?: { parsedData?: { topics?: unknown[]; terms?: Array<{ weeks?: unknown[] }> } }) {
+  const structured = source?.parsedData?.terms?.reduce((sum, term) => sum + (term.weeks?.length || 0), 0) || 0;
+  return structured || source?.parsedData?.topics?.length || 0;
+}
+
+function groupItemsByGrade<T extends { gradeLevel?: string; subject?: { name?: string } | null }>(items: T[]) {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const key = item.gradeLevel || 'UNKNOWN';
+    const list = groups.get(key) || [];
+    list.push(item);
+    groups.set(key, list);
+  }
+
+  return [...groups.entries()]
+    .sort((a, b) => {
+      const aIdx = COMMON_GRADES.findIndex((grade) => grade.value === a[0]);
+      const bIdx = COMMON_GRADES.findIndex((grade) => grade.value === b[0]);
+      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+    })
+    .map(([grade, rows]) => ({
+      grade,
+      rows: [...rows].sort((a, b) => (a.subject?.name || '').localeCompare(b.subject?.name || '')),
+    }));
+}
 
 export default function SuperAdminCurriculumPage() {
-  const [activeTab, setActiveTab] = useState<'consolidated' | 'sources'>('consolidated');
+  const [showSources, setShowSources] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
@@ -47,29 +173,17 @@ export default function SuperAdminCurriculumPage() {
   const [viewingSourceId, setViewingSourceId] = useState<string | null>(null);
   const [previewCurriculumId, setPreviewCurriculumId] = useState<string | null>(null);
 
+  const [reconsolidateTarget, setReconsolidateTarget] = useState<AgoraCurriculum | null>(null);
+
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'source' | 'curriculum', ids: string[] } | null>(null);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const touchTimer = useRef<NodeJS.Timeout | null>(null);
-  const [isLongPressing, setIsLongPressing] = useState(false);
+  const [isBulkPublishing, setIsBulkPublishing] = useState(false);
 
   // Filters
   const [filterSubjectId, setFilterSubjectId] = useState('all');
   const [filterGradeLevel, setFilterGradeLevel] = useState('all');
 
-  const commonGrades = [
-    { label: 'JSS 1', value: 'JSS_1' },
-    { label: 'JSS 2', value: 'JSS_2' },
-    { label: 'JSS 3', value: 'JSS_3' },
-    { label: 'SS 1', value: 'SS_1' },
-    { label: 'SS 2', value: 'SS_2' },
-    { label: 'SS 3', value: 'SS_3' },
-    { label: 'Pry 1', value: 'PRIMARY_1' },
-    { label: 'Pry 2', value: 'PRIMARY_2' },
-    { label: 'Pry 3', value: 'PRIMARY_3' },
-    { label: 'Pry 4', value: 'PRIMARY_4' },
-    { label: 'Pry 5', value: 'PRIMARY_5' },
-    { label: 'Pry 6', value: 'PRIMARY_6' },
-  ];
+  const commonGrades = COMMON_GRADES;
 
   // Fetch data
   const [isAnyProcessing, setIsAnyProcessing] = useState(false);
@@ -83,7 +197,7 @@ export default function SuperAdminCurriculumPage() {
 
   useEffect(() => {
     const hasActiveSources = sources?.some(s => s.status === 'PENDING_PARSE' || s.status === 'PARSING');
-    const hasConsolidatingCurricula = curricula?.some(c => c.status === 'DRAFT' && (!c.topics || (Array.isArray(c.topics) && c.topics.length === 0)));
+    const hasConsolidatingCurricula = curricula?.some((c) => isCurriculumWorking(c));
     setIsAnyProcessing(!!(hasActiveSources || hasConsolidatingCurricula));
   }, [sources, curricula]);
 
@@ -111,8 +225,27 @@ export default function SuperAdminCurriculumPage() {
     const matchesSubject = filterSubjectId === 'all' || c.subjectId === filterSubjectId || c.subject?.id === filterSubjectId;
     const matchesGrade = filterGradeLevel === 'all' || c.gradeLevel === filterGradeLevel;
 
-    return matchesSearch && matchesSubject && matchesGrade;
+    return matchesSearch && matchesSubject && matchesGrade && isLibraryCurriculum(c);
   }) : [];
+
+  const groupedCurricula = useMemo(() => groupItemsByGrade(filteredCurricula), [filteredCurricula]);
+  const groupedSources = useMemo(() => groupItemsByGrade(filteredSources), [filteredSources]);
+  const selectedCurricula = useMemo(
+    () => filteredCurricula.filter((item) => selectedCurriculumIds.includes(item.id)),
+    [filteredCurricula, selectedCurriculumIds]
+  );
+  const canPublishSelected = selectedCurricula.some((item) => item.status === 'DRAFT' && isFullYearCurriculum(item));
+  const canUnpublishSelected = selectedCurricula.some((item) => item.status === 'PUBLISHED');
+  const sourceAttentionCount = Array.isArray(sources)
+    ? sources.filter((source) => {
+        if (['PENDING_PARSE', 'PARSING', 'FAILED'].includes(source.status)) return true;
+        if (source.status !== 'PARSED') return false;
+        const latest = (curricula || []).filter((item) =>
+          item.subjectId === source.subjectId && item.gradeLevel === source.gradeLevel
+        ).sort((a, b) => (b.version || 0) - (a.version || 0))[0];
+        return !!latest && (isConsolidationFailed(latest) || (weekCount(latest) === 0 && !isCurriculumWorking(latest)));
+      }).length
+    : 0;
 
   const handleSelectSource = (id: string) => {
     setSelectedSourceIds(prev =>
@@ -151,32 +284,6 @@ export default function SuperAdminCurriculumPage() {
     }
   };
 
-  const startLongPress = (id: string) => {
-    setIsLongPressing(false);
-    touchTimer.current = setTimeout(() => {
-      handleSelectSource(id);
-      setIsLongPressing(true);
-      window.navigator.vibrate?.(50); // Haptic feedback if available
-    }, 600);
-  };
-
-  const endLongPress = (e: React.MouseEvent | React.TouchEvent, id: string) => {
-    if (touchTimer.current) {
-      clearTimeout(touchTimer.current);
-      touchTimer.current = null;
-      // If it wasn't a long press, it's a normal click
-      if (!isLongPressing) {
-        // If we're already in selection mode, toggle instead of viewing
-        if (selectedSourceIds.length > 0) {
-          handleSelectSource(id);
-        } else {
-          setViewingSourceId(id);
-        }
-      }
-    }
-    setIsLongPressing(false);
-  };
-
   const handleConsolidate = async (ids?: string[]) => {
     const targetIds = ids || selectedSourceIds;
     if (targetIds.length === 0) return;
@@ -209,21 +316,41 @@ export default function SuperAdminCurriculumPage() {
         gradeLevel: firstGradeLevel,
         sourceIds: targetIds
       }).unwrap();
-      toast.success('Consolidation started. A new draft curriculum will be created soon.');
+      toast.success('Consolidation started. It will appear in the library when it succeeds.');
       if (!ids) setSelectedSourceIds([]);
-      setActiveTab('consolidated');
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to start consolidation');
     }
   };
 
-  const handlePublish = async (id: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'DRAFT' ? 'PUBLISHED' : 'DRAFT';
+  const handleBulkPublish = async (nextStatus: 'PUBLISHED' | 'DRAFT') => {
+    const selected = (curricula || []).filter((item) => selectedCurriculumIds.includes(item.id));
+    const targets = selected.filter((item) => {
+      if (item.status === nextStatus) return false;
+      if (nextStatus === 'PUBLISHED' && !isFullYearCurriculum(item)) return false;
+      return true;
+    });
+
+    if (targets.length === 0) {
+      toast.error(nextStatus === 'PUBLISHED'
+        ? 'None of the selected curricula are ready to publish.'
+        : 'None of the selected curricula are published.');
+      return;
+    }
+
+    setIsBulkPublishing(true);
     try {
-      await publishCurriculum({ id, data: { status: nextStatus } }).unwrap();
-      toast.success(`Curriculum marked as ${nextStatus}`);
-    } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to update publication status');
+      await Promise.all(targets.map((item) => publishCurriculum({ id: item.id, data: { status: nextStatus } }).unwrap()));
+      toast.success(
+        nextStatus === 'PUBLISHED'
+          ? `Published ${targets.length} curriculum${targets.length === 1 ? '' : 'a'}`
+          : `Reverted ${targets.length} to draft`
+      );
+      setSelectedCurriculumIds([]);
+    } catch {
+      toast.error('Some updates failed.');
+    } finally {
+      setIsBulkPublishing(false);
     }
   };
 
@@ -249,10 +376,32 @@ export default function SuperAdminCurriculumPage() {
               Curriculum Management
             </h1>
             <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-page-subtitle)' }}>
-              Upload source materials and manage consolidated master curricula.
+              {showSources
+                ? 'Upload queue and parse status. Finished sources consolidate on their own.'
+                : 'Master curricula. Upload a source and Lois consolidates it automatically.'}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSources((open) => !open)}
+              title="Sources"
+              aria-label="Sources"
+              aria-pressed={showSources}
+              className={cn(
+                'relative inline-flex items-center justify-center h-10 w-10 rounded-xl border transition-colors',
+                showSources
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : 'bg-light-surface dark:bg-white/5 border-light-border dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-blue-400 hover:text-blue-600'
+              )}
+            >
+              <FileText className="w-4 h-4" />
+              {sourceAttentionCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {sourceAttentionCount}
+                </span>
+              )}
+            </button>
             <Button variant="primary" onClick={() => setIsUploadModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Upload Source
@@ -260,45 +409,16 @@ export default function SuperAdminCurriculumPage() {
           </div>
         </FadeInUp>
 
-        {/* Tabs and Search */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-light-border dark:border-dark-border">
-          <div className="flex space-x-1 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('consolidated')}
-              className={`flex items-center gap-2 px-4 py-3 font-semibold transition-colors whitespace-nowrap`}
-              style={{
-                fontSize: 'var(--text-tiny)',
-                borderBottom: activeTab === 'consolidated' ? '2px solid' : 'none',
-                borderColor: activeTab === 'consolidated' ? 'var(--agora-blue)' : 'transparent',
-                color: activeTab === 'consolidated' ? 'var(--agora-blue)' : 'inherit'
-              }}
-            >
-              <Layers className="w-4 h-4" />
-              Consolidated
-            </button>
-            <button
-              onClick={() => setActiveTab('sources')}
-              className={`flex items-center gap-2 px-4 py-3 font-semibold transition-colors whitespace-nowrap`}
-              style={{
-                fontSize: 'var(--text-tiny)',
-                borderBottom: activeTab === 'sources' ? '2px solid' : 'none',
-                borderColor: activeTab === 'sources' ? 'var(--agora-blue)' : 'transparent',
-                color: activeTab === 'sources' ? 'var(--agora-blue)' : 'inherit'
-              }}
-            >
-              <FileText className="w-4 h-4" />
-              Sources
-            </button>
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-5">
+          <div className="w-full lg:max-w-sm">
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search subject or class..."
+            />
           </div>
-          <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto pb-4 md:pb-0">
-            <div className="w-full md:w-64">
-              <SearchInput
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search keywords..."
-              />
-            </div>
-            <div className="w-full md:w-40">
+          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            <div className="w-full sm:w-48">
               <Select
                 value={filterSubjectId}
                 onChange={(e) => setFilterSubjectId(e.target.value)}
@@ -311,7 +431,7 @@ export default function SuperAdminCurriculumPage() {
                 ))}
               </Select>
             </div>
-            <div className="w-full md:w-32">
+            <div className="w-full sm:w-36">
               <Select
                 value={filterGradeLevel}
                 onChange={(e) => setFilterGradeLevel(e.target.value)}
@@ -325,127 +445,26 @@ export default function SuperAdminCurriculumPage() {
               </Select>
             </div>
           </div>
+          <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary lg:ml-auto">
+            {showSources
+              ? `${filteredSources.length} sources · ${new Set(filteredSources.map((item) => item.gradeLevel)).size} classes`
+              : `${filteredCurricula.length} curricula · ${new Set(filteredCurricula.map((item) => item.gradeLevel)).size} classes`}
+          </p>
         </div>
 
         {/* Content */}
         <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.2}>
-          {activeTab === 'consolidated' && (
-            <div className="space-y-4">
+          {!showSources && (
+            <div className="space-y-3">
               {isCurriculaLoading ? (
                 <div className="flex justify-center p-12"><LoadingSpinner size="lg" /></div>
               ) : filteredCurricula.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center p-12 text-center">
                     <EmptyStateIcon type="statistics" />
-                    <h3 className="text-lg font-semibold mt-4 text-light-text-primary dark:text-dark-text-primary">No consolidated curricula</h3>
+                    <h3 className="text-lg font-semibold mt-4 text-light-text-primary dark:text-dark-text-primary">No curricula yet</h3>
                     <p className="text-light-text-secondary dark:text-dark-text-secondary mt-2 max-w-sm">
-                      Select parsed sources in the Sources tab and consolidate them to create master curricula.
-                    </p>
-                    <Button variant="outline" className="mt-6" onClick={() => setActiveTab('sources')}>
-                      Go to Sources
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-4">
-                  {selectedCurriculumIds.length > 0 && (
-                    <div className="flex items-center justify-between bg-red-50 dark:bg-red-900/10 p-4 rounded-lg border border-red-200 dark:border-red-900/30">
-                      <span className="font-medium text-red-800 dark:text-red-400" style={{ fontSize: 'var(--text-small)' }}>
-                        {selectedCurriculumIds.length} curriculum version(s) selected
-                      </span>
-                      <Button variant="danger" size="sm" onClick={() => setDeleteTarget({ type: 'curriculum', ids: selectedCurriculumIds })}>
-                        <Trash className="w-4 h-4 mr-2" />
-                        Delete Selected
-                      </Button>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredCurricula.map((curr: AgoraCurriculum) => (
-                      <Card
-                        key={curr.id}
-                        className={cn(
-                          "group transition-all border hover:shadow-md relative cursor-pointer",
-                          selectedCurriculumIds.includes(curr.id)
-                            ? "border-red-500 shadow-md ring-2 ring-red-500/20"
-                            : "border-light-border dark:border-dark-border"
-                        )}
-                        onClick={() => setPreviewCurriculumId(curr.id)}
-                      >
-                        <div
-                          className="absolute top-3 right-3 z-10 cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectCurriculum(curr.id);
-                          }}
-                        >
-                          <div className={cn(
-                            "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
-                            selectedCurriculumIds.includes(curr.id)
-                              ? "bg-red-600 border-red-600 text-white"
-                              : "border-gray-300 dark:border-gray-600 hover:border-red-400"
-                          )}>
-                            {selectedCurriculumIds.includes(curr.id) && <Check className="w-3.5 h-3.5" />}
-                          </div>
-                        </div>
-
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start pr-8">
-                            <CardTitle className="font-heading" style={{ fontSize: 'var(--text-card-title)' }}>
-                              {curr.subject?.name || 'Unknown Subject'}
-                            </CardTitle>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            {(!curr.topics || curr.topics.length === 0) ? (
-                              <Badge className="bg-blue-50 text-blue-600 animate-pulse border-blue-100">
-                                <Loader2 className="w-2.5 h-2.5 mr-1" /> Consolidating
-                              </Badge>
-                            ) : (
-                              <Badge className={curr.status === 'PUBLISHED' ? "bg-green-50 text-green-600 border-green-100" : "bg-amber-50 text-amber-600 border-amber-100"}>
-                                {curr.status}
-                              </Badge>
-                            )}
-                            <span className="text-gray-300">•</span>
-                            <p className="font-medium text-light-text-secondary" style={{ fontSize: 'var(--text-small)' }}>Grade: {curr.gradeLevel}</p>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-light-text-muted mt-2 space-y-1" style={{ fontSize: 'var(--text-tiny)' }}>
-                            <div className="flex justify-between">
-                              <span>Version:</span>
-                              <span className="font-medium">v{curr.version || 1}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Weeks:</span>
-                              <span className="font-medium">{(curr.topics || []).length || '...'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Sources:</span>
-                              <span className="font-medium">{(curr.sourceIds || []).length}</span>
-                            </div>
-                            <p className="text-[10px] text-gray-400 mt-2">
-                              Updated {curr.updatedAt ? new Date(curr.updatedAt).toLocaleDateString() : 'N/A'}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'sources' && (
-            <div className="space-y-4">
-              {isSourcesLoading ? (
-                <div className="flex justify-center p-12"><LoadingSpinner size="lg" /></div>
-              ) : filteredSources.length === 0 ? (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-                    <EmptyStateIcon type="document" />
-                    <h3 className="text-lg font-semibold mt-4 text-light-text-primary dark:text-dark-text-primary">No sources found</h3>
-                    <p className="text-light-text-secondary dark:text-dark-text-secondary mt-2 max-w-sm">
-                      Upload curriculum documents to see them here, or try adjusting your search.
+                      Upload a source. Lois parses it, then consolidates that subject and class automatically.
                     </p>
                     <Button variant="primary" className="mt-6" onClick={() => setIsUploadModalOpen(true)}>
                       <Plus className="w-4 h-4 mr-2" />
@@ -454,27 +473,183 @@ export default function SuperAdminCurriculumPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-4">
-                  {selectedSourceIds.length > 0 && (
-                    <div className="flex items-center justify-between bg-red-50 dark:bg-red-900/10 p-4 rounded-lg border border-red-200 dark:border-red-900/30">
+                <div className="space-y-3">
+                  {selectedCurriculumIds.length > 0 && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/70 dark:bg-blue-500/10">
                       <div className="flex items-center gap-3">
-                        <span className="font-medium text-red-800 dark:text-red-400" style={{ fontSize: 'var(--text-small)' }}>
-                          {selectedSourceIds.length} source(s) selected
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                          {selectedCurriculumIds.length} selected
                         </span>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-600 dark:text-red-400"
                           onClick={() => {
-                            const allIds = filteredSources.map(s => s.id);
-                            if (selectedSourceIds.length === allIds.length) {
-                              setSelectedSourceIds([]);
-                            } else {
-                              setSelectedSourceIds(allIds);
-                            }
+                            const ids = filteredCurricula.map((item) => item.id);
+                            setSelectedCurriculumIds(selectedCurriculumIds.length === ids.length ? [] : ids);
                           }}
                         >
-                          {selectedSourceIds.length === filteredSources.length ? 'Deselect All' : 'Select All Filtered'}
+                          {selectedCurriculumIds.length === filteredCurricula.length ? 'Deselect all' : 'Select all'}
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedCurriculumIds([])}>Clear</Button>
+                        {canUnpublishSelected && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            isLoading={isBulkPublishing}
+                            onClick={() => handleBulkPublish('DRAFT')}
+                          >
+                            Unpublish
+                          </Button>
+                        )}
+                        {canPublishSelected && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            isLoading={isBulkPublishing}
+                            onClick={() => handleBulkPublish('PUBLISHED')}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Publish
+                          </Button>
+                        )}
+                        <Button variant="danger" size="sm" onClick={() => setDeleteTarget({ type: 'curriculum', ids: selectedCurriculumIds })}>
+                          <Trash className="w-4 h-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {groupedCurricula.map((group) => (
+                    <section key={group.grade} className={cn('rounded-2xl border border-light-border dark:border-white/10 overflow-hidden border-l-4', gradeBand(group.grade))}>
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-light-surface/80 dark:bg-white/[0.03]">
+                        <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+                          {gradeLabel(group.grade)}
+                        </h3>
+                        <span className="text-[11px] text-light-text-secondary dark:text-dark-text-secondary">
+                          {group.rows.length} {group.rows.length === 1 ? 'subject' : 'subjects'}
+                        </span>
+                      </div>
+                      <ul className="divide-y divide-light-border dark:divide-white/10">
+                        {group.rows.map((curr: AgoraCurriculum) => {
+                          const selected = selectedCurriculumIds.includes(curr.id);
+                          return (
+                            <li
+                              key={curr.id}
+                              className={cn(
+                                'group grid grid-cols-[auto_1fr_auto] md:grid-cols-[auto_minmax(0,1.4fr)_110px_84px_70px_90px_auto_auto] items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors',
+                                selected
+                                  ? 'bg-blue-50/80 dark:bg-blue-500/10'
+                                  : 'hover:bg-light-surface dark:hover:bg-white/[0.03]'
+                              )}
+                              onClick={() => setPreviewCurriculumId(curr.id)}
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectCurriculum(curr.id);
+                                }}
+                                className={cn(
+                                  'w-[18px] h-[18px] rounded border-2 flex items-center justify-center',
+                                  selected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                                )}
+                              >
+                                {selected && <Check className="w-3 h-3" />}
+                              </button>
+
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0', subjectMarkClass(curr.subject?.name))}>
+                                  {subjectInitials(curr.subject?.name)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate text-light-text-primary dark:text-dark-text-primary">
+                                    {curr.subject?.name || 'Unknown Subject'}
+                                  </p>
+                                  <p className="md:hidden text-[11px] text-light-text-secondary dark:text-dark-text-secondary">
+                                    {curr.status} · v{curr.version || 1}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="hidden md:block">
+                                <span className={cn(
+                                  'text-[11px] font-semibold',
+                                  curr.status === 'PUBLISHED' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                                )}>
+                                  {curr.status}
+                                </span>
+                              </div>
+                              <span className="hidden md:block text-xs text-light-text-secondary dark:text-dark-text-secondary">
+                                {weekProgressLabel(curr)} wks
+                              </span>
+                              <span className="hidden md:block text-xs text-light-text-secondary dark:text-dark-text-secondary">
+                                v{curr.version || 1}
+                              </span>
+                              <span className="hidden md:block text-[11px] text-light-text-secondary dark:text-dark-text-secondary">
+                                {curr.updatedAt ? new Date(curr.updatedAt).toLocaleDateString() : '—'}
+                              </span>
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                className="hidden md:inline-flex h-7 text-[10px] px-2 opacity-0 group-hover:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReconsolidateTarget(curr);
+                                }}
+                              >
+                                <Layers className="w-3 h-3 mr-1" />
+                                New version
+                              </Button>
+                              <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 justify-self-end" />
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {showSources && (
+            <div className="space-y-3">
+              {isSourcesLoading ? (
+                <div className="flex justify-center p-12"><LoadingSpinner size="lg" /></div>
+              ) : filteredSources.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+                    <EmptyStateIcon type="document" />
+                    <h3 className="text-lg font-semibold mt-4 text-light-text-primary dark:text-dark-text-primary">No sources found</h3>
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary mt-2 max-w-sm">
+                      Queue documents here. Each one is parsed, then consolidated for its subject and class.
+                    </p>
+                    <Button variant="primary" className="mt-6" onClick={() => setIsUploadModalOpen(true)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Upload Source
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {selectedSourceIds.length > 0 && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/70 dark:bg-blue-500/10">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                          {selectedSourceIds.length} selected
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const allIds = filteredSources.map((s) => s.id);
+                            setSelectedSourceIds(selectedSourceIds.length === allIds.length ? [] : allIds);
+                          }}
+                        >
+                          {selectedSourceIds.length === filteredSources.length ? 'Deselect all' : 'Select all'}
                         </Button>
                       </div>
                       <div className="flex gap-2">
@@ -482,89 +657,115 @@ export default function SuperAdminCurriculumPage() {
                           <Trash className="w-4 h-4 mr-2" />
                           Delete
                         </Button>
-                        <Button variant="primary" size="sm" onClick={() => handleConsolidate()} isLoading={isConsolidating} className="bg-blue-600 hover:bg-blue-700">
+                        <Button variant="primary" size="sm" onClick={() => handleConsolidate()} isLoading={isConsolidating}>
                           <Layers className="w-4 h-4 mr-2" />
                           Consolidate
                         </Button>
                       </div>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredSources.map((source: AgoraCurriculumSource) => (
-                      <Card
-                        key={source.id}
-                        onMouseDown={() => startLongPress(source.id)}
-                        onMouseUp={(e) => endLongPress(e, source.id)}
-                        onMouseLeave={() => {
-                          if (touchTimer.current) {
-                            clearTimeout(touchTimer.current);
-                            touchTimer.current = null;
-                          }
-                        }}
-                        onTouchStart={() => startLongPress(source.id)}
-                        onTouchEnd={(e) => endLongPress(e, source.id)}
-                        className={cn(
-                          "group transition-all border hover:shadow-md relative cursor-pointer select-none",
-                          selectedSourceIds.includes(source.id)
-                            ? "border-red-500 shadow-md ring-2 ring-red-500/20"
-                            : "border-light-border dark:border-dark-border"
-                        )}
-                      >
-                        <div
-                          className="absolute top-3 right-3 z-10 cursor-pointer"
-                        >
-                          {(selectedSourceIds.includes(source.id) || selectedSourceIds.length > 0) && (
-                            <div className={cn(
-                              "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
-                              selectedSourceIds.includes(source.id)
-                                ? "bg-red-600 border-red-600 text-white"
-                                : "border-gray-300 dark:border-gray-600 hover:border-red-400"
-                            )}>
-                              {selectedSourceIds.includes(source.id) && <Check className="w-3.5 h-3.5" />}
-                            </div>
-                          )}
 
-                          {source.status === 'PARSED' && !selectedSourceIds.includes(source.id) && !curricula?.some(c => c.sourceIds?.includes(source.id)) && (
-                            <Button
-                              size="xs"
-                              className="h-7 text-[10px] px-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onMouseDown={(e) => e.stopPropagation()}
-                              onMouseUp={(e) => e.stopPropagation()}
-                              onTouchStart={(e) => e.stopPropagation()}
-                              onTouchEnd={(e) => e.stopPropagation()}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleConsolidate([source.id]);
-                              }}
+                  {groupedSources.map((group) => (
+                    <section key={group.grade} className={cn('rounded-2xl border border-light-border dark:border-white/10 overflow-hidden border-l-4', gradeBand(group.grade))}>
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-light-surface/80 dark:bg-white/[0.03]">
+                        <h3 className="text-sm font-semibold text-light-text-primary dark:text-dark-text-primary">
+                          {gradeLabel(group.grade)}
+                        </h3>
+                        <span className="text-[11px] text-light-text-secondary dark:text-dark-text-secondary">
+                          {group.rows.length} {group.rows.length === 1 ? 'source' : 'sources'}
+                        </span>
+                      </div>
+                      <ul className="divide-y divide-light-border dark:divide-white/10">
+                        {group.rows.map((source: AgoraCurriculumSource) => {
+                          const selected = selectedSourceIds.includes(source.id);
+                          const latest = (curricula || [])
+                            .filter((item) => item.subjectId === source.subjectId && item.gradeLevel === source.gradeLevel)
+                            .sort((a, b) => (b.version || 0) - (a.version || 0))[0];
+                          const inLibrary = (curricula || []).some((item) => isLibraryCurriculum(item) && item.sourceIds?.includes(source.id));
+                          const consolidating = isCurriculumWorking(latest);
+                          const failed = !!latest && !inLibrary && (isConsolidationFailed(latest) || (weekCount(latest) === 0 && !consolidating));
+                          return (
+                            <li
+                              key={source.id}
+                              className={cn(
+                                'group grid grid-cols-[auto_1fr_auto] md:grid-cols-[auto_minmax(0,1.3fr)_110px_minmax(0,1fr)_auto_auto] items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors',
+                                selected
+                                  ? 'bg-blue-50/80 dark:bg-blue-500/10'
+                                  : 'hover:bg-light-surface dark:hover:bg-white/[0.03]'
+                              )}
+                              onClick={() => setViewingSourceId(source.id)}
                             >
-                              <Layers className="w-3 h-3 mr-1" />
-                              Consolidate
-                            </Button>
-                          )}
-                        </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectSource(source.id);
+                                }}
+                                className={cn(
+                                  'w-[18px] h-[18px] rounded border-2 flex items-center justify-center',
+                                  selected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                                )}
+                              >
+                                {selected && <Check className="w-3 h-3" />}
+                              </button>
 
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start pr-8">
-                            <CardTitle className="font-heading" style={{ fontSize: 'var(--text-card-title)' }}>
-                              {source.subject?.name || 'Unknown Subject'}
-                            </CardTitle>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            {renderStatusBadge(source.status)}
-                            <span className="text-gray-400">•</span>
-                            <p className="font-medium text-light-text-secondary" style={{ fontSize: 'var(--text-tiny)' }}>Grade: {source.gradeLevel}</p>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-light-text-muted mt-2 space-y-1 overflow-y-auto scrollbar-hide" style={{ fontSize: 'var(--text-tiny)', maxHeight: '100px' }}>
-                            <p className="flex items-center gap-1.5"><Library className="w-3 h-3" /> {source.sourceType}</p>
-                            {source.fileName && <p className="truncate flex items-center gap-1.5" title={source.fileName}><FileText className="w-3 h-3 shrink-0" /> {source.fileName}</p>}
-                            <p className="text-red-600 dark:text-red-400 font-bold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Click to view status & details →</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0', subjectMarkClass(source.subject?.name))}>
+                                  {subjectInitials(source.subject?.name)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate text-light-text-primary dark:text-dark-text-primary">
+                                    {source.subject?.name || 'Unknown Subject'}
+                                  </p>
+                                  <p className="md:hidden text-[11px] text-light-text-secondary dark:text-dark-text-secondary truncate">
+                                    {source.status.replace(/_/g, ' ')}{source.fileName ? ` · ${source.fileName}` : ''}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="hidden md:block">
+                                {renderStatusBadge(source.status)}
+                              </div>
+                              <p className="hidden md:block text-xs text-light-text-secondary dark:text-dark-text-secondary truncate" title={source.fileName}>
+                                {source.fileName || source.sourceType}
+                              </p>
+                              <div className="hidden md:flex items-center justify-end gap-2">
+                                {consolidating && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-blue-600">
+                                    <Loader2 className="w-3 h-3 animate-spin" /> Working
+                                  </span>
+                                )}
+                                {failed && !consolidating && (
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">
+                                    Failed
+                                  </span>
+                                )}
+                                {inLibrary && !consolidating && (
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                                    In library
+                                  </span>
+                                )}
+                                {source.status === 'PARSED' && !inLibrary && !consolidating && (
+                                  <Button
+                                    size="xs"
+                                    className="h-7 text-[10px] px-2 opacity-0 group-hover:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleConsolidate([source.id]);
+                                    }}
+                                  >
+                                    <Layers className="w-3 h-3 mr-1" />
+                                    {failed ? 'Retry' : 'Consolidate'}
+                                  </Button>
+                                )}
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500" />
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
                 </div>
               )}
             </div>
@@ -572,7 +773,7 @@ export default function SuperAdminCurriculumPage() {
         </FadeInUp>
 
         {/* Upload Modal */}
-        <UploadSourceModal
+        <UploadCurriculumSourceModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           subjects={subjects || []}
@@ -590,6 +791,16 @@ export default function SuperAdminCurriculumPage() {
             }}
             onDelete={(id) => setDeleteTarget({ type: 'source', ids: [id] })}
             isSelected={selectedSourceIds.includes(viewingSourceId)}
+            canRetryConsolidate={(() => {
+              const source = sources?.find((item) => item.id === viewingSourceId);
+              if (!source || source.status !== 'PARSED') return false;
+              const latest = (curricula || [])
+                .filter((item) => item.subjectId === source.subjectId && item.gradeLevel === source.gradeLevel)
+                .sort((a, b) => (b.version || 0) - (a.version || 0))[0];
+              const inLibrary = (curricula || []).some((item) => isLibraryCurriculum(item) && item.sourceIds?.includes(source.id));
+              return !inLibrary && !isCurriculumWorking(latest);
+            })()}
+            onRetryConsolidate={() => handleConsolidate([viewingSourceId])}
           />
         )}
 
@@ -600,8 +811,39 @@ export default function SuperAdminCurriculumPage() {
             isOpen={!!previewCurriculumId}
             onClose={() => setPreviewCurriculumId(null)}
             onDelete={(id) => setDeleteTarget({ type: 'curriculum', ids: [id] })}
+            onReconsolidate={(curriculum) => setReconsolidateTarget(curriculum)}
           />
         )}
+
+        <ConfirmationModal
+          isOpen={!!reconsolidateTarget}
+          onClose={() => setReconsolidateTarget(null)}
+          onConfirm={async () => {
+            if (!reconsolidateTarget) return;
+            const subjectId = reconsolidateTarget.subjectId || reconsolidateTarget.subject?.id;
+            if (!subjectId || !reconsolidateTarget.sourceIds?.length) {
+              toast.error('This curriculum has no sources to reconsolidate.');
+              return;
+            }
+            try {
+              await consolidateSources({
+                subjectId,
+                gradeLevel: reconsolidateTarget.gradeLevel,
+                sourceIds: reconsolidateTarget.sourceIds,
+                forceNewVersion: true,
+              }).unwrap();
+              toast.success(`Version ${(reconsolidateTarget.version || 1) + 1} queued. It will appear in the library when it succeeds.`);
+              setReconsolidateTarget(null);
+            } catch (err: any) {
+              toast.error(err?.data?.message || 'Failed to start reconsolidation');
+            }
+          }}
+          isLoading={isConsolidating}
+          variant="warning"
+          confirmText="Create new version"
+          title="Create a new version?"
+          message={`This will reconsolidate ${reconsolidateTarget?.subject?.name || 'this curriculum'} (${gradeLabel(reconsolidateTarget?.gradeLevel)}) as version ${(reconsolidateTarget?.version || 1) + 1}. The current version stays in the library until the new one succeeds.`}
+        />
 
         {/* Deletion Confirmation Modal */}
         <ConfirmationModal
@@ -624,15 +866,17 @@ function ConfirmationModal({
   title,
   message,
   isLoading,
-  variant = 'danger'
+  variant = 'danger',
+  confirmText = 'Confirm',
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   isLoading?: boolean;
   variant?: 'danger' | 'warning';
+  confirmText?: string;
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
@@ -659,253 +903,10 @@ function ConfirmationModal({
             className="flex-1"
             isLoading={isLoading}
           >
-            Confirm
+            {confirmText}
           </Button>
         </div>
       </div>
-    </Modal>
-  );
-}
-
-// Inline Upload Modal component to keep it grouped for now
-function UploadSourceModal({
-  isOpen,
-  onClose,
-  subjects
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  subjects: any[];
-}) {
-  const [subjectId, setSubjectId] = useState('');
-  const [selectedGrades, setSelectedGrades] = useState<string[]>(['SS_1']);
-  const [customGrade, setCustomGrade] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadMultiple, { isLoading }] = useUploadMultipleAgoraCurriculumSourcesMutation();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const newFiles = Array.from(e.dataTransfer.files).filter(file =>
-        file.type === 'application/pdf' || file.name.endsWith('.doc') || file.name.endsWith('.docx')
-      );
-      if (newFiles.length > 0) {
-        setSelectedFiles(prev => [...prev, ...newFiles]);
-      } else {
-        toast.error('Only PDF and Word documents are supported.');
-      }
-    }
-  };
-
-  const commonGrades = [
-    { label: 'JSS 1', value: 'JSS_1' },
-    { label: 'JSS 2', value: 'JSS_2' },
-    { label: 'JSS 3', value: 'JSS_3' },
-    { label: 'SS 1', value: 'SS_1' },
-    { label: 'SS 2', value: 'SS_2' },
-    { label: 'SS 3', value: 'SS_3' },
-    { label: 'Pry 1', value: 'PRIMARY_1' },
-    { label: 'Pry 2', value: 'PRIMARY_2' },
-    { label: 'Pry 3', value: 'PRIMARY_3' },
-    { label: 'Pry 4', value: 'PRIMARY_4' },
-    { label: 'Pry 5', value: 'PRIMARY_5' },
-    { label: 'Pry 6', value: 'PRIMARY_6' },
-  ];
-
-  const toggleGrade = (val: string) => {
-    setSelectedGrades(prev =>
-      prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
-    );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const finalGrades = [...selectedGrades];
-    if (customGrade) finalGrades.push(customGrade.toUpperCase().replace(/\s+/g, '_'));
-
-    if (!subjectId || selectedFiles.length === 0 || finalGrades.length === 0) {
-      toast.error('Subject, at least one File, and at least one Grade Level are required');
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      selectedFiles.forEach(file => {
-        formData.append('files', file);
-      });
-      formData.append('subjectId', subjectId);
-      formData.append('gradeLevel', finalGrades.join(', '));
-      formData.append('sourceType', 'FILE_UPLOAD');
-
-      await uploadMultiple(formData).unwrap();
-
-      toast.success(`${selectedFiles.length} files uploaded! Batch process started.`);
-      onClose();
-      // Reset form
-      setSubjectId('');
-      setSelectedGrades(['SS_1']);
-      setCustomGrade('');
-      setSelectedFiles([]);
-    } catch (err: any) {
-      toast.error(err?.data?.message || 'Failed to upload sources');
-    }
-  };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Upload Curriculum Source" size="lg">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div>
-              <label className="block font-semibold mb-2 text-light-text-primary dark:text-dark-text-primary flex items-center justify-between" style={{ fontSize: 'var(--text-small)' }}>
-                <span>1. Select Subject *</span>
-                {Array.isArray(subjects) && subjects.length > 0 && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">{subjects.length} loaded</span>}
-              </label>
-              <select
-                value={subjectId}
-                onChange={(e) => setSubjectId(e.target.value)}
-                className="w-full px-4 py-2.5 border border-light-border dark:border-dark-border rounded-xl bg-light-surface dark:bg-[#1a1f2e] text-light-text-primary dark:text-dark-text-primary focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                required
-              >
-                <option value="">Choose a subject...</option>
-                {Array.isArray(subjects) && subjects.map(sub => (
-                  <option key={sub.id} value={sub.id}>{sub.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold mb-2 text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-small)' }}>
-                2. Target Grade Levels *
-              </label>
-              <p className="text-gray-500 text-xs mb-3 italic">Tip: Select all grades that appear in this PDF. Lois will split them into separate curricula.</p>
-
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                {commonGrades.map(grade => (
-                  <button
-                    key={grade.value}
-                    type="button"
-                    onClick={() => toggleGrade(grade.value)}
-                    className={cn(
-                      "px-3 py-2 rounded-lg text-xs font-medium border transition-all",
-                      selectedGrades.includes(grade.value)
-                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                        : "bg-light-surface dark:bg-[#1a1f2e] text-gray-600 dark:text-gray-400 border-light-border dark:border-dark-border hover:border-blue-400"
-                    )}
-                  >
-                    {grade.label}
-                  </button>
-                ))}
-              </div>
-
-              <Input
-                value={customGrade}
-                onChange={(e) => setCustomGrade(e.target.value)}
-                placeholder="Other (e.g. NURSERY_1)"
-                className="text-xs"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <label className="block font-semibold mb-2 text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-small)' }}>
-              3. Upload Document *
-            </label>
-            <div
-              className={cn(
-                "border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[180px]",
-                selectedFiles.length > 0
-                  ? "border-blue-500 bg-blue-50/10"
-                  : "border-gray-200 dark:border-gray-800 hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800/20",
-                isDragging && "border-blue-500 bg-blue-50/20 scale-[1.02]"
-              )}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <input
-                type="file"
-                className="hidden"
-                ref={fileInputRef}
-                accept=".pdf,.doc,.docx"
-                multiple
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
-                  }
-                }}
-              />
-
-              {selectedFiles.length > 0 ? (
-                <div className="w-full space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                  {selectedFiles.map((file, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-light-surface dark:bg-dark-surface rounded-lg border border-light-border dark:border-dark-border">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                        <span className="text-xs font-medium truncate text-light-text-primary dark:text-dark-text-primary">{file.name}</span>
-                      </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedFiles(prev => prev.filter((_, i) => i !== idx)); }}
-                        className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full text-red-500 transition-colors"
-                      >
-                        <Trash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  <p className="text-[10px] text-blue-600 font-bold mt-2">+ Click or drop more files</p>
-                </div>
-              ) : (
-                <>
-                  <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-transform duration-300",
-                    isDragging ? "bg-blue-600 text-white scale-110" : "bg-gray-100 dark:bg-gray-800 text-gray-400"
-                  )}>
-                    <UploadIcon className={cn("w-6 h-6", isDragging && "animate-bounce")} />
-                  </div>
-                  <p className="font-bold text-xs mb-1 text-light-text-primary dark:text-dark-text-primary">
-                    {isDragging ? 'Drop them here!' : 'Click or Drag Multiple PDFs'}
-                  </p>
-                  <p className="text-[10px] text-gray-400 font-normal">Word or PDF. Max 20MB per file.</p>
-                </>
-              )}
-            </div>
-
-            <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-xl p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-amber-800 dark:text-amber-400 text-xs leading-relaxed">
-                By selecting multiple grades, you are telling the AI to look for specific curriculum content for each level within this one file.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 pt-6 border-t border-light-border dark:border-dark-border">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading} className="rounded-xl px-6">Cancel</Button>
-          <Button type="submit" variant="primary" isLoading={isLoading} className="rounded-xl px-8 shadow-lg shadow-blue-500/20">
-            Upload & Start Batch Processing
-          </Button>
-        </div>
-      </form>
     </Modal>
   );
 }
@@ -916,7 +917,9 @@ function SourceDetailModal({
   onClose,
   onSelect,
   onDelete,
-  isSelected
+  isSelected,
+  canRetryConsolidate,
+  onRetryConsolidate,
 }: {
   sourceId: string;
   isOpen: boolean;
@@ -924,6 +927,8 @@ function SourceDetailModal({
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   isSelected: boolean;
+  canRetryConsolidate?: boolean;
+  onRetryConsolidate?: () => void;
 }) {
   const { data: source, isLoading, refetch } = useGetSourceStatusQuery(sourceId, {
     pollingInterval: 5000,
@@ -931,6 +936,7 @@ function SourceDetailModal({
   });
 
   const [cancelProcessing, { isLoading: isCancelling }] = useCancelAgoraCurriculumProcessingMutation();
+  const [retryParsing, { isLoading: isRetrying }] = useRetryAgoraCurriculumParsingMutation();
 
   const handleDelete = () => {
     onDelete(sourceId);
@@ -943,6 +949,16 @@ function SourceDetailModal({
       refetch();
     } catch (error) {
       toast.error("Failed to cancel job");
+    }
+  };
+
+  const handleRetry = async () => {
+    try {
+      await retryParsing(sourceId).unwrap();
+      toast.success("Parse job queued again");
+      refetch();
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Failed to retry parsing");
     }
   };
 
@@ -1073,7 +1089,7 @@ function SourceDetailModal({
               ) : source?.status === 'PARSED' ? (
                 <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30 rounded-xl">
                   <p className="text-xs text-green-800 dark:text-green-400 font-medium">
-                    Success! Lois has extracted {source?.parsedData?.topics?.length || 0} topics/weeks from this source.
+                    Success! Lois has extracted {parsedSourceWeekCount(source)} topics/weeks from this source.
                   </p>
                   <div className="mt-2 text-[10px] text-green-700/60 font-mono">
                     {JSON.stringify(source?.parsedData || {}, null, 2)}
@@ -1098,6 +1114,30 @@ function SourceDetailModal({
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
           <div className="flex gap-2">
+            {(source?.status === 'PENDING_PARSE' || source?.status === 'FAILED') && (
+              <Button
+                variant="outline"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                onClick={handleRetry}
+                disabled={isRetrying}
+              >
+                {isRetrying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+                Retry Parse
+              </Button>
+            )}
+            {canRetryConsolidate && source?.status === 'PARSED' && (
+              <Button
+                variant="outline"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                onClick={() => {
+                  onRetryConsolidate?.();
+                  onClose();
+                }}
+              >
+                <Layers className="mr-2 h-4 w-4" />
+                Retry consolidate
+              </Button>
+            )}
             {(source?.status === 'PENDING_PARSE' || source?.status === 'PARSING') && (
               <Button
                 variant="outline"
@@ -1132,11 +1172,13 @@ function CurriculumPreviewModal({
   isOpen,
   onClose,
   onDelete,
+  onReconsolidate,
 }: {
   curriculumId: string;
   isOpen: boolean;
   onClose: () => void;
   onDelete: (id: string) => void;
+  onReconsolidate?: (curriculum: AgoraCurriculum) => void;
 }) {
   const [isPolling, setIsPolling] = useState(false);
   const { data: curriculum, isLoading } = useGetAgoraCurriculumQuery(curriculumId, {
@@ -1145,7 +1187,7 @@ function CurriculumPreviewModal({
   });
 
   useEffect(() => {
-    setIsPolling(isOpen && (!curriculum?.topics || curriculum.topics.length === 0));
+    setIsPolling(isOpen && isCurriculumWorking(curriculum));
   }, [isOpen, curriculum]);
 
   const [updateTopic] = useUpdateAgoraCurriculumTopicMutation();
@@ -1165,88 +1207,67 @@ function CurriculumPreviewModal({
   const [activeTerm, setActiveTerm] = useState<number>(1);
 
   const renderOverviewContent = (notes: string) => {
-    if (!notes) return <p className="text-xs font-bold text-gray-400 italic">No consolidation notes available for this curriculum.</p>;
+    if (!notes) {
+      return <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">No consolidation notes yet.</p>;
+    }
 
     try {
-      // Handle legacy/new structured format
       const isJson = notes.startsWith('{');
       const data = isJson ? JSON.parse(notes) : null;
-
-      const getDescription = () => isJson ? data.description : notes.split('# Description')[1]?.split('# Themes')[0]?.trim();
-      const getThemes = () => isJson ? data.themes : notes.split('# Themes')[1]?.split('# Progression Notes')[0]?.trim();
-      const getProgression = () => isJson ? data.progressionNotes : notes.split('# Progression Notes')[1]?.trim();
-
-      const themes = getThemes();
+      const description = isJson ? data.description : notes.split('# Description')[1]?.split('# Themes')[0]?.trim();
+      const themes = isJson ? data.themes : notes.split('# Themes')[1]?.split('# Progression Notes')[0]?.trim();
+      const progression = isJson ? data.progressionNotes : notes.split('# Progression Notes')[1]?.trim();
       const themesList = Array.isArray(themes) ? themes : themes?.split('\n').map((t: string) => t.replace(/^- /, '').trim()).filter(Boolean);
+      const level = curriculum?.gradeLevel?.startsWith('PRIMARY')
+        ? 'Primary'
+        : curriculum?.gradeLevel?.startsWith('JSS')
+          ? 'Junior Secondary'
+          : 'Senior Secondary';
 
       return (
-        <div className="space-y-10 max-w-4xl mx-auto">
-          {/* Document Header Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12 pb-10 border-b border-light-border dark:border-dark-border/50">
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase text-blue-500 tracking-[0.2em]">Subject</span>
-                <p className="text-lg font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight">{curriculum?.subject?.name}</p>
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              ['Subject', curriculum?.subject?.name || '—'],
+              ['Class', gradeLabel(curriculum?.gradeLevel)],
+              ['Level', level],
+              ['Duration', durationLabel(curriculum)],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-light-border dark:border-white/10 px-3 py-2.5 bg-light-surface/60 dark:bg-white/[0.03]">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-light-text-secondary dark:text-dark-text-secondary">{label}</p>
+                <p className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary mt-0.5 truncate">{value}</p>
               </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase text-amber-500 tracking-[0.2em]">Class</span>
-                <p className="text-lg font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight">{curriculum?.gradeLevel?.replace('_', ' ')}</p>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase text-purple-500 tracking-[0.2em]">Level</span>
-                <p className="text-lg font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight">
-                  {curriculum?.gradeLevel?.startsWith('PRY') ? 'Primary' : curriculum?.gradeLevel?.startsWith('JSS') ? 'Junior Secondary' : 'Senior Secondary'}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase text-agora-success tracking-[0.2em]">Duration</span>
-                <p className="text-lg font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight">3 Terms × 13 Weeks = 39 Weeks</p>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Narrative Content */}
-          <div className="space-y-12">
-            <div className="space-y-4">
-              <h4 className="text-xs font-black uppercase text-light-text-primary dark:text-dark-text-primary tracking-widest flex items-center gap-3">
-                <div className="w-8 h-[2px] bg-blue-500" /> Description
-              </h4>
-              <p className="text-sm font-bold text-light-text-secondary dark:text-dark-text-secondary leading-loose text-justify italic opacity-90">
-                {getDescription() || 'Detailed curriculum overview not generated yet.'}
-              </p>
-            </div>
+          <section className="space-y-2">
+            <h4 className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">Description</h4>
+            <p className="text-sm leading-relaxed text-light-text-primary dark:text-dark-text-primary">
+              {description || 'Detailed curriculum overview not generated yet.'}
+            </p>
+          </section>
 
-            <div className="space-y-4">
-              <h4 className="text-xs font-black uppercase text-light-text-primary dark:text-dark-text-primary tracking-widest flex items-center gap-3">
-                <div className="w-8 h-[2px] bg-amber-500" /> Themes
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-11">
-                {themesList?.map((theme: string, i: number) => (
-                  <div key={i} className="flex items-start gap-3 group">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 shrink-0 group-hover:scale-125 transition-transform" />
-                    <span className="text-xs font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight opacity-70 group-hover:opacity-100 transition-opacity">{theme}</span>
-                  </div>
-                ))}
-              </div>
+          <section className="space-y-2">
+            <h4 className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">Themes</h4>
+            <div className="flex flex-wrap gap-2">
+              {themesList?.length ? themesList.map((theme: string, i: number) => (
+                <span key={i} className="text-xs px-2.5 py-1 rounded-lg border border-light-border dark:border-white/10 bg-light-surface dark:bg-white/5 text-light-text-primary dark:text-dark-text-primary">
+                  {theme}
+                </span>
+              )) : <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">No themes listed.</p>}
             </div>
+          </section>
 
-            <div className="space-y-4">
-              <h4 className="text-xs font-black uppercase text-light-text-primary dark:text-dark-text-primary tracking-widest flex items-center gap-3">
-                <div className="w-8 h-[2px] bg-purple-500" /> Progression Notes
-              </h4>
-              <div className="pl-11 pr-4 py-6 bg-purple-500/[0.03] dark:bg-purple-500/[0.05] rounded-3xl border border-purple-500/10">
-                <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary leading-loose">
-                  {getProgression() || 'No specific progression strategy defined for this subject yet.'}
-                </p>
-              </div>
-            </div>
-          </div>
+          <section className="space-y-2">
+            <h4 className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">Progression</h4>
+            <p className="text-sm leading-relaxed text-light-text-primary dark:text-dark-text-primary rounded-xl border border-light-border dark:border-white/10 bg-light-surface/60 dark:bg-white/[0.03] px-4 py-3">
+              {progression || 'No progression notes yet.'}
+            </p>
+          </section>
         </div>
       );
-    } catch (e) {
-      return <p className="text-xs font-bold leading-loose whitespace-pre-wrap">{notes}</p>;
+    } catch {
+      return <p className="text-sm leading-relaxed whitespace-pre-wrap">{notes}</p>;
     }
   };
 
@@ -1342,9 +1363,16 @@ function CurriculumPreviewModal({
     }
   };
 
+  const topics = activeTopics(curriculum);
+  const termTopics = topics
+    .filter((topic: any) => topic.term === activeTerm)
+    .sort((a: any, b: any) => a.weekNumber - b.weekNumber);
+  const consolidating = isCurriculumWorking(curriculum);
+  const completeYear = isFullYearCurriculum(curriculum);
+
   if (isLoading) {
     return (
-      <Modal isOpen={isOpen} onClose={onClose} title="Loading..." size="xl">
+      <Modal isOpen={isOpen} onClose={onClose} title="Curriculum" size="2xl">
         <div className="flex justify-center p-12"><LoadingSpinner size="lg" /></div>
       </Modal>
     );
@@ -1352,232 +1380,202 @@ function CurriculumPreviewModal({
 
   if (!curriculum) return null;
 
+  const canTogglePublish = curriculum.status === 'PUBLISHED' || (completeYear && !consolidating);
+  const statusLabel = consolidating
+    ? 'Consolidating'
+    : curriculum.status === 'DRAFT' && !completeYear
+      ? (weekCount(curriculum) === 0 ? 'Failed' : 'Incomplete')
+      : curriculum.status;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Preview: ${curriculum.subject?.name || 'Curriculum'} (${curriculum.gradeLevel})`} size="xl">
-      <div className="space-y-6">
-        <div className="flex justify-between items-center pb-4 border-b border-light-border dark:border-dark-border">
-          <div className="flex items-center gap-4">
-            <div>
-              <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Version</p>
-              <p className="font-semibold select-none">v{curriculum.version}</p>
-            </div>
-            <div className="h-8 w-px bg-gray-200 dark:bg-gray-800" />
-            <div>
-              <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Status</p>
-              <Badge className={curriculum.status === 'PUBLISHED' ? "bg-green-100 text-green-800" : "bg-琥珀-100 text-琥珀-800"}>
-                {curriculum.status}
-              </Badge>
-            </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="2xl"
+      title={
+        <div className="flex items-center gap-3 pr-6">
+          <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0', subjectMarkClass(curriculum.subject?.name))}>
+            {subjectInitials(curriculum.subject?.name)}
           </div>
+          <div>
+            <div>{curriculum.subject?.name || 'Curriculum'}</div>
+            <p className="mt-0.5 text-sm font-normal font-sans text-light-text-secondary dark:text-dark-text-secondary">
+              {gradeLabel(curriculum.gradeLevel)} · v{curriculum.version} · {statusLabel} · {weekProgressLabel(curriculum)} wks
+            </p>
+          </div>
+        </div>
+      }
+      footer={
+        <div className="flex items-center justify-between gap-3">
+          <Button variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleDelete}>
+            <Trash className="w-4 h-4 mr-2" />
+            Delete
+          </Button>
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-red-500 hover:text-red-600 hover:bg-red-50"
-              onClick={handleDelete}
-            >
-              <Trash className="w-4 h-4 mr-2" /> Delete Draft
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handlePublishToggle}
-              isLoading={isPublishing}
-              className="rounded-xl px-8"
-            >
+            <Button variant="ghost" onClick={onClose}>Close</Button>
+            {onReconsolidate && (
+              <Button variant="outline" onClick={() => onReconsolidate(curriculum)}>
+                <Layers className="w-4 h-4 mr-2" />
+                New version
+              </Button>
+            )}
+            <Button variant="primary" onClick={handlePublishToggle} isLoading={isPublishing} disabled={!canTogglePublish}>
               {curriculum.status === 'DRAFT' ? <CheckCircle2 className="w-4 h-4 mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
-              {curriculum.status === 'DRAFT' ? 'Publish Curriculum' : 'Revert to Draft'}
+              {curriculum.status === 'DRAFT' ? 'Publish' : 'Unpublish'}
             </Button>
           </div>
         </div>
-
-        <div className="flex border-b border-light-border dark:border-dark-border">
-          <div className="flex bg-gray-100 dark:bg-gray-800/50 p-1 rounded-xl">
-            <button
-              onClick={() => setActiveSubTab('overview')}
-              className={cn(
-                "relative px-4 py-2 text-xs uppercase tracking-widest transition-all",
-                activeSubTab === 'overview'
-                  ? "text-blue-500"
-                  : "text-light-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary"
-              )}
-            >
-              Curriculum
-              {activeSubTab === 'overview' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-full" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveSubTab('scheme')}
-              className={cn(
-                "relative px-4 py-2 text-xs font-bold uppercase tracking-widest transition-all",
-                activeSubTab === 'scheme'
-                  ? "text-blue-500"
-                  : "text-light-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary"
-              )}
-            >
-              Scheme of Work
-              {activeSubTab === 'scheme' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-full" />
-              )}
-            </button>
-          </div>
+      }
+    >
+      <div className="space-y-5">
+        <div className="inline-flex p-1 rounded-2xl bg-light-surface dark:bg-white/5 border border-light-border dark:border-white/10">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('overview')}
+            className={cn(
+              'px-4 py-2 rounded-xl text-sm font-semibold transition-all',
+              activeSubTab === 'overview'
+                ? 'bg-white dark:bg-[#1a1f2e] text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-light-text-secondary dark:text-dark-text-secondary'
+            )}
+          >
+            Curriculum
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('scheme')}
+            className={cn(
+              'px-4 py-2 rounded-xl text-sm font-semibold transition-all',
+              activeSubTab === 'scheme'
+                ? 'bg-white dark:bg-[#1a1f2e] text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-light-text-secondary dark:text-dark-text-secondary'
+            )}
+          >
+            Scheme of work
+          </button>
         </div>
 
         {activeSubTab === 'overview' ? (
-          <div className="p-10 bg-light-card dark:bg-dark-surface rounded-[2.5rem] border border-light-border dark:border-dark-border/50 shadow-sm relative overflow-hidden group min-h-[500px]">
-            <div className="absolute top-0 right-0 p-12 opacity-[0.02] group-hover:opacity-[0.04] transition-opacity pointer-events-none">
-              <Sparkles className="w-64 h-64 text-blue-500" />
+          consolidating ? (
+            <div className="rounded-2xl border border-dashed border-light-border dark:border-white/10 py-16 text-center">
+              <Loader2 className="w-6 h-6 mx-auto mb-3 animate-spin text-blue-500" />
+              <p className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">Lois is consolidating this curriculum</p>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">The overview will appear when topics are ready.</p>
             </div>
-
-            <div className="relative z-10 space-y-10">
-              <div className="flex items-center justify-between">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-500/5 border border-blue-500/10 text-blue-600">
-                  <FileText className="w-4 h-4" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Session Master Curriculum</span>
-                </div>
-              </div>
-
-              {renderOverviewContent(curriculum.consolidationNotes || '')}
-            </div>
-          </div>
+          ) : (
+            renderOverviewContent(curriculum.consolidationNotes || '')
+          )
         ) : (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-light-border dark:border-dark-border">
-              <div className="space-y-1">
-                <h4 className="text-xs font-black uppercase tracking-[0.1em] text-light-text-primary dark:text-dark-text-primary">
-                  Weekly Topic Breakdown
-                </h4>
-                <p className="text-[10px] font-bold text-light-text-muted">Partitioned by Nigerian Academic Terms (1-3)</p>
-              </div>
-              <div className="flex gap-2 p-1.5 bg-gray-200/50 dark:bg-gray-900 rounded-xl border border-light-border dark:border-dark-border">
-                {[1, 2, 3].map(term => (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="inline-flex p-1 rounded-xl bg-light-surface dark:bg-white/5 border border-light-border dark:border-white/10">
+                {[1, 2, 3].map((term) => (
                   <button
                     key={term}
+                    type="button"
                     onClick={() => setActiveTerm(term)}
                     className={cn(
-                      "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
-                      activeTerm === term ? "bg-white dark:bg-gray-700 text-blue-600 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                      'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                      activeTerm === term
+                        ? 'bg-white dark:bg-[#1a1f2e] text-blue-600 dark:text-blue-400 shadow-sm'
+                        : 'text-light-text-secondary dark:text-dark-text-secondary'
                     )}
                   >
                     Term {term}
                   </button>
                 ))}
               </div>
-              <Button variant="secondary" size="sm" onClick={handleAddNewWeek} className="rounded-xl px-5">
-                <Plus className="w-4 h-4 mr-2" /> Add Week to Term {activeTerm}
+              <Button variant="outline" size="sm" onClick={handleAddNewWeek}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add week
               </Button>
             </div>
 
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar pb-8">
-              {curriculum.topics?.filter((t: any) => t.term === activeTerm).sort((a: any, b: any) => a.weekNumber - b.weekNumber).map((topic: any) => (
-                <div key={topic.id} className="p-5 bg-light-surface dark:bg-dark-surface rounded-2xl border border-light-border dark:border-dark-border shadow-sm hover:shadow-md transition-shadow group">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 text-[10px] font-bold rounded-lg uppercase tracking-widest">Week {topic.weekNumber}</span>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setTopicToDelete(topic.id)} className="p-1 hover:bg-red-50 text-red-400 hover:text-red-500 rounded transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
+            <div className="rounded-2xl border border-light-border dark:border-white/10 overflow-hidden">
+              {termTopics.length === 0 ? (
+                <div className="py-14 text-center">
+                  <p className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">No weeks in Term {activeTerm}</p>
+                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">Add a week or wait for consolidation to finish.</p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-light-border dark:divide-white/10 max-h-[52vh] overflow-y-auto">
+                  {termTopics.map((topic: any) => (
+                    <li key={topic.id} className="px-4 py-3.5 group hover:bg-light-surface/70 dark:hover:bg-white/[0.03]">
                       {editingTopicId === topic.id ? (
-                        <div className="space-y-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Week Title</label>
-                              <Input
-                                value={editData.title}
-                                onChange={e => setEditData(prev => ({ ...prev, title: e.target.value }))}
-                                placeholder="Enter week title..."
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Term</label>
-                              <Select
-                                value={editData.term}
-                                onChange={e => setEditData(prev => ({ ...prev, term: parseInt(e.target.value) }))}
-                              >
-                                <option value={1}>Term 1</option>
-                                <option value={2}>Term 2</option>
-                                <option value={3}>Term 3</option>
-                              </Select>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Subtopics (comma separated)</label>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <Input
-                              value={editData.subTopics}
-                              onChange={e => setEditData(prev => ({ ...prev, subTopics: e.target.value }))}
-                              placeholder="Algebra, Equations, Functions..."
+                              value={editData.title}
+                              onChange={(e) => setEditData((prev) => ({ ...prev, title: e.target.value }))}
+                              placeholder="Week title"
                             />
+                            <Select
+                              value={editData.term}
+                              onChange={(e) => setEditData((prev) => ({ ...prev, term: parseInt(e.target.value) }))}
+                            >
+                              <option value={1}>Term 1</option>
+                              <option value={2}>Term 2</option>
+                              <option value={3}>Term 3</option>
+                            </Select>
                           </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Learning Outcomes (one per line)</label>
-                            <textarea
-                              rows={3}
-                              value={editData.learningOutcomes}
-                              onChange={e => setEditData(prev => ({ ...prev, learningOutcomes: e.target.value }))}
-                              className="w-full px-3 py-2 text-sm border border-light-border dark:border-dark-border rounded-xl bg-white dark:bg-[#131824] focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                              placeholder="Students will be able to..."
-                            />
-                          </div>
+                          <Input
+                            value={editData.subTopics}
+                            onChange={(e) => setEditData((prev) => ({ ...prev, subTopics: e.target.value }))}
+                            placeholder="Subtopics, comma separated"
+                          />
+                          <textarea
+                            rows={3}
+                            value={editData.learningOutcomes}
+                            onChange={(e) => setEditData((prev) => ({ ...prev, learningOutcomes: e.target.value }))}
+                            className="w-full px-3 py-2 text-sm border border-light-border dark:border-dark-border rounded-xl bg-light-surface dark:bg-[#1a1f2e] focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="Learning outcomes, one per line"
+                          />
                           <div className="flex gap-2">
-                            <Button size="sm" onClick={() => handleSaveTopic(topic.id)}>Save Changes</Button>
+                            <Button size="sm" onClick={() => handleSaveTopic(topic.id)}>Save</Button>
                             <Button size="sm" variant="ghost" onClick={() => setEditingTopicId(null)}>Cancel</Button>
                           </div>
                         </div>
                       ) : (
-                        <div className="relative group/title">
-                          <h4 className="font-bold text-lg text-light-text-primary dark:text-dark-text-primary flex items-center gap-2">
-                            {topic.title}
-                            <button onClick={() => handleStartEdit(topic)} className="opacity-0 group-hover/title:opacity-100 transition-opacity p-1 hover:bg-blue-50 rounded">
-                              <Edit2 className="w-4 h-4 text-blue-500" />
-                            </button>
-                          </h4>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                            <div>
-                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                                <div className="w-1 h-1 bg-blue-500 rounded-full" /> Subtopics
-                              </span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {topic.subTopics?.length > 0 ? topic.subTopics.map((st: string, i: number) => (
-                                  <span key={i} className="text-[11px] px-2.5 py-1 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg border border-gray-100 dark:border-gray-700">
-                                    {st}
-                                  </span>
-                                )) : <p className="text-[11px] text-gray-400 italic">No subtopics defined</p>}
+                        <div className="flex items-start gap-3">
+                          <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 w-14">
+                            Week {topic.weekNumber}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">{topic.title}</p>
+                              <div className="flex shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button type="button" onClick={() => handleStartEdit(topic)} className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-500">
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button type="button" onClick={() => setTopicToDelete(topic.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </div>
-                            <div>
-                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                                <div className="w-1 h-1 bg-green-500 rounded-full" /> Learning Outcomes
-                              </span>
-                              <ul className="space-y-1.5">
-                                {topic.learningOutcomes?.length > 0 ? topic.learningOutcomes.map((lo: string, i: number) => (
-                                  <li key={i} className="flex gap-2 items-start text-xs text-gray-600 dark:text-gray-300">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0 mt-1">
-                                      <div className="w-0.5 h-0.5 rounded-full bg-green-500" />
-                                    </div>
-                                    <span>{lo}</span>
+                            {topic.subTopics?.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {topic.subTopics.map((st: string, i: number) => (
+                                  <span key={i} className="text-[11px] px-2 py-0.5 rounded-md border border-light-border dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary">
+                                    {st}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {topic.learningOutcomes?.length > 0 && (
+                              <ul className="mt-2 space-y-1">
+                                {topic.learningOutcomes.map((lo: string, i: number) => (
+                                  <li key={i} className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                                    {lo}
                                   </li>
-                                )) : <p className="text-[11px] text-gray-400 italic">No outcomes defined</p>}
+                                ))}
                               </ul>
-                            </div>
+                            )}
                           </div>
                         </div>
                       )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {(!curriculum.topics || curriculum.topics.filter((t: any) => t.term === activeTerm).length === 0) && (
-                <div className="text-center py-20 bg-gray-50 dark:bg-gray-800/30 rounded-3xl border-2 border-dashed border-gray-100 dark:border-gray-800">
-                  <Layers className="w-12 h-12 mx-auto mb-4 text-gray-300 opacity-50" />
-                  <h4 className="font-bold text-gray-400">No topics for Term {activeTerm}</h4>
-                  <p className="text-xs text-gray-400 mt-2">Lois might still be consolidating or no content was found for this term.</p>
-                </div>
+                    </li>
+                  ))}
+                </ul>
               )}
               <div ref={topicsEndRef} />
             </div>

@@ -66,7 +66,7 @@ export function useSidebarConfig(): {
   const terminology = useTerminology();
   const { policies } = useRuntimePolicies();
   
-  // For teachers, we need to know if they are a form teacher
+  // Form-class nav is teacher-only; the hook skips /teachers/me* unless role is TEACHER
   const { formClasses } = useTeacherDashboard();
 
   const sections = useMemo(() => {

@@ -5,6 +5,7 @@ export interface AgoraSubjectDto {
   name: string;
   code: string;
   schoolTypes: string[];
+  levelStreams?: string[];
   category?: string;
   description?: string;
   isActive: boolean;
@@ -15,6 +16,7 @@ export interface CreateAgoraSubjectDto {
   code: string;
   category?: string;
   schoolTypes: string[];
+  levelStreams?: string[];
   description?: string;
 }
 
@@ -23,6 +25,7 @@ export interface UpdateAgoraSubjectDto {
   code?: string;
   category?: string;
   schoolTypes?: string[];
+  levelStreams?: string[];
   description?: string;
   isActive?: boolean;
 }
@@ -65,6 +68,7 @@ export interface AgoraCurriculumTopic {
   duration?: string;
   order: number;
   term: number;
+  deprecatedAt?: string | null;
 }
 
 export interface AgoraCurriculum {
@@ -97,6 +101,7 @@ export interface ConsolidateCurriculumDto {
   subjectId: string;
   gradeLevel: string;
   sourceIds: string[];
+  forceNewVersion?: boolean;
 }
 
 export interface PublishCurriculumDto {
@@ -106,10 +111,11 @@ export interface PublishCurriculumDto {
 export const agoraCurriculumApi = apiSlice.injectEndpoints({
   overrideExisting: true,
   endpoints: (builder) => ({
-    getAgoraSubjectRegistry: builder.query<AgoraSubjectDto[], { schoolType?: string; category?: string; search?: string } | void>({
+    getAgoraSubjectRegistry: builder.query<AgoraSubjectDto[], { schoolType?: string; category?: string; search?: string; levelStream?: string } | void>({
       query: (params) => {
         const urlParams = new URLSearchParams();
         if (params?.schoolType) urlParams.append('schoolType', params.schoolType);
+        if (params?.levelStream) urlParams.append('levelStream', params.levelStream);
         if (params?.category) urlParams.append('category', params.category);
         if (params?.search) urlParams.append('search', params.search);
         const queryString = urlParams.toString();
@@ -219,6 +225,14 @@ export const agoraCurriculumApi = apiSlice.injectEndpoints({
       invalidatesTags: ['AgoraCurriculumSource'],
     }),
 
+    retryAgoraCurriculumParsing: builder.mutation<any, string>({
+      query: (id) => ({
+        url: `/agora-curriculum/sources/${id}/retry`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['AgoraCurriculumSource'],
+    }),
+
     getAgoraCurricula: builder.query<AgoraCurriculum[], { subjectId?: string; gradeLevel?: string; status?: string } | void>({
       query: (params) => {
         const urlParams = new URLSearchParams();
@@ -316,6 +330,7 @@ export const {
   useGetSourceStatusQuery,
   useDeleteAgoraCurriculumSourceMutation,
   useCancelAgoraCurriculumProcessingMutation,
+  useRetryAgoraCurriculumParsingMutation,
   useGetAgoraCurriculaQuery,
   useGetAgoraCurriculumQuery,
   useConsolidateAgoraCurriculumMutation,

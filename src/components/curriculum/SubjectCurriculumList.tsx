@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import {
+  AlertCircle,
   BookOpen,
   Loader2,
 } from 'lucide-react';
@@ -9,6 +10,7 @@ import { SubjectCurriculumCard } from './SubjectCurriculumCard';
 import { CurriculumSetupModal } from './CurriculumSetupModal';
 import { CurriculumDetailModal } from './CurriculumDetailModal';
 import { NoTimetableMessage } from './NoTimetableMessage';
+import { Button } from '@/components/ui/Button';
 import { 
   useGetSchemesSummaryQuery, 
   useCancelSchemeOfWorkMutation,
@@ -42,7 +44,8 @@ export function SubjectCurriculumList({
   // Fetch schemes summary (status-driven)
   const { 
     data: subjects = [], 
-    isLoading, 
+    isLoading,
+    isError,
     refetch: refetchSchemes 
   } = useGetSchemesSummaryQuery({
     schoolId,
@@ -88,6 +91,25 @@ export function SubjectCurriculumList({
           <Loader2 className="h-10 w-10 animate-spin text-agora-blue" />
         </div>
         <p className="text-[10px] font-black text-light-text-secondary dark:text-dark-text-secondary animate-pulse uppercase tracking-[0.2em] font-heading">Timetable discovery...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-12 px-6">
+        <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+          <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-2" style={{ fontSize: 'var(--text-section-title)' }}>
+          Couldn't load curriculum
+        </h3>
+        <p className="text-light-text-secondary dark:text-dark-text-secondary mb-6 max-w-md mx-auto" style={{ fontSize: 'var(--text-body)' }}>
+          Something went wrong while loading subjects for this class. Please try again.
+        </p>
+        <Button variant="primary" onClick={() => refetchSchemes()}>
+          Try again
+        </Button>
       </div>
     );
   }

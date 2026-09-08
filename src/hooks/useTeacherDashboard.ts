@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/lib/store/store';
 import {
   useGetMyTeacherSchoolQuery,
   useGetMyTeacherProfileQuery,
@@ -110,22 +112,25 @@ export interface TeacherDashboardData {
  * - Clean, predictable state for UI components
  */
 export function useTeacherDashboard(): TeacherDashboardData {
-  // Step 1: Fetch teacher's school
+  const userRole = useSelector((state: RootState) => state.auth.user?.role);
+  const isTeacher = userRole === 'TEACHER';
+
+  // Step 1: Fetch teacher's school (skip for non-teachers — this hook is used by the shared sidebar)
   const { 
     data: schoolResponse, 
     isLoading: isLoadingSchool,
     error: schoolError 
-  } = useGetMyTeacherSchoolQuery();
+  } = useGetMyTeacherSchoolQuery(undefined, { skip: !isTeacher });
   
   // Step 2: Fetch teacher's profile
   const { 
     data: teacherResponse, 
     isLoading: isLoadingTeacher,
     error: teacherError 
-  } = useGetMyTeacherProfileQuery();
+  } = useGetMyTeacherProfileQuery(undefined, { skip: !isTeacher });
   
-  const school = schoolResponse?.data || null;
-  const teacher = teacherResponse?.data || null;
+  const school = isTeacher ? (schoolResponse?.data || null) : null;
+  const teacher = isTeacher ? (teacherResponse?.data || null) : null;
   const schoolId = school?.id;
   const teacherId = teacher?.id;
   

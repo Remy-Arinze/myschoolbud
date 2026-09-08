@@ -5,4 +5,5 @@ export { SubjectCurriculumCard } from './SubjectCurriculumCard';
 export { SubjectCurriculumList } from './SubjectCurriculumList';
 export { GenerateCurriculumModal } from './GenerateCurriculumModal';
 export { CurriculumDetailModal } from './CurriculumDetailModal';
+export { UploadCurriculumSourceModal } from './UploadCurriculumSourceModal';
 

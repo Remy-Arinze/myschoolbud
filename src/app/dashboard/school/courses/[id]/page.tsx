@@ -109,7 +109,6 @@ export default function ClassDetailPage() {
   const schoolId = schoolResponse?.data?.id;
   const schoolName = schoolResponse?.data?.name;
   const { currentType: schoolType } = useSchoolType();
-  const terminology = getTerminology(schoolType || 'SECONDARY');
   const registrationLink =
     schoolId && typeof window !== 'undefined'
       ? `${window.location.origin}/apply`
@@ -127,6 +126,15 @@ export default function ClassDetailPage() {
   );
 
   const classData = classResponse?.data;
+  const terminology = getTerminology(classData?.type || schoolType || 'SECONDARY');
+
+  // Leave this class if the sidebar school type no longer matches it
+  useEffect(() => {
+    if (!classData?.type || !schoolType) return;
+    if (classData.type !== schoolType) {
+      router.replace('/dashboard/school/courses');
+    }
+  }, [classData?.type, schoolType, router]);
 
   // Deep-link from setup checklist: ?tab=curriculum
   useEffect(() => {
@@ -242,7 +250,7 @@ export default function ClassDetailPage() {
 
   // For PRIMARY schools, only allow one form teacher
   const hasFormTeacher = teachersByRole.formTeachers.length > 0;
-  const canAssignTeacher = schoolType !== 'PRIMARY' || !hasFormTeacher;
+  const canAssignTeacher = classData?.type !== 'PRIMARY' || !hasFormTeacher;
 
   // Unified list of all unique teachers for the Teachers tab
   const unifiedTeachers = useMemo(() => {

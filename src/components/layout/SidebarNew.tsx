@@ -4,14 +4,16 @@ import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
-import { SidebarBody, SidebarLink, useSidebar } from '@/components/ui/sidebar';
+import { SidebarBody, SidebarLink } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { LogOut } from 'lucide-react';
 import Image from 'next/image';
 import { SchoolBrandMark } from '@/components/layout/SchoolBrandMark';
+import { SidebarQuickSearch } from '@/components/layout/SidebarQuickSearch';
 import { getActivePluginsForTeacher } from '@/lib/plugins';
 import { usePermissionFilteredSidebar } from '@/hooks/useSidebarConfig';
+import { useQuickSearchItems } from '@/hooks/useQuickSearchItems';
 import { SchoolTypeSwitcher } from '@/components/dashboard/SchoolTypeSwitcher';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useGetUnreadNotificationCountQuery } from '@/lib/store/api/notificationsApi';
@@ -75,7 +77,7 @@ export function SidebarNew({ hideMobileHeader }: { hideMobileHeader?: boolean })
           return {
             label: item.label,
             href: item.href,
-            icon: <Icon className="h-5 w-5 flex-shrink-0" />,
+            icon: <Icon className="h-4 w-4 flex-shrink-0" />,
             badge: isNotifications
               ? unreadCount > 0
                 ? unreadCount
@@ -100,17 +102,17 @@ export function SidebarNew({ hideMobileHeader }: { hideMobileHeader?: boolean })
             label: isLois ? 'LOIS' : plugin.name,
             href: `/dashboard/teacher/plugins/${plugin.slug}`,
             icon: isLois ? (
-              <div className="h-5 w-5 flex items-center justify-center overflow-hidden">
+              <div className="h-4 w-4 flex items-center justify-center overflow-hidden">
                 <Image
                   src="/assets/logos/agora_main.png"
                   alt="Lois"
-                  width={20}
-                  height={20}
+                  width={16}
+                  height={16}
                   className="object-contain"
                 />
               </div>
             ) : (
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <Icon className="h-4 w-4 flex-shrink-0" />
             ),
             badge: undefined,
           };
@@ -125,21 +127,35 @@ export function SidebarNew({ hideMobileHeader }: { hideMobileHeader?: boolean })
     return base;
   }, [processedSections, user?.role]);
 
+  const sidebarSearchItems = useMemo(
+    () =>
+      finalSections.flatMap((section) =>
+        section.items.map((item) => ({
+          label: item.label,
+          href: item.href,
+          icon: item.icon,
+        })),
+      ),
+    [finalSections],
+  );
+  const searchItems = useQuickSearchItems(sidebarSearchItems);
+
   if (!user) return null;
 
   const showLoadingSkeleton = user.role === 'SCHOOL_ADMIN' && isLoadingPermissions;
 
   return (
-    <SidebarBody className="justify-between gap-10" hideMobileHeader={hideMobileHeader}>
-      <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
+    <SidebarBody className="justify-between gap-3 overflow-hidden" hideMobileHeader={hideMobileHeader}>
+      <div className="flex min-h-0 flex-col flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
         <LogoSection />
+        <SidebarQuickSearch items={searchItems} />
 
-        <div className="flex flex-col gap-1 flex-1 mt-8">
+        <div className="flex flex-col gap-1 mt-6 pb-2">
           {showLoadingSkeleton ? (
             <>
               {[...Array(6)].map((_, idx) => (
                 <div key={idx} className="flex items-center gap-3 px-3 py-2 animate-pulse">
-                  <div className="h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded" />
                   <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
                 </div>
               ))}
@@ -179,7 +195,7 @@ export function SidebarNew({ hideMobileHeader }: { hideMobileHeader?: boolean })
         </div>
       </div>
 
-      <div className="pt-4 px-2 pb-3">
+      <div className="flex-shrink-0 pt-3 px-2 pb-3 relative z-10 bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]">
         {user.role === 'SCHOOL_ADMIN' && (
           <div className="mb-3 px-1">
             <SchoolTypeSwitcher />

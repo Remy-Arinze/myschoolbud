@@ -103,7 +103,7 @@ export const DesktopSidebar = ({
     <div
       ref={ref}
       className={cn(
-        "desktop-sidebar h-screen px-4 py-4 hidden md:flex md:flex-col bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] border-r border-[var(--light-border)] dark:border-[var(--dark-border)] flex-shrink-0 fixed left-0 top-0 z-20",
+        "desktop-sidebar h-screen px-4 py-4 hidden md:flex md:flex-col bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] border-r border-[var(--light-border)] dark:border-[var(--dark-border)] flex-shrink-0 fixed left-0 top-0 z-20 overflow-hidden",
         className
       )}
       style={{ width: 250 }}
@@ -186,7 +186,7 @@ export const MobileSidebar = ({
           <div
             ref={ref}
             className={cn(
-              "mobile-sidebar-drawer absolute top-0 left-0 h-full w-[280px] bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] p-6 flex flex-col justify-between shadow-2xl overflow-y-auto",
+              "mobile-sidebar-drawer absolute top-0 left-0 h-full w-[280px] bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] p-6 flex flex-col justify-between shadow-2xl overflow-hidden",
               className
             )}
             style={{ transform: 'translateX(-100%)', opacity: 0 }}
@@ -246,7 +246,7 @@ export const SidebarLink = ({
         {iconWithColor}
         <span
           className={cn(
-            "group-hover/sidebar:translate-x-1 transition duration-150 inline-block",
+            "font-semibold group-hover/sidebar:translate-x-1 transition duration-150 inline-block",
             isActive ? "text-[var(--agora-blue)]" : " text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)]",
             !showLabel && "opacity-0 w-0 overflow-hidden"
           )}

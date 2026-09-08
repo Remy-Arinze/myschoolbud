@@ -35,12 +35,14 @@ const SCHOOL_TYPES = [
 export default function SuperAdminSubjectsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSchoolType, setSelectedSchoolType] = useState<string>('');
+  const [selectedLevelStream, setSelectedLevelStream] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<AgoraSubjectDto | null>(null);
 
   // API Hooks
   const { data, isLoading, refetch } = useGetAgoraSubjectRegistryQuery({
     schoolType: selectedSchoolType || undefined,
+    levelStream: selectedLevelStream || undefined,
     search: searchQuery || undefined
   });
 
@@ -97,7 +99,7 @@ export default function SuperAdminSubjectsPage() {
         </FadeInUp>
 
         {/* Filters and Search */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-light-border dark:border-dark-border pb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-b border-light-border dark:border-dark-border pb-6">
           <div className="md:col-span-2">
             <label className="block text-xs font-semibold uppercase tracking-wider text-light-text-muted mb-2">Search Library</label>
             <div className="relative">
@@ -120,6 +122,20 @@ export default function SuperAdminSubjectsPage() {
               {SCHOOL_TYPES.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-light-text-muted mb-2">Class Level</label>
+            <select
+              value={selectedLevelStream}
+              onChange={(e) => setSelectedLevelStream(e.target.value)}
+              className="w-full px-3 py-2.5 border border-light-border dark:border-dark-border rounded-lg bg-light-surface dark:bg-[#1a1f2e] text-light-text-primary dark:text-dark-text-primary focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+              style={{ fontSize: 'var(--text-small)' }}
+            >
+              <option value="">All Levels</option>
+              <option value="PRIMARY">Primary</option>
+              <option value="JUNIOR">Junior Secondary (JSS)</option>
+              <option value="SENIOR">Senior Secondary (SS)</option>
             </select>
           </div>
         </div>
@@ -176,6 +192,11 @@ export default function SuperAdminSubjectsPage() {
                         {Array.isArray(subject.schoolTypes) && subject.schoolTypes.map(type => (
                           <span key={type} className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-[10px] font-bold">
                             {type}
+                          </span>
+                        ))}
+                        {Array.isArray(subject.levelStreams) && subject.levelStreams.map(stream => (
+                          <span key={stream} className="px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded text-[10px] font-bold">
+                            {stream === 'JUNIOR' ? 'JSS' : stream === 'SENIOR' ? 'SS' : stream}
                           </span>
                         ))}
                       </div>
@@ -255,6 +276,7 @@ function SubjectFormModal({ isOpen, onClose, subject, onSave, isCreating, isUpda
   const [category, setCategory] = useState(subject?.category || 'CORE');
   const [description, setDescription] = useState(subject?.description || '');
   const [schoolTypes, setSchoolTypes] = useState<string[]>(subject?.schoolTypes || ['PRIMARY', 'SECONDARY']);
+  const [levelStreams, setLevelStreams] = useState<string[]>(subject?.levelStreams || []);
   const [isActive, setIsActive] = useState(subject?.isActive ?? true);
 
   // Reset form when subject changes
@@ -265,6 +287,7 @@ function SubjectFormModal({ isOpen, onClose, subject, onSave, isCreating, isUpda
       setCategory(subject?.category || 'CORE');
       setDescription(subject?.description || '');
       setSchoolTypes(subject?.schoolTypes || ['PRIMARY', 'SECONDARY']);
+      setLevelStreams(subject?.levelStreams || []);
       setIsActive(subject?.isActive ?? true);
     }
   }, [subject, isOpen]);
@@ -277,6 +300,7 @@ function SubjectFormModal({ isOpen, onClose, subject, onSave, isCreating, isUpda
       category,
       description,
       schoolTypes,
+      levelStreams,
       isActive
     });
   };
@@ -353,6 +377,32 @@ function SubjectFormModal({ isOpen, onClose, subject, onSave, isCreating, isUpda
             ))}
           </div>
           {schoolTypes.length === 0 && <p className="text-red-500 text-[10px] mt-1">Please select at least one school type.</p>}
+        </div>
+
+        <div>
+          <label className="block font-medium mb-2 text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-small)' }}>
+            Class levels
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {['PRIMARY', 'JUNIOR', 'SENIOR'].map(stream => (
+              <button
+                key={stream}
+                type="button"
+                onClick={() => setLevelStreams(prev =>
+                  prev.includes(stream) ? prev.filter(s => s !== stream) : [...prev, stream]
+                )}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all",
+                  levelStreams.includes(stream)
+                    ? "bg-amber-600 text-white border-amber-600"
+                    : "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
+                )}
+              >
+                {stream === 'JUNIOR' ? 'JSS' : stream === 'SENIOR' ? 'SS' : 'Primary'}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-500 mt-1">JSS subjects (Basic Science, Basic Technology) are not SS. Physics / Chemistry / Biology are SS only.</p>
         </div>
 
         <div>

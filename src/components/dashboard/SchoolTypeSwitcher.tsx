@@ -4,24 +4,20 @@ import { useState, useRef, useEffect } from 'react';
 import gsap from 'gsap';
 import { GraduationCap, BookOpen, University, ChevronDown, ChevronUp, Check, Lock } from 'lucide-react';
 import { useSchoolType } from '@/hooks/useSchoolType';
-import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 
 const typeConfig = {
   PRIMARY: {
     label: 'Primary',
     icon: GraduationCap,
-    color: 'bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]', // Changed from arbitrary gradient to match standard theme inputs
   },
   SECONDARY: {
     label: 'Secondary',
     icon: BookOpen,
-    color: 'bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]',
   },
   TERTIARY: {
     label: 'Tertiary',
     icon: University,
-    color: 'bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]',
   },
 } as const;
 
@@ -84,27 +80,18 @@ export function SchoolTypeSwitcher() {
     return (
       <div className="flex flex-col w-full gap-1">
         <div className="flex items-center justify-between">
-          <p className="font-semibold text-gray-500" style={{ fontSize: 'var(--text-small)' }}>School type</p>
+          <p className="font-semibold text-gray-500" style={{ fontSize: 'var(--text-tiny)' }}>School type</p>
         </div>
-        <div className="rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] overflow-hidden bg-[var(--light-card)] dark:bg-[var(--dark-surface)]">
+        <div className="rounded-lg border border-[var(--agora-blue)]/35 overflow-hidden bg-[var(--light-sidebar-active)] dark:bg-[var(--dark-sidebar-active)]">
           <div
-            className={cn(
-              'relative flex w-full items-center gap-2.5 px-3 py-2 rounded-lg font-semibold overflow-hidden',
-              'text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)]'
-            )}
-            style={{ fontSize: 'var(--text-body)' }}
+            className="school-type-trigger relative flex w-full items-center gap-2 px-3 py-1.5 rounded-lg font-semibold overflow-hidden text-[var(--agora-blue)]"
+            style={{ fontSize: 'var(--text-small)' }}
           >
-            <div
-              className={cn(
-                'absolute inset-0 rounded-lg',
-                config.color,
-              )}
-            />
-            <Icon className="text-blue-500 dark:text-blue-400 relative z-10 h-4 w-4 flex-shrink-0" />
+            <Icon className="relative z-10 h-3.5 w-3.5 flex-shrink-0" />
             <span className="relative z-10 flex-1 text-left truncate">
               {config.label}
             </span>
-            <Lock className="relative z-10 h-3.5 w-3.5 flex-shrink-0 opacity-70" />
+            <Lock className="relative z-10 h-3 w-3 flex-shrink-0 opacity-70" />
           </div>
         </div>
       </div>
@@ -115,39 +102,33 @@ export function SchoolTypeSwitcher() {
   return (
     <div className="flex flex-col w-full gap-1">
       <div className="flex items-center justify-between">
-        <p className="font-semibold text-gray-500" style={{ fontSize: 'var(--text-small)' }}>School type</p>
+        <p className="font-semibold text-gray-500" style={{ fontSize: 'var(--text-tiny)' }}>School type</p>
       </div>
 
       <div
         ref={containerRef}
-        className="rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] overflow-hidden bg-[var(--light-card)] dark:bg-[var(--dark-surface)]"
+        className="rounded-lg border border-[var(--agora-blue)]/35 overflow-hidden bg-[var(--light-card)] dark:bg-[var(--dark-surface)]"
       >
-        {/* Selected row: gradient bg, icon + label + chevron */}
+        {/* Selected row */}
         <button
           type="button"
           onClick={() => setIsExpanded((prev) => !prev)}
           className={cn(
-            'relative flex w-full items-center gap-2.5 px-3 py-2 font-semibold transition-all duration-200 overflow-hidden',
+            'school-type-trigger relative flex w-full items-center gap-2 px-3 py-1.5 font-semibold transition-all duration-200 overflow-hidden',
             'focus:outline-none focus:ring-0',
-            'text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)]'
+            'text-[var(--agora-blue)] bg-[var(--light-sidebar-active)] dark:bg-[var(--dark-sidebar-active)]'
           )}
-          style={{ fontSize: 'var(--text-body)' }}
+          style={{ fontSize: 'var(--text-small)' }}
         >
-          <div
-            className={cn(
-              'absolute inset-0',
-              config.color,
-            )}
-          />
-          <Icon className="text-blue-500 dark:text-blue-400 relative z-10 h-4 w-4 flex-shrink-0 " />
-          <span className="relative z-10 flex-1 text-left truncate opacity-100">
+          <Icon className="relative z-10 h-3.5 w-3.5 flex-shrink-0" />
+          <span className="relative z-10 flex-1 text-left truncate">
             {config.label}
           </span>
           <span className="relative z-10 flex-shrink-0 opacity-90">
             {isExpanded ? (
-              <ChevronUp className="h-4 w-4" />
+              <ChevronUp className="h-3.5 w-3.5" />
             ) : (
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-3.5 w-3.5" />
             )}
           </span>
         </button>
@@ -158,7 +139,7 @@ export function SchoolTypeSwitcher() {
           className="overflow-hidden origin-top"
           style={{ height: 0, opacity: 0 }}
         >
-          <div className="flex flex-col py-1.5 px-1 border-t border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]">
+          <div className="flex flex-col py-1 px-1 border-t border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-bg)] dark:bg-[var(--dark-bg)]">
             {availableTypes.map((type) => {
               const typeCfg = typeConfig[type];
               const TypeIcon = typeCfg.icon;
@@ -173,19 +154,27 @@ export function SchoolTypeSwitcher() {
                     setIsExpanded(false);
                   }}
                   className={cn(
-                    'flex items-center gap-2.5 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
+                    'school-type-option flex items-center gap-2 px-2.5 py-1.5 rounded-md font-semibold transition-colors',
                     'focus:outline-none focus:ring-0',
-                    'text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)]',
-                    'hover:bg-gray-100 dark:hover:bg-[#1a202e]'
+                    isSelected
+                      ? 'school-type-option-active text-[var(--agora-blue)] bg-[var(--light-sidebar-active)] dark:bg-[var(--dark-sidebar-active)]'
+                      : 'text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] hover:bg-gray-100 dark:hover:bg-[#1a202e]'
                   )}
-                  style={{ fontSize: 'var(--text-body)' }}
+                  style={{ fontSize: 'var(--text-small)' }}
                 >
-                  <TypeIcon className="h-3.5 w-3.5 flex-shrink-0 text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)]" />
+                  <TypeIcon
+                    className={cn(
+                      'h-3.5 w-3.5 flex-shrink-0',
+                      isSelected
+                        ? 'text-[var(--agora-blue)]'
+                        : 'text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)]'
+                    )}
+                  />
                   <span className="flex-1 text-left">{typeCfg.label}</span>
                   {isSelected ? (
-                    <Check className="h-4 w-4 flex-shrink-0 text-primary" strokeWidth={2.5} />
+                    <Check className="h-3.5 w-3.5 flex-shrink-0 text-[var(--agora-blue)]" strokeWidth={2.5} />
                   ) : (
-                    <span className="w-4 h-4 flex-shrink-0" aria-hidden />
+                    <span className="w-3.5 h-3.5 flex-shrink-0" aria-hidden />
                   )}
                 </button>
               );

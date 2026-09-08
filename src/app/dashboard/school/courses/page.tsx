@@ -80,32 +80,31 @@ export default function ClassesPage() {
   const { data: schoolResponse, isLoading: isLoadingSchool } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
 
-  // Get active session
+  // Get active session for the selected school type
   const { data: activeSessionResponse } = useGetActiveSessionQuery(
-    { schoolId: schoolId! },
-    { skip: !schoolId }
+    { schoolId: schoolId!, schoolType: currentType || undefined },
+    { skip: !schoolId || !currentType }
   );
   const activeSession = activeSessionResponse?.data;
 
-  // Get classes filtered by current school type
+  // Get classes filtered by current school type. currentData is used so a
+  // type switch never keeps rendering the previous type's list.
   const {
-    data: classesResponse,
+    currentData: classesResponse,
     isLoading: isLoadingClasses,
+    isFetching: isFetchingClasses,
     error: classesError,
-    refetch: refetchClasses,
   } = useGetClassesQuery(
-    { schoolId: schoolId!, type: currentType || undefined },
-    { skip: !schoolId }
+    { schoolId: schoolId!, type: currentType! },
+    { skip: !schoolId || !currentType }
   );
 
-  // Refetch classes when school type changes
-  useEffect(() => {
-    if (schoolId && currentType) {
-      refetchClasses();
-    }
-  }, [currentType, schoolId, refetchClasses]);
-
   const classes = classesResponse?.data || [];
+  const isSwitchingType = isFetchingClasses && !classesResponse;
+
+  useEffect(() => {
+    setSearchQuery('');
+  }, [currentType]);
 
   const { data: settingsResponse } = useGetSchoolSettingsQuery(undefined, { skip: !schoolId });
   const preferredArmNames = settingsResponse?.data?.structureConfig?.defaultClassArmNames;
@@ -186,7 +185,7 @@ export default function ClassesPage() {
     setEditModal({ isOpen: false, classId: '', currentName: '' });
   };
 
-  if (isLoadingClasses || isLoadingSchool) {
+  if (isLoadingClasses || isLoadingSchool || !currentType || isSwitchingType) {
     return (
       <ProtectedRoute roles={['SCHOOL_ADMIN']}>
         <div className="flex flex-col items-center justify-center min-h-screen">

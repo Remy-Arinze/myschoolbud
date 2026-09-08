@@ -1,8 +1,33 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import { useGetMySchoolQuery, useGetMyStudentSchoolQuery, useGetMyTeacherSchoolQuery } from '@/lib/store/api/schoolAdminApi';
 import type { SchoolType } from '@/lib/store/api/schoolAdminApi';
+
+const SCHOOL_TYPE_STORAGE_KEY = 'selectedSchoolType';
+const SCHOOL_TYPE_EVENT = 'schoolTypeChanged';
+
+function subscribeSchoolType(onChange: () => void) {
+  window.addEventListener(SCHOOL_TYPE_EVENT, onChange);
+  window.addEventListener('storage', onChange);
+  return () => {
+    window.removeEventListener(SCHOOL_TYPE_EVENT, onChange);
+    window.removeEventListener('storage', onChange);
+  };
+}
+
+function getSchoolTypeSnapshot() {
+  return localStorage.getItem(SCHOOL_TYPE_STORAGE_KEY);
+}
+
+function getSchoolTypeServerSnapshot(): string | null {
+  return null;
+}
+
+function persistSchoolType(type: SchoolType) {
+  localStorage.setItem(SCHOOL_TYPE_STORAGE_KEY, type);
+  window.dispatchEvent(new Event(SCHOOL_TYPE_EVENT));
+}
 
 /**
  * Roles that have unrestricted access to all school types.
@@ -72,7 +97,11 @@ export function useSchoolType(): SchoolTypeInfo {
     return schoolAdminResponse?.data;
   }, [user?.role, studentSchoolResponse, teacherSchoolResponse, schoolAdminResponse]);
 
-  const [currentType, setCurrentTypeState] = useState<SchoolType | null>(null);
+  const storedType = useSyncExternalStore(
+    subscribeSchoolType,
+    getSchoolTypeSnapshot,
+    getSchoolTypeServerSnapshot,
+  );
 
   // Determine if this admin is locked to a specific school type
   const adminSchoolType = user?.adminSchoolType as SchoolType | null | undefined;
@@ -126,61 +155,36 @@ export function useSchoolType(): SchoolTypeInfo {
     };
   }, [school]);
 
-  // Initialize and sync current type
+  // Seed a default type into localStorage once school types are known
   useEffect(() => {
-    if (typeof window === 'undefined' || schoolType.availableTypes.length === 0) {
+    if (typeof window === 'undefined' || schoolType.availableTypes.length === 0 || isLocked) {
       return;
     }
 
-    // If admin is locked to a specific type, always use that
-    if (isLocked && adminSchoolType) {
-      setCurrentTypeState(adminSchoolType);
+    if (storedType && schoolType.availableTypes.includes(storedType as SchoolType)) {
       return;
     }
 
-    // For unrestricted users, use localStorage preference
-    const stored = localStorage.getItem('selectedSchoolType');
-    if (stored && schoolType.availableTypes.includes(stored as SchoolType)) {
-      setCurrentTypeState(stored as SchoolType);
-    } else {
-      // Default to first available type or primary type
-      const defaultType = schoolType.availableTypes.length > 0
-        ? schoolType.availableTypes[0]
-        : (schoolType.primaryType !== 'MIXED' ? schoolType.primaryType : null);
-      if (defaultType) {
-        setCurrentTypeState(defaultType);
-        localStorage.setItem('selectedSchoolType', defaultType);
-      }
+    const defaultType = schoolType.availableTypes[0]
+      ?? (schoolType.primaryType !== 'MIXED' ? schoolType.primaryType : null);
+    if (defaultType) {
+      persistSchoolType(defaultType);
     }
-  }, [schoolType, isLocked, adminSchoolType]);
+  }, [schoolType, isLocked, storedType]);
 
-  // Listen for type changes from other components (only for unrestricted users)
-  useEffect(() => {
-    if (typeof window === 'undefined' || isLocked) return;
-
-    const handleTypeChange = () => {
-      const stored = localStorage.getItem('selectedSchoolType');
-      if (stored && schoolType.availableTypes.includes(stored as SchoolType)) {
-        setCurrentTypeState(stored as SchoolType);
-      }
-    };
-
-    window.addEventListener('schoolTypeChanged', handleTypeChange);
-    return () => window.removeEventListener('schoolTypeChanged', handleTypeChange);
-  }, [schoolType, isLocked]);
-
-  // Set current type — no-op for locked admins
   const setCurrentType = useCallback((type: SchoolType) => {
-    if (isLocked) return; // Locked admins cannot switch types
+    if (isLocked) return;
     if (typeof window !== 'undefined' && schoolType.availableTypes.includes(type)) {
-      localStorage.setItem('selectedSchoolType', type);
-      setCurrentTypeState(type);
-      window.dispatchEvent(new Event('schoolTypeChanged'));
+      persistSchoolType(type);
     }
   }, [isLocked, schoolType.availableTypes]);
 
-  // For locked admins, always return their fixed type regardless of state
-  const effectiveType = isLocked && adminSchoolType ? adminSchoolType : currentType;
+  const effectiveType: SchoolType | null =
+    isLocked && adminSchoolType
+      ? adminSchoolType
+      : storedType && schoolType.availableTypes.includes(storedType as SchoolType)
+        ? (storedType as SchoolType)
+        : null;
 
   return {
     ...schoolType,
