@@ -19,6 +19,7 @@ interface ModalProps {
   contentClassName?: string;
   hideHeader?: boolean;
   elevated?: boolean;
+  closeOnBackdrop?: boolean;
 }
 
 export function Modal({ 
@@ -33,6 +34,7 @@ export function Modal({
   contentClassName,
   hideHeader = false,
   elevated = false,
+  closeOnBackdrop = true,
 }: ModalProps) {
   const sizes = {
     sm: 'max-w-md',
@@ -80,16 +82,16 @@ export function Modal({
       <div
         ref={backdropRef}
         role="presentation"
-        onClick={onClose}
+        onClick={closeOnBackdrop ? onClose : undefined}
         className={cn(
           "fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm",
-          elevated ? "z-[10020]" : "z-[9999]"
+          elevated ? "z-[10070]" : "z-[9999]"
         )}
         style={{ opacity: 0 }}
       />
       <div className={cn(
         "fixed inset-0 flex items-center justify-center p-4 pointer-events-none",
-        elevated ? "z-[10021]" : "z-[10000]"
+        elevated ? "z-[10071]" : "z-[10000]"
       )}>
         <div
           ref={panelRef}

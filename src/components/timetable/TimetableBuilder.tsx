@@ -39,6 +39,7 @@ import { getScheduleFromBellTemplates, getLessonPeriods } from '@/lib/utils/nige
 import { useAutoGenerateTimetable } from '@/hooks/useAutoGenerateTimetable';
 import { useAutoGenerateWithTeachers } from '@/hooks/useAutoGenerateWithTeachers';
 import { useRuntimePolicies, useWorkingDays } from '@/hooks/useRuntimePolicies';
+import { useStreamMismatchConfirm } from '@/hooks/useStreamMismatchConfirm';
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   MONDAY: 'Mon',
@@ -55,6 +56,10 @@ interface DraggableSubject {
   name: string;
   code?: string;
   type: 'subject' | 'course' | 'free';
+  levelStream?: string | null;
+  agoraLevelStreams?: string[] | null;
+  classLevelName?: string | null;
+  streamChip?: 'JSS' | 'SS' | null;
 }
 
 export interface TimetableSlot {
@@ -85,6 +90,9 @@ interface SubjectWithTeachers {
   name: string;
   code?: string;
   type: 'subject' | 'course' | 'free';
+  levelStream?: string | null;
+  agoraLevelStreams?: string[] | null;
+  classLevelName?: string | null;
   teachers?: Array<{
     id: string;
     firstName: string;
@@ -123,6 +131,10 @@ interface TimetableBuilderProps {
   subjectsWithTeachers?: SubjectWithTeachers[]; // Subjects with teacher info for SECONDARY
   onTeacherSelectionNeeded?: (request: TeacherSelectionRequest) => void; // Callback when teacher selection is needed
   onEditPeriodTeacher?: (period: TimetablePeriod, teachers: TeacherSelectionRequest['teachers']) => void; // Edit existing period's teacher
+  autoFillSubjects?: DraggableSubject[];
+  autoFillSubjectsWithTeachers?: SubjectWithTeachers[];
+  classStream?: 'JUNIOR' | 'SENIOR' | 'ALL' | null;
+  classLevelName?: string;
 }
 
 // Draggable Subject/Course Item
@@ -150,14 +162,21 @@ function DraggableItem({ item }: { item: DraggableSubject }) {
       }`}
     >
       <GripVertical className="h-4 w-4 text-light-text-muted dark:text-dark-text-muted" />
-      <div className="flex-1">
-        <p className={`font-medium ${
-          item.type === 'free'
-            ? 'text-gray-700 dark:text-gray-300'
-            : 'text-light-text-primary dark:text-dark-text-primary'
-        }`} style={{ fontSize: 'var(--text-body)' }}>
-          {item.name}
-        </p>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className={`font-medium truncate ${
+            item.type === 'free'
+              ? 'text-gray-700 dark:text-gray-300'
+              : 'text-light-text-primary dark:text-dark-text-primary'
+          }`} style={{ fontSize: 'var(--text-body)' }}>
+            {item.name}
+          </p>
+          {item.streamChip && (
+            <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-light-text-muted dark:text-dark-text-muted bg-black/5 dark:bg-white/10">
+              {item.streamChip}
+            </span>
+          )}
+        </div>
         {item.code && (
           <p className="text-light-text-muted dark:text-dark-text-muted" style={{ fontSize: 'var(--text-tiny)' }}>{item.code}</p>
         )}
@@ -273,12 +292,23 @@ export function TimetableBuilder({
   subjectsWithTeachers,
   onTeacherSelectionNeeded,
   onEditPeriodTeacher,
+  autoFillSubjects,
+  autoFillSubjectsWithTeachers,
+  classStream = null,
+  classLevelName = '',
 }: TimetableBuilderProps) {
   const DAYS = useWorkingDays();
   const { policies } = useRuntimePolicies();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showAutoGenerateModal, setShowAutoGenerateModal] = useState(false);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const { confirmIfNeeded, mismatchModal } = useStreamMismatchConfirm({
+    classStream,
+    classLevelName,
+  });
+
+  const autoFillPool = autoFillSubjects ?? subjects;
+  const autoFillPoolWithTeachers = autoFillSubjectsWithTeachers ?? subjectsWithTeachers;
 
   // Basic auto-generate hook (for PRIMARY/TERTIARY)
   const { 
@@ -286,7 +316,7 @@ export function TimetableBuilder({
     canGenerate: canGenerateBasic 
   } = useAutoGenerateTimetable({
     schoolType,
-    subjects: subjects.filter(s => s.type !== 'free').map(s => ({ id: s.id, name: s.name, code: s.code })),
+    subjects: autoFillPool.filter(s => s.type !== 'free').map(s => ({ id: s.id, name: s.name, code: s.code })),
     courses: courses.filter(c => c.type !== 'free').map(c => ({ id: c.id, name: c.name, code: c.code })),
     existingPeriods: timetable,
     workingDays: DAYS,
@@ -299,7 +329,7 @@ export function TimetableBuilder({
     canGenerate: canGenerateWithTeachers 
   } = useAutoGenerateWithTeachers({
     schoolType,
-    subjects: subjectsWithTeachers || subjects.filter(s => s.type !== 'free').map(s => ({ 
+    subjects: autoFillPoolWithTeachers || autoFillPool.filter(s => s.type !== 'free').map(s => ({ 
       id: s.id, 
       name: s.name, 
       code: s.code 
@@ -441,35 +471,44 @@ export function TimetableBuilder({
       // Handle "Free Period" - create period without subject/course
       if (draggedItem.id === 'FREE_PERIOD') {
         await onPeriodUpdate(slot, undefined, undefined);
-      } else if (schoolType === 'TERTIARY') {
-        await onPeriodUpdate(slot, undefined, draggedItem.id);
-      } else if (schoolType === 'SECONDARY' && subjectsWithTeachers && onTeacherSelectionNeeded) {
-        // SECONDARY: Find subject with teachers and request selection
-        const subjectWithTeachers = subjectsWithTeachers.find(s => s.id === draggedItem.id);
-        const teachers = subjectWithTeachers?.teachers || [];
-        
-        if (teachers.length === 0) {
-          // No teachers available - show warning via callback
-          onTeacherSelectionNeeded({
-            slot,
-            subject: { id: draggedItem.id, name: draggedItem.name, code: draggedItem.code },
-            teachers: [],
-          });
-        } else if (teachers.length === 1) {
-          // Only one teacher - auto-assign
-          await onPeriodUpdate(slot, draggedItem.id, undefined, teachers[0].id);
-        } else {
-          // Multiple teachers - request selection via callback
-          onTeacherSelectionNeeded({
-            slot,
-            subject: { id: draggedItem.id, name: draggedItem.name, code: draggedItem.code },
-            teachers,
-          });
-        }
-      } else {
-        // PRIMARY or SECONDARY without teacher info: direct update
-        await onPeriodUpdate(slot, draggedItem.id, undefined);
+        return;
       }
+
+      const assignSubject = async () => {
+        if (schoolType === 'TERTIARY') {
+          await onPeriodUpdate(slot, undefined, draggedItem.id);
+        } else if (schoolType === 'SECONDARY' && subjectsWithTeachers && onTeacherSelectionNeeded) {
+          const subjectWithTeachers = subjectsWithTeachers.find(s => s.id === draggedItem.id);
+          const teachers = subjectWithTeachers?.teachers || [];
+
+          if (teachers.length === 0) {
+            onTeacherSelectionNeeded({
+              slot,
+              subject: { id: draggedItem.id, name: draggedItem.name, code: draggedItem.code },
+              teachers: [],
+            });
+          } else if (teachers.length === 1) {
+            await onPeriodUpdate(slot, draggedItem.id, undefined, teachers[0].id);
+          } else {
+            onTeacherSelectionNeeded({
+              slot,
+              subject: { id: draggedItem.id, name: draggedItem.name, code: draggedItem.code },
+              teachers,
+            });
+          }
+        } else {
+          await onPeriodUpdate(slot, draggedItem.id, undefined);
+        }
+      };
+
+      if (schoolType === 'TERTIARY' || draggedItem.type === 'free') {
+        await assignSubject();
+        return;
+      }
+
+      confirmIfNeeded(draggedItem, () => {
+        void assignSubject();
+      });
     }
   };
 
@@ -850,6 +889,7 @@ export function TimetableBuilder({
         </div>
         </BodyPortal>
       )}
+      {mismatchModal}
     </DndContext>
   );
 }

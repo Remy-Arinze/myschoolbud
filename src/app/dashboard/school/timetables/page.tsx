@@ -63,6 +63,8 @@ import Link from 'next/link';
 import { ExamTimetablesTab } from '@/components/timetable/ExamTimetablesTab';
 import { buildTermOptions } from '@/lib/academic/buildTermOptions';
 import { SectionTabs } from '@/components/ui/SectionTabs';
+import { classStreamFromClass } from '@/hooks/useStreamMismatchConfirm';
+import { streamChipLabel, subjectOfferedInStream, subjectStreamFromSchoolSubject } from '@/lib/utils/subject-level-stream';
 
 // Types for teacher selection state
 interface TeacherSelectionState {
@@ -199,6 +201,15 @@ export default function TimetablesPage() {
   const teachers = staffResponse?.data?.items || [];
   const timetable = timetableResponse?.data || [];
   const timetablesByClass = timetablesResponse?.data || {};
+  const selectedClass = classes.find((c) => c.id === selectedClassId);
+  const classStream = classStreamFromClass(selectedClass);
+  const classLevelName = selectedClass?.classLevel || selectedClass?.name || '';
+  const offeredSubjects = useMemo(() => {
+    if (currentType !== 'SECONDARY' || !classStream) return subjects;
+    return subjects.filter((s) =>
+      subjectOfferedInStream(subjectStreamFromSchoolSubject(s), classStream),
+    );
+  }, [subjects, currentType, classStream]);
 
   const allTerms = useMemo(() => {
     return buildTermOptions(sessionsResponse?.data, {
@@ -702,7 +713,7 @@ export default function TimetablesPage() {
     requiresTeacherAssignment,
   } = useAutoGenerateWithTeachers({
     schoolType: currentType,
-    subjects: subjects.map(s => ({
+    subjects: offeredSubjects.map(s => ({
       id: s.id,
       name: s.name,
       code: s.code,
@@ -783,7 +794,6 @@ export default function TimetablesPage() {
     }
   };
 
-  const selectedClass = classes.find((c) => c.id === selectedClassId);
   const selectedTerm = allTerms.find((t) => t.id === termId);
   const isClassTabLoading =
     isLoadingSchool || isLoadingActiveSession || (!!termId && isLoadingTimetables);
@@ -1076,7 +1086,22 @@ export default function TimetablesPage() {
 
               <TimetableBuilder
                 schoolType={currentType}
-                subjects={subjects.map((s) => ({ id: s.id, name: s.name, code: s.code, type: 'subject' as const }))}
+                subjects={subjects.map((s) => {
+                  const stream = subjectStreamFromSchoolSubject(s);
+                  return {
+                    id: s.id,
+                    name: s.name,
+                    code: s.code,
+                    type: 'subject' as const,
+                    levelStream: s.levelStream,
+                    agoraLevelStreams: s.agoraLevelStreams,
+                    classLevelName: s.classLevelName,
+                    streamChip:
+                      classStream && stream !== 'ALL' && stream !== classStream
+                        ? streamChipLabel(stream)
+                        : null,
+                  };
+                })}
                 courses={courses.map((c) => ({ id: c.id, name: c.name, code: c.code, type: 'course' as const }))}
                 timetable={timetable}
                 classArmId={''}
@@ -1090,8 +1115,26 @@ export default function TimetablesPage() {
                   name: s.name,
                   code: s.code,
                   type: 'subject' as const,
+                  levelStream: s.levelStream,
+                  agoraLevelStreams: s.agoraLevelStreams,
+                  classLevelName: s.classLevelName,
                   teachers: s.teachers,
                 })) : undefined}
+                autoFillSubjects={offeredSubjects.map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  code: s.code,
+                  type: 'subject' as const,
+                }))}
+                autoFillSubjectsWithTeachers={currentType === 'SECONDARY' ? offeredSubjects.map(s => ({
+                  id: s.id,
+                  name: s.name,
+                  code: s.code,
+                  type: 'subject' as const,
+                  teachers: s.teachers,
+                })) : undefined}
+                classStream={classStream}
+                classLevelName={classLevelName}
                 onTeacherSelectionNeeded={currentType === 'SECONDARY' ? handleTeacherSelectionNeeded : undefined}
                 onEditPeriodTeacher={currentType === 'SECONDARY' ? handleEditPeriodTeacher : undefined}
               />
@@ -1105,6 +1148,9 @@ export default function TimetablesPage() {
             courses={courses}
             schoolType={currentType}
             workingDays={workingDays}
+            autoFillSubjects={offeredSubjects}
+            classStream={classStream}
+            classLevelName={classLevelName}
             onSave={handleBulkSave}
             onClose={() => setIsEditMode(false)}
             isLoading={isUpdating || isReplacing}

@@ -216,34 +216,6 @@ export default function SubjectsPage() {
     return filtered;
   }, [subjects, searchQuery, selectedLevelGroup, statusFilter, categoryFilter, classLevels]);
 
-  // Group subjects by class level for secondary schools
-  const groupedSubjects = useMemo(() => {
-    if (currentType !== 'SECONDARY') {
-      return { all: filteredSubjects };
-    }
-
-    const grouped: Record<string, Subject[]> = {
-      all: [],
-      jss: [],
-      sss: [],
-    };
-
-    filteredSubjects.forEach((subject) => {
-      const classLevel = classLevels.find((cl) => cl.id === subject.classLevelId);
-      const inferred = inferLevelStream({
-        levelStream: subject.levelStream,
-        classLevelCode: classLevel?.code,
-        classLevelName: classLevel?.name || subject.classLevelName,
-        code: subject.code,
-      });
-      if (inferred === 'JUNIOR') grouped.jss.push(subject);
-      else if (inferred === 'SENIOR') grouped.sss.push(subject);
-      else grouped.all.push(subject);
-    });
-
-    return grouped;
-  }, [filteredSubjects, classLevels, currentType]);
-
   const [bulkAssign] = useBulkAssignTeachersToClassesMutation();
 
   const handleCreateSubject = async (data: any) => {
@@ -589,125 +561,33 @@ export default function SubjectsPage() {
           </div>
         ) : (
           <>
-            {currentType === 'SECONDARY' ? (
-              <div className="space-y-6">
-                {(groupedSubjects.jss.length > 0 || groupedSubjects.sss.length > 0 || groupedSubjects.all.length > 0) ? (
-                  <>
-                    {groupedSubjects.jss.length > 0 && (
-                      <div>
-                        <p className="font-medium mb-4 text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-section-title)' }}>
-                          JSS Subjects
-                        </p>
-                        <div className={cn(
-                          'gap-4',
-                          viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col'
-                        )}>
-                          {groupedSubjects.jss.map((subject) => (
-                            <SubjectCard
-                              key={subject.id}
-                              subject={subject}
-                              onEdit={() => setEditingSubject(subject)}
-                              onDelete={() => handleDeleteSubject(subject.id, subject.name)}
-                              onAssignTeacher={() => setShowTeacherModal(subject)}
-                              onOpenDetail={() => setDetailSubjectId(subject.id)}
-                              isDeleting={isDeleting}
-                              currentType={currentType}
-                              isSelected={selectedIds.includes(subject.id)}
-                              isSelectionMode={isSelectionMode}
-                              onToggleSelection={() => toggleSelection(subject.id)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {groupedSubjects.sss.length > 0 && (
-                      <div>
-                        <p className="font-medium mb-4 text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-section-title)' }}>
-                          SSS Subjects
-                        </p>
-                        <div className={cn(
-                          'gap-4',
-                          viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col'
-                        )}>
-                          {groupedSubjects.sss.map((subject) => (
-                            <SubjectCard
-                              key={subject.id}
-                              subject={subject}
-                              onEdit={() => setEditingSubject(subject)}
-                              onDelete={() => handleDeleteSubject(subject.id, subject.name)}
-                              onAssignTeacher={() => setShowTeacherModal(subject)}
-                              onOpenDetail={() => setDetailSubjectId(subject.id)}
-                              isDeleting={isDeleting}
-                              currentType={currentType}
-                              isSelected={selectedIds.includes(subject.id)}
-                              isSelectionMode={isSelectionMode}
-                              onToggleSelection={() => toggleSelection(subject.id)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {groupedSubjects.all.length > 0 && (
-                      <div>
-                        <p className="font-medium text-light-text-secondary dark:text-dark-text-secondary mb-4" style={{ fontSize: 'var(--text-section-title)' }}>
-                          General Subjects
-                        </p>
-                        <div className={cn(
-                          'gap-4',
-                          viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col'
-                        )}>
-                          {groupedSubjects.all.map((subject) => (
-                            <SubjectCard
-                              key={subject.id}
-                              subject={subject}
-                              onEdit={() => setEditingSubject(subject)}
-                              onDelete={() => handleDeleteSubject(subject.id, subject.name)}
-                              onAssignTeacher={() => setShowTeacherModal(subject)}
-                              onOpenDetail={() => setDetailSubjectId(subject.id)}
-                              isDeleting={isDeleting}
-                              currentType={currentType}
-                              isSelected={selectedIds.includes(subject.id)}
-                              isSelectionMode={isSelectionMode}
-                              onToggleSelection={() => toggleSelection(subject.id)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : null}
-              </div>
-            ) : (
+            {filteredSubjects.length > 0 && (
               <div>
-                {filteredSubjects.length > 0 && (
-                  <>
-                    <div className="mb-4">
-                      <p className="font-medium text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-section-title)' }}>
-                        {currentType === 'TERTIARY' ? 'Courses' : 'Subjects'}
-                      </p>
-                    </div>
-                    <div className={cn(
-                      'gap-4',
-                      viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col'
-                    )}>
-                      {filteredSubjects.map((subject) => (
-                        <SubjectCard
-                          key={subject.id}
-                          subject={subject}
-                          onEdit={() => setEditingSubject(subject)}
-                          onDelete={() => handleDeleteSubject(subject.id, subject.name)}
-                          onAssignTeacher={() => setShowTeacherModal(subject)}
-                          onOpenDetail={() => setDetailSubjectId(subject.id)}
-                          isDeleting={isDeleting}
-                          currentType={currentType}
-                          isSelected={selectedIds.includes(subject.id)}
-                          isSelectionMode={isSelectionMode}
-                          onToggleSelection={() => toggleSelection(subject.id)}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
+                <div className="mb-4">
+                  <p className="font-medium text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-section-title)' }}>
+                    {currentType === 'TERTIARY' ? 'Courses' : 'Subjects'}
+                  </p>
+                </div>
+                <div className={cn(
+                  'gap-4',
+                  viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col'
+                )}>
+                  {filteredSubjects.map((subject) => (
+                    <SubjectCard
+                      key={subject.id}
+                      subject={subject}
+                      onEdit={() => setEditingSubject(subject)}
+                      onDelete={() => handleDeleteSubject(subject.id, subject.name)}
+                      onAssignTeacher={() => setShowTeacherModal(subject)}
+                      onOpenDetail={() => setDetailSubjectId(subject.id)}
+                      isDeleting={isDeleting}
+                      currentType={currentType}
+                      isSelected={selectedIds.includes(subject.id)}
+                      isSelectionMode={isSelectionMode}
+                      onToggleSelection={() => toggleSelection(subject.id)}
+                    />
+                  ))}
+                </div>
               </div>
             )}
 

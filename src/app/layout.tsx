@@ -7,6 +7,7 @@ import { Toaster } from 'react-hot-toast';
 import { RumProvider } from '@/lib/observability/RumProvider';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PortalProvider } from '@/components/portal/PortalProvider';
+import { InlineScript } from '@/components/InlineScript';
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -96,9 +97,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Initial Theme Script to avoid FOUC */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
+        <InlineScript
+          html={`
               try {
                 var stored = localStorage.getItem('agora-theme');
                 var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -113,14 +113,12 @@ export default function RootLayout({
                   document.documentElement.classList.remove('dark');
                 }
               } catch (e) {}
-            `,
-          }}
+            `}
         />
         {/* Organization Schema */}
-        <script
+        <InlineScript
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+          html={JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Organization',
               name: 'Myschoolbud',
@@ -131,14 +129,12 @@ export default function RootLayout({
                 'https://twitter.com/agora_edu',
                 'https://linkedin.com/company/agora-edu'
               ]
-            })
-          }}
+            }).replace(/</g, '\\u003c')}
         />
         {/* Service/Product Schema */}
-        <script
+        <InlineScript
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+          html={JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Service',
               name: 'Myschoolbud Student Identity Ledger',
@@ -149,8 +145,7 @@ export default function RootLayout({
               description: 'A unified management system that turns static paper trails into a living, portable digital profile for students.',
               areaServed: 'Global',
               serviceType: 'Education Management'
-            })
-          }}
+            }).replace(/</g, '\\u003c')}
         />
       </head>
       <body className={montserrat.className} suppressHydrationWarning={true}>

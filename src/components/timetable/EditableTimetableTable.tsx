@@ -13,6 +13,8 @@ import {
 import { DEFAULT_WORKING_DAYS } from '@/lib/calendar/instructionalDays';
 import { useAutoGenerateTimetable } from '@/hooks/useAutoGenerateTimetable';
 import { BodyPortal } from '@/components/ui/BodyPortal';
+import { useStreamMismatchConfirm } from '@/hooks/useStreamMismatchConfirm';
+import { type LevelStream } from '@/lib/utils/subject-level-stream';
 
 const FALLBACK_DAYS: DayOfWeek[] = [...DEFAULT_WORKING_DAYS];
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -49,10 +51,20 @@ interface SlotRow {
 
 interface EditableTimetableTableProps {
   timetable: TimetablePeriod[];
-  subjects: Array<{ id: string; name: string; code?: string }>;
+  subjects: Array<{
+    id: string;
+    name: string;
+    code?: string;
+    levelStream?: string | null;
+    agoraLevelStreams?: string[] | null;
+    classLevelName?: string | null;
+  }>;
   courses: Array<{ id: string; name: string; code?: string }>;
   schoolType: 'PRIMARY' | 'SECONDARY' | 'TERTIARY' | null;
   workingDays?: DayOfWeek[];
+  autoFillSubjects?: Array<{ id: string; name: string; code?: string }>;
+  classStream?: LevelStream | null;
+  classLevelName?: string;
   onSave: (periods: Omit<EditablePeriod, 'slotId'>[]) => Promise<void>;
   onClose: () => void;
   isLoading?: boolean;
@@ -275,11 +287,18 @@ export function EditableTimetableTable({
   courses,
   schoolType,
   workingDays,
+  autoFillSubjects,
+  classStream = null,
+  classLevelName = '',
   onSave,
   onClose,
   isLoading = false,
 }: EditableTimetableTableProps) {
   const DAYS = workingDays?.length ? workingDays : FALLBACK_DAYS;
+  const { confirmIfNeeded, mismatchModal } = useStreamMismatchConfirm({
+    classStream,
+    classLevelName,
+  });
 
   const [editablePeriods, setEditablePeriods] = useState<EditablePeriod[]>(() => hydratePeriods(timetable));
   const initialPeriodsRef = useRef(hydratePeriods(timetable));
@@ -290,7 +309,7 @@ export function EditableTimetableTable({
 
   const { generateTimetable, canGenerate } = useAutoGenerateTimetable({
     schoolType,
-    subjects,
+    subjects: autoFillSubjects ?? subjects,
     courses,
     existingPeriods: editablePeriods,
     workingDays: DAYS,
@@ -663,11 +682,19 @@ export function EditableTimetableTable({
                                           subjectId: isTertiary ? undefined : value,
                                           courseId: isTertiary ? value : undefined,
                                         };
-                                  if (period) {
-                                    updatePeriodInSlot(day, row.slotId, assignment);
-                                  } else {
-                                    addPeriodToSlot(day, row, assignment);
+                                  const apply = () => {
+                                    if (period) {
+                                      updatePeriodInSlot(day, row.slotId, assignment);
+                                    } else {
+                                      addPeriodToSlot(day, row, assignment);
+                                    }
+                                  };
+                                  if (value === 'FREE_PERIOD' || isTertiary) {
+                                    apply();
+                                    return;
                                   }
+                                  const subject = subjects.find((s) => s.id === value);
+                                  confirmIfNeeded(subject, apply);
                                 }}
                                 className="w-full px-2 py-1.5 rounded border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-input)] dark:bg-[var(--dark-input)] text-light-text-primary dark:text-dark-text-primary"
                               >
@@ -837,6 +864,7 @@ export function EditableTimetableTable({
             </div>
           </div>
         )}
+        {mismatchModal}
       </div>
     </div>
     </BodyPortal>

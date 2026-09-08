@@ -8,15 +8,18 @@ import {
 } from 'lucide-react';
 import { SubjectCurriculumCard } from './SubjectCurriculumCard';
 import { CurriculumSetupModal } from './CurriculumSetupModal';
+import { CurriculumCatalogModal } from './CurriculumCatalogModal';
 import { CurriculumDetailModal } from './CurriculumDetailModal';
+import { CurriculumUploadIntroModal, isCurriculumUploadIntroHidden } from './CurriculumUploadIntroModal';
 import { NoTimetableMessage } from './NoTimetableMessage';
 import { Button } from '@/components/ui/Button';
 import { 
   useGetSchemesSummaryQuery, 
+  useGetAgoraCatalogQuery,
   useCancelSchemeOfWorkMutation,
   useDeleteSchemeOfWorkMutation,
-  useGetSubscriptionSummaryQuery
 } from '@/lib/store/api/schoolAdminApi';
+import { useSubscription } from '@/hooks/useSubscription';
 import toast from 'react-hot-toast';
 
 interface SubjectCurriculumListProps {
@@ -39,7 +42,16 @@ export function SubjectCurriculumList({
   canEdit = false,
 }: SubjectCurriculumListProps) {
   const [setupSubject, setSetupSubject] = useState<any | null>(null);
+  const [setupInitialTab, setSetupInitialTab] = useState<'AGORA' | 'CUSTOM' | 'MERGE'>('CUSTOM');
+  const [setupHideLibrary, setSetupHideLibrary] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogSubjectId, setCatalogSubjectId] = useState<string | null>(null);
   const [viewCurriculumId, setViewCurriculumId] = useState<string | null>(null);
+  const [showUploadIntro, setShowUploadIntro] = useState(false);
+  const [pendingCustomSetup, setPendingCustomSetup] = useState<{
+    subject: any;
+    hideLibraryTab: boolean;
+  } | null>(null);
 
   // Fetch schemes summary (status-driven)
   const { 
@@ -70,11 +82,56 @@ export function SubjectCurriculumList({
     },
   );
 
-  const { data: subscriptionSummary } = useGetSubscriptionSummaryQuery();
-  const creditsRemaining = subscriptionSummary?.aiCreditsRemaining ?? 0;
+  // Warm the class catalog cache after cards are in, so Browse library opens instantly.
+  useGetAgoraCatalogQuery(
+    { schoolId, classLevelId, termId },
+    {
+      skip: isLoading || isError || subjects.length === 0,
+      refetchOnMountOrArgChange: 60,
+      refetchOnFocus: false,
+    },
+  );
+
+  const { summary, isLoading: isLoadingSubscription } = useSubscription();
+  const creditsRemaining =
+    summary && summary.aiPeriodActive === false ? 0 : summary?.aiCreditsRemaining ?? 0;
+  const hasEnoughCredits =
+    isLoadingSubscription ||
+    summary?.tier === 'CUSTOM' ||
+    creditsRemaining === -1 ||
+    creditsRemaining >= 50;
 
   const [cancelGeneration] = useCancelSchemeOfWorkMutation();
   const [deleteScheme] = useDeleteSchemeOfWorkMutation();
+
+  const openCatalog = (subjectId: string | null = null) => {
+    setCatalogSubjectId(subjectId);
+    setCatalogOpen(true);
+  };
+
+  const openCustomSetup = (subjectId: string, options?: { hideLibraryTab?: boolean }) => {
+    const subject = subjects.find((s: any) => s.subjectId === subjectId);
+    if (!subject) return;
+    setCatalogOpen(false);
+    const hideLibraryTab = Boolean(options?.hideLibraryTab);
+    if (!isCurriculumUploadIntroHidden()) {
+      setPendingCustomSetup({ subject, hideLibraryTab });
+      setShowUploadIntro(true);
+      return;
+    }
+    setSetupHideLibrary(hideLibraryTab);
+    setSetupInitialTab('CUSTOM');
+    setSetupSubject(subject);
+  };
+
+  const finishUploadIntro = () => {
+    setShowUploadIntro(false);
+    if (!pendingCustomSetup) return;
+    setSetupHideLibrary(pendingCustomSetup.hideLibraryTab);
+    setSetupInitialTab('CUSTOM');
+    setSetupSubject(pendingCustomSetup.subject);
+    setPendingCustomSetup(null);
+  };
 
   const handleCancelGeneration = async (schemeId: string) => {
     try {
@@ -150,12 +207,16 @@ export function SubjectCurriculumList({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* 
-          <Button variant="primary" className="rounded-xl h-11 px-6 font-black text-[11px] uppercase tracking-widest shadow-md shadow-agora-blue/10 active:scale-95 transition-all">
-            <Plus className="h-4 w-4 mr-2" />
-            Manual Setup
-          </Button>
-          */}
+          {canEdit && (
+            <Button
+              variant="outline"
+              className="rounded-xl h-11 px-6 font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all"
+              onClick={() => openCatalog(null)}
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Browse library
+            </Button>
+          )}
         </div>
       </div>
 
@@ -181,7 +242,7 @@ export function SubjectCurriculumList({
           <SubjectCurriculumCard
             key={subj.subjectId}
             subject={subj}
-            onSetup={() => setSetupSubject(subj)}
+            onSetup={() => openCatalog(subj.subjectId)}
             onView={(id) => setViewCurriculumId(id)}
             onEdit={(id) => setViewCurriculumId(id)}
             onCancel={() => subj.schemeId && handleCancelGeneration(subj.schemeId)}
@@ -190,11 +251,31 @@ export function SubjectCurriculumList({
         ))}
       </div>
 
+      <CurriculumCatalogModal
+        isOpen={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        schoolId={schoolId}
+        classLevelId={classLevelId}
+        classLevelName={classLevelName}
+        termId={termId}
+        classId={classId}
+        canEdit={canEdit}
+        initialSubjectId={catalogSubjectId}
+        onImported={() => refetchSchemes()}
+        onCustomSetup={openCustomSetup}
+      />
+
+      <CurriculumUploadIntroModal
+        isOpen={showUploadIntro}
+        onClose={finishUploadIntro}
+      />
+
       {setupSubject && (
         <CurriculumSetupModal
           isOpen={!!setupSubject}
           onClose={() => {
             setSetupSubject(null);
+            setSetupHideLibrary(false);
             refetchSchemes();
           }}
           subject={setupSubject}
@@ -203,7 +284,10 @@ export function SubjectCurriculumList({
           classLevelName={classLevelName}
           termId={termId}
           creditsRemaining={creditsRemaining}
+          hasEnoughCredits={hasEnoughCredits}
           instructionalWeeks={subjects[0]?.instructionalWeeks || 0}
+          initialTab={setupInitialTab}
+          hideLibraryTab={setupHideLibrary}
         />
       )}
 

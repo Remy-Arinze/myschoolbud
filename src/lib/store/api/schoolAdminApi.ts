@@ -1275,6 +1275,7 @@ export interface Subject {
   } | null;
   description?: string;
   agoraSubjectId?: string;
+  agoraLevelStreams?: string[];
   levelStream?: 'JUNIOR' | 'SENIOR' | 'ALL';
   isAgoraStandard: boolean;
   category?: string;
@@ -4035,6 +4036,33 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       ],
     }),
 
+    setupSchemesBulk: builder.mutation<
+      { added: number; replaced: number; failed: { subjectId: string; error: string }[] },
+      {
+        schoolId: string;
+        body: {
+          classLevelId: string;
+          termId: string;
+          classId?: string;
+          forceOverwrite?: boolean;
+          items: { subjectId: string; agoraCurriculumId: string }[];
+        };
+      }
+    >({
+      query: ({ schoolId, body }) => ({
+        url: `schools/${schoolId}/curriculum/schemes/setup-bulk`,
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (
+        response: ResponseDto<{ added: number; replaced: number; failed: { subjectId: string; error: string }[] }>,
+      ) => response.data,
+      invalidatesTags: (result, error, { body }) => [
+        { type: 'Curriculum', id: `SCHEME_SUMMARY_${body.classLevelId}` },
+        'Curriculum',
+      ],
+    }),
+
     cancelSchemeOfWork: builder.mutation<any, { schoolId: string; schemeId: string; classLevelId: string }>({
       query: ({ schoolId, schemeId }) => ({
         url: `schools/${schoolId}/curriculum/schemes/${schemeId}/cancel`,
@@ -4102,17 +4130,41 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       transformResponse: (response: ResponseDto<any[]>) => response.data,
     }),
 
+    getAgoraCatalog: builder.query<
+      {
+        instructionalWeeks: number;
+        gradeLevel: string;
+        termNumber: number;
+        subjects: any[];
+        templates: any[];
+      },
+      { schoolId: string; classLevelId: string; termId: string }
+    >({
+      query: ({ schoolId, classLevelId, termId }) => ({
+        url: `schools/${schoolId}/curriculum/agora-catalog`,
+        params: { classLevelId, termId },
+      }),
+      transformResponse: (
+        response: ResponseDto<{
+          instructionalWeeks: number;
+          gradeLevel: string;
+          termNumber: number;
+          subjects: any[];
+          templates: any[];
+        }>,
+      ) => response.data,
+      providesTags: (result, error, { classLevelId }) => [
+        { type: 'Curriculum', id: `SCHEME_SUMMARY_${classLevelId}` },
+      ],
+      keepUnusedDataFor: 300,
+    }),
+
     getAgoraCurriculumPreview: builder.query<any, { schoolId: string; curriculumId: string }>({
       query: ({ schoolId, curriculumId }) => ({
         url: `schools/${schoolId}/curriculum/agora/${curriculumId}/preview`,
       }),
       transformResponse: (response: ResponseDto<any>) => response.data,
       providesTags: (result, error, { curriculumId }) => [{ type: 'Curriculum', id: `PREVIEW_${curriculumId}` }],
-    }),
-
-    getSubscriptionSummary: builder.query<SubscriptionSummaryDto, void>({
-      query: () => 'subscriptions/summary',
-      transformResponse: (response: ResponseDto<SubscriptionSummaryDto>) => response.data,
     }),
     // Bud library (subject bank)
     getAgoraSubjects: builder.query<ResponseDto<AgoraSubject[]>, { schoolId: string; schoolType?: string; category?: string }>({
@@ -4525,18 +4577,18 @@ export const {
   useUploadSchemeOfWorkLessonNoteMutation,
   useGetSchemesSummaryQuery,
   useSetupSchemeOfWorkMutation,
+  useSetupSchemesBulkMutation,
   useCancelSchemeOfWorkMutation,
   useGetSchemeOfWorkByIdQuery,
   useReplaceSchemeWeeksMutation,
   useDeleteSchemeOfWorkMutation,
   useGetAgoraLibraryQuery,
+  useGetAgoraCatalogQuery,
   useGetAgoraCurriculumPreviewQuery,
   // School document library
   useGetSchoolCurriculumDocsQuery,
   useUploadSchoolCurriculumDocMutation,
   useDeleteSchoolCurriculumDocMutation,
-  // Subscription hooks
-  useGetSubscriptionSummaryQuery,
   useGetAgoraSubjectsQuery,
   useReassignStudentMutation,
   // Export hooks

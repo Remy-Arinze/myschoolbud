@@ -42,6 +42,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { buildTermOptions } from '@/lib/academic/buildTermOptions';
+import { classStreamFromClass, useStreamMismatchConfirm } from '@/hooks/useStreamMismatchConfirm';
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 
@@ -124,6 +125,11 @@ export function ExamTimetablesTab() {
   const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ExamTimetableSlot | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const examClass = classes.find((c: Class) => c.id === form.classId);
+  const { confirmIfNeeded, mismatchModal } = useStreamMismatchConfirm({
+    classStream: classStreamFromClass(examClass),
+    classLevelName: examClass?.classLevel || examClass?.name || '',
+  });
 
   const terms = useMemo(() => {
     const activeSessionId = activeSessionResponse?.data?.session?.id;
@@ -143,12 +149,7 @@ export function ExamTimetablesTab() {
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [slots]);
 
-  const handleCreate = async () => {
-    if (!schoolId || !termId) return;
-    if (!form.examDate || !form.subjectId || !form.classId) {
-      toast.error('Date, subject, and class are required');
-      return;
-    }
+  const submitExamSlot = async () => {
     const cls = classes.find((c: Class) => c.id === form.classId);
     const room = rooms.find((r: { id: string; capacity?: number; name: string }) => r.id === form.roomId);
     if (
@@ -163,7 +164,7 @@ export function ExamTimetablesTab() {
     }
     try {
       await createSlot({
-        schoolId,
+        schoolId: schoolId!,
         termId,
         examDate: form.examDate,
         startTime: form.startTime,
@@ -181,6 +182,18 @@ export function ExamTimetablesTab() {
     } catch (e: any) {
       toast.error(e?.data?.message || 'Failed to add exam slot');
     }
+  };
+
+  const handleCreate = async () => {
+    if (!schoolId || !termId) return;
+    if (!form.examDate || !form.subjectId || !form.classId) {
+      toast.error('Date, subject, and class are required');
+      return;
+    }
+    const subject = subjects.find((s: { id: string }) => s.id === form.subjectId);
+    confirmIfNeeded(subject, () => {
+      void submitExamSlot();
+    });
   };
 
   const handleDelete = async () => {
@@ -548,6 +561,7 @@ export function ExamTimetablesTab() {
           </div>
         </div>
       </Modal>
+      {mismatchModal}
 
       <ConfirmModal
         isOpen={showPublishConfirm}

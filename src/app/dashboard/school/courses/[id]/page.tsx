@@ -68,6 +68,13 @@ import { SectionTabs } from '@/components/ui/SectionTabs';
 
 type TabType = 'students' | 'teachers' | 'timetable' | 'resources' | 'curriculum';
 
+const CLASS_DETAIL_TABS: TabType[] = ['students', 'teachers', 'timetable', 'resources', 'curriculum'];
+
+function parseClassDetailTab(value: string | null): TabType | null {
+  if (value && CLASS_DETAIL_TABS.includes(value as TabType)) return value as TabType;
+  return null;
+}
+
 const DAYS_OF_WEEK = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -82,7 +89,8 @@ export default function ClassDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const classId = params.id as string;
-  const [activeTab, setActiveTab] = useState<TabType>('students');
+  const tabFromUrl = parseClassDetailTab(searchParams.get('tab'));
+  const [activeTab, setActiveTab] = useState<TabType>(tabFromUrl ?? 'students');
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [removeModal, setRemoveModal] = useState<{
     isOpen: boolean;
@@ -149,19 +157,19 @@ export default function ClassDetailPage() {
     }
   }, [classData?.type, schoolType, router]);
 
-  // Deep-link from setup checklist: ?tab=curriculum
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (!tab) return;
-    const allowed: TabType[] = ['students', 'teachers', 'timetable', 'resources', 'curriculum'];
-    if (allowed.includes(tab as TabType)) {
-      setActiveTab(tab as TabType);
-    }
-    const next = new URLSearchParams(searchParams.toString());
-    next.delete('tab');
-    const qs = next.toString();
-    router.replace(`/dashboard/school/courses/${classId}${qs ? `?${qs}` : ''}`, { scroll: false });
-  }, [searchParams, router, classId]);
+    setActiveTab(tabFromUrl ?? 'students');
+  }, [tabFromUrl]);
+
+  const handleTabChange = useCallback(
+    (tab: TabType) => {
+      setActiveTab(tab);
+      const next = new URLSearchParams(searchParams.toString());
+      next.set('tab', tab);
+      router.replace(`/dashboard/school/courses/${classId}?${next.toString()}`, { scroll: false });
+    },
+    [searchParams, router, classId],
+  );
 
   const [showStudentAssignModal, setShowStudentAssignModal] = useState(false);
   const [showStudentAdmissionModal, setShowStudentAdmissionModal] = useState(false);
@@ -660,7 +668,7 @@ export default function ClassDetailPage() {
         <SectionTabs
           ariaLabel="Class sections"
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           onTabHover={handleTabHover}
           tabs={tabs.map((tab) => ({
             key: tab.id,

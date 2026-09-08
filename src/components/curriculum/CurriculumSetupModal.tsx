@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Sparkles,
   BookOpen,
-  Zap,
   CheckCircle2,
   Loader2,
   X,
@@ -18,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
+import { LoisOrb } from '@/components/ai/LoisOrb';
 import { cn } from '@/lib/utils';
 import {
   useSetupSchemeOfWorkMutation,
@@ -44,7 +44,10 @@ interface CurriculumSetupModalProps {
   classLevelName: string;
   termId: string;
   creditsRemaining: number;
+  hasEnoughCredits?: boolean;
   instructionalWeeks?: number;
+  initialTab?: 'AGORA' | 'CUSTOM' | 'MERGE';
+  hideLibraryTab?: boolean;
 }
 
 const LIVE_SCHEME_STATUSES = new Set(['DRAFT', 'APPROVED', 'PUBLISHED', 'GENERATING']);
@@ -62,9 +65,19 @@ export function CurriculumSetupModal({
   classLevelName,
   termId,
   creditsRemaining,
+  hasEnoughCredits: hasEnoughCreditsProp,
   instructionalWeeks = 0,
+  initialTab = 'AGORA',
+  hideLibraryTab = false,
 }: CurriculumSetupModalProps) {
-  const [activeTab, setActiveTab] = useState<'AGORA' | 'CUSTOM' | 'MERGE'>('AGORA');
+  const hasEnoughCredits =
+    hasEnoughCreditsProp ?? (creditsRemaining === -1 || creditsRemaining >= 50);
+  const walletLabel =
+    creditsRemaining === -1 ? 'Unlimited' : String(creditsRemaining);
+
+  const [activeTab, setActiveTab] = useState<'AGORA' | 'CUSTOM' | 'MERGE'>(
+    hideLibraryTab ? 'CUSTOM' : initialTab,
+  );
   const [mergeWeightAgora, setMergeWeightAgora] = useState(70);
   const [selectedAgoraId, setSelectedAgoraId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,6 +95,10 @@ export function CurriculumSetupModal({
   const [pendingOverwriteId, setPendingOverwriteId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isOpen) setActiveTab(hideLibraryTab ? 'CUSTOM' : initialTab);
+  }, [isOpen, initialTab, hideLibraryTab]);
+
   // Queries & Mutations
   const { data: agoraLibrary = [], isLoading: isLoadingLibrary } = useGetAgoraLibraryQuery(
     {
@@ -89,7 +106,7 @@ export function CurriculumSetupModal({
       subjectId: subject.subjectId,
       gradeLevel: classLevelName // Match the enum e.g. "JSS_1"
     },
-    { skip: !isOpen || (activeTab !== 'AGORA' && activeTab !== 'MERGE') }
+    { skip: !isOpen || hideLibraryTab || (activeTab !== 'AGORA' && activeTab !== 'MERGE') }
   );
 
   const { data: schoolDocsResponse, isLoading: isLoadingDocs } = useGetSchoolCurriculumDocsQuery(
@@ -229,6 +246,7 @@ export function CurriculumSetupModal({
       onClose={onClose}
       hideHeader={true}
       size="2xl"
+      closeOnBackdrop={false}
       className="p-0 border-none shadow-2xl rounded-2xl bg-light-bg dark:bg-dark-bg"
       contentClassName="p-0"
     >
@@ -255,23 +273,25 @@ export function CurriculumSetupModal({
                 <Button
                   variant="primary"
                   size="sm"
-                  className={cn("h-8 px-3", activeTab !== 'AGORA' && "bg-purple-600 hover:bg-purple-500")}
+                  className="h-8 px-3 gap-1.5"
                   onClick={() => handleSetup()}
                   disabled={
                     isSubmitting ||
                     isUploadingDoc ||
                     (activeTab === 'CUSTOM' &&
-                      ((!file && selectedSourceIds.length === 0) || creditsRemaining < 50)) ||
+                      ((!file && selectedSourceIds.length === 0) || !hasEnoughCredits)) ||
                     (activeTab === 'AGORA' && !selectedAgoraId) ||
                     (activeTab === 'MERGE' &&
-                      (!selectedAgoraId || selectedSourceIds.length === 0 || creditsRemaining < 50))
+                      (!selectedAgoraId || selectedSourceIds.length === 0 || !hasEnoughCredits))
                   }
                 >
                   {isSubmitting || isUploadingDoc ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : activeTab === 'AGORA' ? (
                     <Plus className="h-3.5 w-3.5" />
-                  ) : <Zap className="h-3.5 w-3.5" />}
+                  ) : (
+                    <LoisOrb size="xs" />
+                  )}
                   {activeTab === 'AGORA' ? 'Use Template' : activeTab === 'MERGE' ? 'Confirm merge' : file ? 'Scan & Split' : 'Compile year'}
                 </Button>
               )}
@@ -286,6 +306,7 @@ export function CurriculumSetupModal({
           </div>
 
           {/* Simple Tab Styling - matching Class Detail Page */}
+          {!hideLibraryTab && (
           <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
             {(['AGORA', 'CUSTOM', 'MERGE'] as const).map((tab) => (
               <button
@@ -304,6 +325,7 @@ export function CurriculumSetupModal({
               </button>
             ))}
           </div>
+          )}
         </div>
 
         {/* Content Section */}
@@ -491,7 +513,7 @@ export function CurriculumSetupModal({
                     {/* Private Library Section */}
                     {isLoadingDocs ? (
                       <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                        <Loader2 className="h-8 w-8 animate-spin text-agora-blue" />
                         <p className="font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-widest text-[9px]">Scanning Private Vault...</p>
                       </div>
                     ) : schoolDocs.length > 0 && (
@@ -518,14 +540,14 @@ export function CurriculumSetupModal({
                                  "relative p-4 rounded-xl border-2 transition-all group",
                                  doc.status !== 'PARSED' && doc.status !== 'COMPLETED' ? "opacity-60 cursor-not-allowed grayscale" : "cursor-pointer",
                                  selectedSourceIds.includes(doc.id)
-                                   ? "border-purple-500 bg-purple-500/5 shadow-md shadow-purple-500/5"
-                                   : "border-light-border dark:border-dark-border hover:border-purple-500/30"
+                                   ? "border-agora-blue bg-agora-blue/5 shadow-md shadow-agora-blue/5"
+                                   : "border-light-border dark:border-dark-border hover:border-agora-blue/30"
                                )}
                              >
                                 <div className="flex items-center gap-3">
                                   <div className={cn(
                                     "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
-                                    selectedSourceIds.includes(doc.id) ? "bg-purple-600 text-white" : "bg-light-surface dark:bg-dark-surface text-light-text-muted"
+                                    selectedSourceIds.includes(doc.id) ? "bg-agora-blue text-white" : "bg-light-surface dark:bg-dark-surface text-light-text-muted"
                                   )}>
                                     {doc.status === 'PARSING' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Layers className="h-4 w-4" />}
                                   </div>
@@ -551,7 +573,7 @@ export function CurriculumSetupModal({
                                   </div>
                                 </div>
                                 {selectedSourceIds.includes(doc.id) && (
-                                  <CheckCircle2 className="absolute top-2 right-[36px] h-4 w-4 text-purple-500 animate-in zoom-in" />
+                                  <CheckCircle2 className="absolute top-2 right-[36px] h-4 w-4 text-agora-blue animate-in zoom-in" />
                                 )}
                                 <button
                                   onClick={(e) => handleDeleteDoc(e, doc.id)}
@@ -576,12 +598,24 @@ export function CurriculumSetupModal({
                         </p>
                       </div>
 
+                      <div className="rounded-lg border border-light-border dark:border-dark-border px-3.5 py-3">
+                        <p className="text-light-text-muted dark:text-dark-text-muted uppercase tracking-wide mb-1.5" style={{ fontSize: 'var(--text-tiny)' }}>
+                          File structure
+                        </p>
+                        <ul className="text-light-text-secondary dark:text-dark-text-secondary space-y-1 list-disc list-inside leading-relaxed" style={{ fontSize: 'var(--text-small)' }}>
+                          <li>One subject per file, with selectable text (not a scan)</li>
+                          <li>Grade headings exactly: JSS 1, SS 2, Primary 3</li>
+                          <li>Each week: title, Subtopics, Learning outcomes, Student-friendly line</li>
+                          <li>Put Revision or Examination in those week titles</li>
+                        </ul>
+                      </div>
+
                       <div
                         className={cn(
                           "group relative border-2 border-dashed rounded-xl p-10 transition-all flex flex-col items-center justify-center space-y-4 cursor-pointer overflow-hidden",
                           file
-                            ? "border-purple-500 bg-purple-500/5"
-                            : "border-light-border dark:border-dark-border hover:border-purple-500/30 hover:bg-purple-500/[0.02]"
+                            ? "border-agora-blue bg-agora-blue/5"
+                            : "border-light-border dark:border-dark-border hover:border-agora-blue/30 hover:bg-agora-blue/[0.02]"
                         )}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
@@ -604,7 +638,7 @@ export function CurriculumSetupModal({
 
                         <div className={cn(
                           "h-16 w-16 rounded-xl flex items-center justify-center transition-all duration-500",
-                          file ? "bg-purple-600 text-white scale-110 shadow-lg shadow-purple-600/20" : "bg-light-surface dark:bg-dark-surface text-light-text-muted group-hover:scale-110 group-hover:text-purple-500"
+                          file ? "bg-agora-blue text-white scale-110 shadow-lg shadow-agora-blue/20" : "bg-light-surface dark:bg-dark-surface text-light-text-muted group-hover:scale-110 group-hover:text-agora-blue"
                         )}>
                           {file ? <Sparkles className="h-8 w-8 animate-pulse" /> : <FileUp className="h-8 w-8" />}
                         </div>
@@ -638,7 +672,7 @@ export function CurriculumSetupModal({
                             <h4 className="font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-widest" style={{ fontSize: 'var(--text-tiny)' }}>
                               Multi-Grade Intelligent Split
                             </h4>
-                            <span className="text-purple-600 font-bold" style={{ fontSize: 'var(--text-tiny)' }}>Auto-Scan Active</span>
+                            <span className="text-agora-blue font-bold" style={{ fontSize: 'var(--text-tiny)' }}>Auto-Scan Active</span>
                           </div>
                           
                           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -654,7 +688,7 @@ export function CurriculumSetupModal({
                                 className={cn(
                                   "px-2 py-2 rounded-lg font-black uppercase tracking-tight transition-all text-center",
                                   selectedGrades.includes(grade)
-                                    ? "bg-purple-600 text-white shadow-md shadow-purple-500/20 scale-105"
+                                    ? "bg-agora-blue text-white shadow-md shadow-agora-blue/20 scale-105"
                                     : "bg-light-surface dark:bg-dark-surface text-light-text-muted hover:bg-light-border dark:hover:bg-dark-border"
                                 )}
                                 style={{ fontSize: 'var(--text-tiny)' }}
@@ -674,9 +708,7 @@ export function CurriculumSetupModal({
                   <div className="space-y-6">
                     <div className="bg-light-surface dark:bg-dark-surface/50 rounded-2xl p-6 border border-light-border dark:border-dark-border sticky top-0">
                       <div className="flex items-center gap-3 mb-6">
-                        <div className="h-10 w-10 rounded-xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
-                          <Zap className="h-5 w-5" />
-                        </div>
+                        <LoisOrb size="lg" />
                         <div>
                           <h4 className="font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight" style={{ fontSize: 'var(--text-small)' }}>
                             Lois AI Curation
@@ -700,27 +732,27 @@ export function CurriculumSetupModal({
                         )}
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-light-text-muted dark:text-dark-text-muted uppercase tracking-tight" style={{ fontSize: 'var(--text-tiny)' }}>Wallet</span>
-                          <span className="font-black text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-small)' }}>{creditsRemaining}</span>
+                          <span className="font-black text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-small)' }}>{walletLabel}</span>
                         </div>
 
                         <div className="h-px bg-light-border dark:bg-dark-border my-2" />
 
                         <div className="flex items-center justify-between">
                           <span className="font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight" style={{ fontSize: 'var(--text-tiny)' }}>Total Credits</span>
-                          <span className="font-black text-purple-600 text-lg">50</span>
+                          <span className="font-black text-agora-blue text-lg">50</span>
                         </div>
                       </div>
 
                       <div className="mt-8 space-y-3">
-                         <div className="flex items-start gap-2 p-3 bg-purple-500/5 rounded-xl border border-purple-500/10">
-                            <Info className="h-4 w-4 text-purple-600 mt-0.5" />
+                         <div className="flex items-start gap-2 p-3 bg-agora-blue/5 rounded-xl border border-agora-blue/10">
+                            <Info className="h-4 w-4 text-agora-blue mt-0.5" />
                             <p className="text-light-text-muted dark:text-dark-text-muted font-bold leading-tight" style={{ fontSize: 'var(--text-tiny)' }}>
                               Files are scanned for viruses and binary signatures before processing.
                             </p>
                          </div>
                       </div>
 
-                      {creditsRemaining < 50 && (
+                      {!hasEnoughCredits && (
                         <div className="mt-6 p-4 bg-red-500/5 border border-red-500/10 rounded-xl space-y-3">
                           <p className="font-bold text-red-600 leading-tight" style={{ fontSize: 'var(--text-tiny)' }}>
                             Insufficient credits to start AI generation.
