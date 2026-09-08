@@ -116,13 +116,6 @@ export function CurriculumCatalogModal({
   const instructionalWeeks = catalog?.instructionalWeeks ?? 0;
   const showSpinner = isLoading && !catalog;
 
-  // #region agent log
-  useEffect(() => {
-    if (!isOpen || !catalog) return;
-    fetch('http://127.0.0.1:7924/ingest/6b9416e1-f044-428a-939e-a735762881c0',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'02cb40'},body:JSON.stringify({sessionId:'02cb40',runId:'pre-fix',hypothesisId:'E',location:'CurriculumCatalogModal.tsx:catalog',message:'frontend catalog payload',data:{classLevelName,filterSubjectId,gradeLevel:catalog.gradeLevel,subjectChips:(catalog.subjects||[]).map((s:any)=>({name:s.subjectName,agoraSubjectId:s.agoraSubjectId,templateCount:s.templateCount})),templates:(catalog.templates||[]).map((t:any)=>({school:t.schoolSubjectName,agora:t.subject?.name,version:t.version}))},timestamp:Date.now()})}).catch(()=>{});
-  }, [isOpen, catalog, classLevelName, filterSubjectId]);
-  // #endregion
-
   useEffect(() => {
     if (!isOpen) return;
     setFilterSubjectId(initialSubjectId || 'ALL');
