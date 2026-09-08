@@ -18,6 +18,7 @@ interface ModalProps {
   className?: string;
   contentClassName?: string;
   hideHeader?: boolean;
+  elevated?: boolean;
 }
 
 export function Modal({ 
@@ -30,7 +31,8 @@ export function Modal({
   showCloseButton = true,
   className,
   contentClassName,
-  hideHeader = false
+  hideHeader = false,
+  elevated = false,
 }: ModalProps) {
   const sizes = {
     sm: 'max-w-md',
@@ -79,10 +81,16 @@ export function Modal({
         ref={backdropRef}
         role="presentation"
         onClick={onClose}
-        className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-[9999]"
+        className={cn(
+          "fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm",
+          elevated ? "z-[10020]" : "z-[9999]"
+        )}
         style={{ opacity: 0 }}
       />
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none">
+      <div className={cn(
+        "fixed inset-0 flex items-center justify-center p-4 pointer-events-none",
+        elevated ? "z-[10021]" : "z-[10000]"
+      )}>
         <div
           ref={panelRef}
           role="dialog"
@@ -171,7 +179,7 @@ export function ConfirmModal({
         : 'bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-400/40 text-red-900 dark:text-red-100';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm" elevated>
       <div className="space-y-4">
         <div className={`p-4 rounded-lg ${toneClass}`}>
           <p className="text-sm font-medium leading-relaxed whitespace-pre-line">

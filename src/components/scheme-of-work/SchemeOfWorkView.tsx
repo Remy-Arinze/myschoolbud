@@ -34,6 +34,7 @@ import {
   type SchemeDeliveryCatchUpReason,
 } from '@/lib/store/api/schoolAdminApi';
 import { SchemeOfWorkStatusBadge } from './SchemeOfWorkStatusBadge';
+import { CalendarCoverageBanner } from '@/components/curriculum/CalendarCoverageBanner';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { useSchoolType } from '@/hooks/useSchoolType';
@@ -107,18 +108,19 @@ export function SchemeOfWorkView({
   const weeks = scheme?.weeks || [];
   const availableSubjects = scheme?.availableSubjects || [];
 
-  const maxWeekNumber = useMemo(
-    () => (weeks.length ? Math.max(...weeks.map((w) => w.weekNumber)) : 0),
-    [weeks],
-  );
+  const maxScheduledWeek = useMemo(() => {
+    const scheduled = weeks.filter((w) => !w.outsideCalendar);
+    if (!scheduled.length) return weeks.length ? Math.max(...weeks.map((w) => w.weekNumber)) : 0;
+    return Math.max(...scheduled.map((w) => w.weekNumber));
+  }, [weeks]);
 
-  /** Clamp session week onto the scheme’s week range so “this week” always resolves. */
+  /** Clamp session week onto dated / catch-up weeks so undated plan weeks are not “this week”. */
   const currentSchoolWeek = useMemo(() => {
     if (typeof rawCurrentWeek !== 'number' || rawCurrentWeek < 1 || !weeks.length) {
       return null;
     }
-    return Math.min(rawCurrentWeek, maxWeekNumber);
-  }, [rawCurrentWeek, weeks.length, maxWeekNumber]);
+    return Math.min(rawCurrentWeek, maxScheduledWeek || rawCurrentWeek);
+  }, [rawCurrentWeek, weeks.length, maxScheduledWeek]);
 
   const pastWeeks = useMemo(() => {
     if (typeof currentSchoolWeek !== 'number') return [];
@@ -150,9 +152,10 @@ export function SchemeOfWorkView({
   }, [currentSchoolWeek, scheme?.id, weeks.length]);
  
   const progress = useMemo(() => {
-    if (weeks.length === 0) return 0;
-    const deliveredCount = weeks.filter(w => w.isDelivered).length;
-    return Math.round((deliveredCount / weeks.length) * 100);
+    const plan = weeks.filter((w) => !w.isCatchUp);
+    if (plan.length === 0) return 0;
+    const deliveredCount = plan.filter((w) => w.isDelivered).length;
+    return Math.round((deliveredCount / plan.length) * 100);
   }, [weeks]);
 
   const avgConfidence = useMemo(() => {
@@ -261,10 +264,13 @@ export function SchemeOfWorkView({
   const renderWeekCard = (week: SchemeOfWorkWeek, index: number) => {
     const isExpanded = expandedWeek === index;
     const isDelivered = week.isDelivered;
+    const isCatchUp = Boolean(week.isCatchUp);
     const isCurrentWeek =
       typeof currentSchoolWeek === 'number' &&
       currentSchoolWeek > 0 &&
-      week.weekNumber === currentSchoolWeek;
+      week.weekNumber === currentSchoolWeek &&
+      !week.outsideCalendar &&
+      !isCatchUp;
     const isFuture =
       typeof currentSchoolWeek === 'number' && week.weekNumber > currentSchoolWeek;
     const isPast =
@@ -275,14 +281,16 @@ export function SchemeOfWorkView({
         key={week.id}
         className={cn(
           'group transition-all duration-300 rounded-2xl border bg-white dark:bg-dark-surface overflow-hidden shrink-0',
-          isCurrentWeek && !isDelivered
-            ? 'border-agora-blue ring-2 ring-agora-blue/20 bg-blue-50/40 dark:bg-blue-950/20'
-            : isDelivered
-              ? 'border-green-200 dark:border-green-900/30 ring-1 ring-green-100 dark:ring-green-900/10'
-              : isPast
-                ? 'border-light-border dark:border-dark-border opacity-60'
-                : 'border-light-border dark:border-dark-border shadow-soft hover:shadow-lg hover:-translate-y-0.5',
-          isExpanded && !isCurrentWeek && 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/10',
+          isCatchUp
+            ? 'border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-900/40 opacity-60'
+            : isCurrentWeek && !isDelivered
+              ? 'border-agora-blue ring-2 ring-agora-blue/20 bg-blue-50/40 dark:bg-blue-950/20'
+              : isDelivered
+                ? 'border-green-200 dark:border-green-900/30 ring-1 ring-green-100 dark:ring-green-900/10'
+                : isPast
+                  ? 'border-light-border dark:border-dark-border opacity-60'
+                  : 'border-light-border dark:border-dark-border shadow-soft hover:shadow-lg hover:-translate-y-0.5',
+          isExpanded && !isCurrentWeek && !isCatchUp && 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/10',
         )}
       >
         <div
@@ -293,13 +301,15 @@ export function SchemeOfWorkView({
             <div
               className={cn(
                 'flex-shrink-0 w-14 h-14 rounded-xl flex flex-col items-center justify-center transition-colors border',
-                isCurrentWeek && !isDelivered
-                  ? 'bg-agora-blue border-agora-blue text-white'
-                  : isDelivered
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
-                    : isFuture
-                      ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                      : 'bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400',
+                isCatchUp
+                  ? 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400'
+                  : isCurrentWeek && !isDelivered
+                    ? 'bg-agora-blue border-agora-blue text-white'
+                    : isDelivered
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
+                      : isFuture
+                        ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                        : 'bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400',
               )}
             >
               <span className="text-[10px] font-black uppercase tracking-tighter opacity-80 leading-none">Week</span>
@@ -311,6 +321,16 @@ export function SchemeOfWorkView({
                 {isCurrentWeek && (
                   <Badge className="h-5 px-1.5 py-0 text-[10px] font-black uppercase bg-agora-blue text-white border-none">
                     This week
+                  </Badge>
+                )}
+                {week.isCatchUp && (
+                  <Badge className="h-5 px-1.5 py-0 text-[10px] font-black uppercase bg-slate-200 text-slate-500 border-slate-300 border dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600">
+                    Catch-up
+                  </Badge>
+                )}
+                {week.outsideCalendar && (
+                  <Badge className="h-5 px-1.5 py-0 text-[10px] font-black uppercase bg-light-surface dark:bg-dark-surface text-light-text-muted border-light-border dark:border-dark-border border">
+                    Outside this term calendar
                   </Badge>
                 )}
                 {isFuture && (
@@ -338,7 +358,12 @@ export function SchemeOfWorkView({
                 </span>
               </div>
               <h4
-                className="font-bold text-light-text-primary dark:text-dark-text-primary truncate sm:text-lg"
+                className={cn(
+                  'font-bold truncate sm:text-lg',
+                  isCatchUp
+                    ? 'text-slate-500 dark:text-slate-400'
+                    : 'text-light-text-primary dark:text-dark-text-primary',
+                )}
                 style={{ fontSize: 'var(--text-card-title)' }}
               >
                 {week.topic}
@@ -682,6 +707,8 @@ export function SchemeOfWorkView({
         </div>
       )}
 
+      <CalendarCoverageBanner coverage={scheme.calendarCoverage} variant="imported" />
+
       {/* Overview Card */}
       <Card className="overflow-hidden border-none shadow-premium bg-gradient-to-br from-indigo-600 to-blue-700 dark:from-indigo-900 dark:to-blue-900">
         <CardContent className="p-8 text-white relative">
@@ -694,7 +721,7 @@ export function SchemeOfWorkView({
             <div className="space-y-4 flex-1">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge className="bg-white/20 hover:bg-white/30 text-white border-none backdrop-blur-md px-3 font-bold">
-                  {scheme.subjectName || 'SUBJECT'} · 12-WEEK PLAN
+                  {scheme.subjectName || 'SUBJECT'} · {scheme.calendarCoverage?.planWeeks || weeks.filter((w) => !w.isCatchUp).length}-WEEK PLAN
                 </Badge>
                 <SchemeOfWorkStatusBadge status={scheme.status} />
               </div>
@@ -726,7 +753,7 @@ export function SchemeOfWorkView({
 
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
               <div className="flex flex-col items-center gap-2 px-6 py-4 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20">
-               <span className="text-4xl font-black">{weeks.filter(w => w.isDelivered).length}</span>
+               <span className="text-4xl font-black">{weeks.filter((w) => w.isDelivered && !w.isCatchUp).length}</span>
                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Weeks Completed</span>
               </div>
               <div className="flex flex-col items-center gap-2 px-6 py-4 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20">
@@ -747,7 +774,7 @@ export function SchemeOfWorkView({
           </h3>
           {typeof currentSchoolWeek === 'number' && (
             <p className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary">
-              Week {currentSchoolWeek} of {maxWeekNumber}
+              Week {currentSchoolWeek} of {maxScheduledWeek}
             </p>
           )}
         </div>

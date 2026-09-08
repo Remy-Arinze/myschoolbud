@@ -16,6 +16,7 @@ interface SectionTabsProps<T extends string = string> {
   tabs: SectionTab<T>[];
   activeTab: T;
   onTabChange?: (tab: T) => void;
+  onTabHover?: (tab: T) => void;
   ariaLabel: string;
   className?: string;
   trailing?: ReactNode;
@@ -25,6 +26,7 @@ export function SectionTabs<T extends string>({
   tabs,
   activeTab,
   onTabChange,
+  onTabHover,
   ariaLabel,
   className,
   trailing,
@@ -58,6 +60,8 @@ export function SectionTabs<T extends string>({
             className={tabClassName}
             style={tabStyle}
             onClick={() => onTabChange?.(tab.key)}
+            onMouseEnter={() => onTabHover?.(tab.key)}
+            onFocus={() => onTabHover?.(tab.key)}
           >
             {content}
           </button>

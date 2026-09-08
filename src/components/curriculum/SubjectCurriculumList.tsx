@@ -52,10 +52,23 @@ export function SubjectCurriculumList({
     classLevelId,
     termId,
   }, {
-    pollingInterval: 10000,
     refetchOnMountOrArgChange: 30, // Don't refetch on every tab switch if cache is < 30s old
     refetchOnFocus: false,         // Minimize extra traffic on window focus
   });
+
+  const isGenerating = subjects.some(
+    (s: any) => s.status === 'GENERATING' || s.status === 'QUEUED',
+  );
+
+  useGetSchemesSummaryQuery(
+    { schoolId, classLevelId, termId },
+    {
+      skip: !isGenerating,
+      pollingInterval: 10000,
+      refetchOnMountOrArgChange: false,
+      refetchOnFocus: false,
+    },
+  );
 
   const { data: subscriptionSummary } = useGetSubscriptionSummaryQuery();
   const creditsRemaining = subscriptionSummary?.aiCreditsRemaining ?? 0;
@@ -190,6 +203,7 @@ export function SubjectCurriculumList({
           classLevelName={classLevelName}
           termId={termId}
           creditsRemaining={creditsRemaining}
+          instructionalWeeks={subjects[0]?.instructionalWeeks || 0}
         />
       )}
 

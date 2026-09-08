@@ -5,6 +5,7 @@ import gsap from 'gsap';
 import { GraduationCap, BookOpen, University, ChevronDown, ChevronUp, Check, Lock } from 'lucide-react';
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { cn } from '@/lib/utils';
+import { useGetMySchoolQuery, useGetClassesQuery, useGetActiveSessionQuery } from '@/lib/store/api/schoolAdminApi';
 
 const typeConfig = {
   PRIMARY: {
@@ -23,6 +24,37 @@ const typeConfig = {
 
 export function SchoolTypeSwitcher() {
   const { isMixed, availableTypes, currentType, setCurrentType, isLocked } = useSchoolType();
+  const { data: schoolResponse } = useGetMySchoolQuery();
+  const schoolId = schoolResponse?.data?.id;
+  const shouldWarmCache = Boolean(isMixed && schoolId && !isLocked);
+
+  // Keep every type's class list and session in cache while the switcher is
+  // mounted so switching does not wait on a cold fetch.
+  useGetClassesQuery(
+    { schoolId: schoolId!, type: 'PRIMARY' },
+    { skip: !shouldWarmCache || !availableTypes.includes('PRIMARY') },
+  );
+  useGetClassesQuery(
+    { schoolId: schoolId!, type: 'SECONDARY' },
+    { skip: !shouldWarmCache || !availableTypes.includes('SECONDARY') },
+  );
+  useGetClassesQuery(
+    { schoolId: schoolId!, type: 'TERTIARY' },
+    { skip: !shouldWarmCache || !availableTypes.includes('TERTIARY') },
+  );
+  useGetActiveSessionQuery(
+    { schoolId: schoolId!, schoolType: 'PRIMARY' },
+    { skip: !shouldWarmCache || !availableTypes.includes('PRIMARY') },
+  );
+  useGetActiveSessionQuery(
+    { schoolId: schoolId!, schoolType: 'SECONDARY' },
+    { skip: !shouldWarmCache || !availableTypes.includes('SECONDARY') },
+  );
+  useGetActiveSessionQuery(
+    { schoolId: schoolId!, schoolType: 'TERTIARY' },
+    { skip: !shouldWarmCache || !availableTypes.includes('TERTIARY') },
+  );
+
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);

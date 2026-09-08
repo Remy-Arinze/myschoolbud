@@ -238,6 +238,10 @@ export interface SchemeOfWorkWeek {
   weekStatus?: 'PENDING' | 'IN_PROGRESS' | 'DELIVERED' | 'SKIPPED' | 'COMBINED';
   stableKeys?: string[];
   stableKey?: string;
+  calendarStartDate?: string | null;
+  calendarEndDate?: string | null;
+  isCatchUp?: boolean;
+  outsideCalendar?: boolean;
 }
 
 export interface SchemeOfWork {
@@ -259,6 +263,13 @@ export interface SchemeOfWork {
     status: string;
     termId: string;
   }>;
+  calendarCoverage?: {
+    instructionalWeeks: number;
+    planWeeks: number;
+    unscheduledWeeks: number;
+    bufferWeeks: number;
+    mismatch: 'ALIGNED' | 'SHORT' | 'LONG';
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -498,6 +509,10 @@ export interface CurriculumItem {
   weekStatus?: 'PENDING' | 'IN_PROGRESS' | 'DELIVERED' | 'SKIPPED' | 'COMBINED';
   stableKey?: string;
   stableKeys?: string[];
+  calendarStartDate?: string | null;
+  calendarEndDate?: string | null;
+  isCatchUp?: boolean;
+  outsideCalendar?: boolean;
 }
 
 // ============================================
@@ -534,6 +549,15 @@ export interface Curriculum {
   totalWeeks?: number;
   completedWeeks?: number;
   progressPercentage?: number;
+  calendarCoverage?: {
+    instructionalWeeks: number;
+    planWeeks: number;
+    unscheduledWeeks: number;
+    bufferWeeks: number;
+    mismatch: 'ALIGNED' | 'SHORT' | 'LONG';
+  };
+  structureEditable?: boolean;
+  structureLockReason?: string | null;
 }
 
 // ============================================
@@ -1915,11 +1939,16 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
             'School',
           ]
           : [{ type: 'Class', id: 'LIST' }, 'School'],
+      keepUnusedDataFor: 300,
     }),
     // Get a single class by ID
     getClassById: builder.query<ResponseDto<Class>, { schoolId: string; classId: string }>({
       query: ({ schoolId, classId }) => `/schools/${schoolId}/classes/${classId}`,
-      providesTags: (result, error, { schoolId }) => [{ type: 'School', id: schoolId }],
+      providesTags: (result, error, { schoolId, classId }) => [
+        { type: 'Class', id: classId },
+        { type: 'School', id: schoolId },
+      ],
+      keepUnusedDataFor: 300,
     }),
 
     // Scheme of Work endpoints
@@ -2260,6 +2289,7 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         { type: 'Timetable', id: classId },
         { type: 'Timetable', id: `${classId}-${termId}` },
       ],
+      keepUnusedDataFor: 300,
     }),
     getTimetableForStudent: builder.query<ResponseDto<TimetablePeriod[]>, { schoolId: string; studentId: string; termId: string }>({
       query: ({ schoolId, studentId, termId }) => {
@@ -3001,11 +3031,13 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
     getClassStudents: builder.query<ResponseDto<StudentWithEnrollment[]>, { schoolId: string; classId: string }>({
       query: ({ schoolId, classId }) => `/schools/${schoolId}/classes/${classId}/students`,
       providesTags: (result, error, { classId }) => [{ type: 'Class', id: classId }, 'Student'],
+      keepUnusedDataFor: 300,
     }),
     // Class Resources
     getClassResources: builder.query<ResponseDto<ClassResource[]>, { schoolId: string; classId: string }>({
       query: ({ schoolId, classId }) => `/schools/${schoolId}/classes/${classId}/resources`,
       providesTags: (result, error, { classId }) => [{ type: 'Class', id: classId }, 'ClassResource'],
+      keepUnusedDataFor: 300,
     }),
     uploadClassResource: builder.mutation<ResponseDto<ClassResource>, { schoolId: string; classId: string; file: File; description?: string }>({
       queryFn: async ({ schoolId, classId, file, description }, _api, _extraOptions, baseQuery) => {
@@ -3988,6 +4020,7 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       }),
       providesTags: (result, error, { classLevelId }) => [{ type: 'Curriculum', id: `SCHEME_SUMMARY_${classLevelId}` }],
       transformResponse: (response: ResponseDto<any[]>) => response.data,
+      keepUnusedDataFor: 300,
     }),
 
     setupSchemeOfWork: builder.mutation<any, { schoolId: string; body: any }>({
@@ -4030,6 +4063,35 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       }),
       transformResponse: (response: ResponseDto<Curriculum>) => response.data,
       providesTags: (result, error, { schemeId }) => [{ type: 'Curriculum', id: schemeId }],
+    }),
+
+    replaceSchemeWeeks: builder.mutation<
+      Curriculum,
+      {
+        schoolId: string;
+        schemeId: string;
+        weeks: Array<{
+          id?: string;
+          topic: string;
+          subTopics?: string[];
+          objectives?: string[];
+          activities?: string[];
+          resources?: string[];
+          assessment?: string | null;
+        }>;
+      }
+    >({
+      query: ({ schoolId, schemeId, weeks }) => ({
+        url: `schools/${schoolId}/curriculum/schemes/${schemeId}/weeks`,
+        method: 'PUT',
+        body: { weeks },
+      }),
+      transformResponse: (response: ResponseDto<Curriculum>) => response.data,
+      invalidatesTags: (result, error, { schemeId }) => [
+        { type: 'Curriculum', id: schemeId },
+        'Curriculum',
+        'SchemeOfWork',
+      ],
     }),
 
     getAgoraLibrary: builder.query<any[], { schoolId: string; subjectId: string; gradeLevel: string }>({
@@ -4465,6 +4527,7 @@ export const {
   useSetupSchemeOfWorkMutation,
   useCancelSchemeOfWorkMutation,
   useGetSchemeOfWorkByIdQuery,
+  useReplaceSchemeWeeksMutation,
   useDeleteSchemeOfWorkMutation,
   useGetAgoraLibraryQuery,
   useGetAgoraCurriculumPreviewQuery,

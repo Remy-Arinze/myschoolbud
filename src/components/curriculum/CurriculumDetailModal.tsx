@@ -2,31 +2,37 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BookOpen,
   Check,
   Clock,
   Loader2,
   Play,
+  Pencil,
   Send,
-  Sparkles,
   X,
   ChevronDown,
   ChevronUp,
   MessageSquare,
   Trash2,
 } from 'lucide-react';
+import Image from 'next/image';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { CurriculumStatusBadge } from './CurriculumStatusBadge';
 import { CurriculumProgressBar } from './CurriculumProgressBar';
+import { CalendarCoverageBanner } from './CalendarCoverageBanner';
+import { SchemeWeekEditor, isPersistedWeekId } from './SchemeWeekEditor';
+import { coverageFromPlanVsCalendar } from '@/lib/curriculum/calendar-coverage';
 import {
   useGetCurriculumByIdQuery,
   useGetSchemeOfWorkByIdQuery,
   useGetActiveSessionQuery,
+  useReplaceSchemeWeeksMutation,
   type WeekStatus,
+  type CurriculumItem,
 } from '@/lib/store/api/schoolAdminApi';
 import { useCurriculum } from '@/hooks/useCurriculum';
 import { cn } from '@/lib/utils';
+import { toast } from 'react-hot-toast';
 
 interface CurriculumDetailModalProps {
   isOpen: boolean;
@@ -56,6 +62,8 @@ export function CurriculumDetailModal({
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const [markingWeek, setMarkingWeek] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [draftItems, setDraftItems] = useState<CurriculumItem[] | null>(null);
   const currentWeekRef = useRef<HTMLDivElement | null>(null);
   const didScrollToCurrent = useRef(false);
 
@@ -78,6 +86,8 @@ export function CurriculumDetailModal({
       { skip: !curriculumId || !isScheme || !isOpen },
     );
 
+  const [replaceSchemeWeeks, { isLoading: isSavingWeeks }] = useReplaceSchemeWeeksMutation();
+
   const { data: activeSessionResponse } = useGetActiveSessionQuery(
     { schoolId, schoolType: schoolType || undefined },
     { skip: !schoolId || !isOpen },
@@ -94,11 +104,75 @@ export function CurriculumDetailModal({
     );
   }, [curriculum?.items]);
 
+  const contentItems = useMemo(
+    () => sortedItems.filter((item) => !item.isCatchUp),
+    [sortedItems],
+  );
+
+  const canStructureEdit = Boolean(
+    canEdit && isScheme && (curriculum?.structureEditable ?? false),
+  );
+
+  const instructionalWeeks =
+    curriculum?.calendarCoverage?.instructionalWeeks ??
+    sortedItems.filter((item) => item.calendarStartDate).length;
+
+  const editingContent = draftItems ?? contentItems;
+  const liveCoverage =
+    editing && isScheme
+      ? coverageFromPlanVsCalendar(instructionalWeeks, editingContent.length)
+      : curriculum?.calendarCoverage;
+
+  const startEditing = () => {
+    setDraftItems(contentItems.map((item) => ({ ...item })));
+    setEditing(true);
+  };
+
+  const discardEditing = () => {
+    setDraftItems(null);
+    setEditing(false);
+  };
+
+  const handleSaveWeeks = async () => {
+    if (!draftItems) return;
+    const missingTopic = draftItems.find((item) => !item.topic.trim());
+    if (missingTopic) {
+      toast.error('Every week needs a topic title.');
+      return;
+    }
+    try {
+      await replaceSchemeWeeks({
+        schoolId,
+        schemeId: curriculumId,
+        weeks: draftItems.map((item) => ({
+          id: isPersistedWeekId(item.id) ? item.id : undefined,
+          topic: item.topic.trim(),
+          subTopics: item.subTopics || [],
+          objectives: item.objectives || [],
+          activities: item.activities || [],
+          resources: item.resources || [],
+          assessment: item.assessment,
+        })),
+      }).unwrap();
+      toast.success('Scheme weeks saved');
+      setDraftItems(null);
+      setEditing(false);
+      refetch();
+      onUpdate?.();
+    } catch (err: unknown) {
+      const data = (err as { data?: { message?: string | string[] } })?.data;
+      const raw = data?.message;
+      const message = Array.isArray(raw) ? raw.join(' ') : raw;
+      toast.error(message || 'Could not save scheme weeks');
+    }
+  };
+
   const currentSchoolWeek = useMemo(() => {
     const raw = activeSessionResponse?.data?.term?.currentWeek;
     if (typeof raw !== 'number' || raw < 1) return null;
-    const maxWeek = sortedItems.length
-      ? Math.max(...sortedItems.map((i) => i.weekNumber || i.week || 0))
+    const scheduled = sortedItems.filter((i) => !i.outsideCalendar);
+    const maxWeek = scheduled.length
+      ? Math.max(...scheduled.map((i) => i.weekNumber || i.week || 0))
       : curriculum?.totalWeeks || 12;
     return Math.min(raw, maxWeek || raw);
   }, [activeSessionResponse?.data?.term?.currentWeek, sortedItems, curriculum?.totalWeeks]);
@@ -121,6 +195,13 @@ export function CurriculumDetailModal({
     }, 150);
     return () => window.clearTimeout(t);
   }, [isOpen, currentSchoolWeek, curriculumId, sortedItems]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setEditing(false);
+      setDraftItems(null);
+    }
+  }, [isOpen, curriculumId]);
 
   const handleMarkComplete = async (weekNumber: number) => {
     setMarkingWeek(weekNumber);
@@ -170,7 +251,7 @@ export function CurriculumDetailModal({
       case 'SKIPPED':
         return 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20';
       default:
-        return 'border-gray-200 dark:border-gray-700';
+        return 'border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg';
     }
   };
 
@@ -194,12 +275,20 @@ export function CurriculumDetailModal({
       onClose={onClose}
       title={
         <div className="flex items-center gap-3">
-          <BookOpen className="h-5 w-5 text-blue-600" />
+          <Image
+            src="/assets/logos/agora_main.png"
+            alt=""
+            width={20}
+            height={20}
+            className="h-5 w-5 object-contain"
+          />
           <span>{curriculum.subject}</span>
           <CurriculumStatusBadge status={curriculum.status} />
         </div>
       }
       size="xl"
+      className="bg-light-bg dark:bg-dark-bg"
+      contentClassName="bg-light-bg dark:bg-dark-bg"
     >
       <div className="space-y-6">
         {/* Header Info */}
@@ -223,8 +312,14 @@ export function CurriculumDetailModal({
             </div>
           )}
           {curriculum.isAgoraBased && (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide text-purple-600/80 dark:text-purple-400/80 bg-purple-500/5 border border-purple-500/10">
-              <Sparkles className="h-2.5 w-2.5 opacity-70" />
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide text-agora-blue bg-agora-blue/10 border border-agora-blue/20">
+              <Image
+                src="/assets/logos/agora_main.png"
+                alt=""
+                width={12}
+                height={12}
+                className="h-3 w-3 object-contain"
+              />
               Bud library
             </span>
           )}
@@ -237,16 +332,36 @@ export function CurriculumDetailModal({
           </div>
         </div>
 
-        {/* Week List */}
-        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+        <CalendarCoverageBanner coverage={liveCoverage} variant="imported" />
+        {canEdit && isScheme && !canStructureEdit && curriculum.structureLockReason && (
+          <p className="text-xs text-light-text-muted dark:text-dark-text-muted -mt-3">
+            {curriculum.structureLockReason}
+          </p>
+        )}
+
+        {/* Week list */}
+        {editing && isScheme ? (
+          <div className="max-h-[400px] overflow-y-auto pr-2">
+            <SchemeWeekEditor
+              curriculumId={curriculumId}
+              contentWeeks={editingContent}
+              instructionalWeeks={instructionalWeeks}
+              onChange={setDraftItems}
+            />
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
           {sortedItems.map((item) => {
             const weekNumber = item.weekNumber || item.week || 0;
             const isExpanded = expandedWeek === weekNumber;
             const isMarking = markingWeek === weekNumber;
+            const isCatchUp = Boolean(item.isCatchUp);
             const isCurrentWeek =
               typeof currentSchoolWeek === 'number' &&
               currentSchoolWeek > 0 &&
-              weekNumber === currentSchoolWeek;
+              weekNumber === currentSchoolWeek &&
+              !item.outsideCalendar &&
+              !isCatchUp;
 
             return (
               <div
@@ -254,27 +369,38 @@ export function CurriculumDetailModal({
                 ref={isCurrentWeek ? currentWeekRef : undefined}
                 className={cn(
                   'border-l-4 rounded-lg overflow-hidden transition-all',
-                  getWeekStatusColor(item.status, isCurrentWeek),
+                  isCatchUp
+                    ? 'border-slate-300 dark:border-slate-600 bg-slate-100/80 dark:bg-slate-900/40 opacity-60'
+                    : getWeekStatusColor(item.status, isCurrentWeek),
                 )}
               >
                 <button
                   onClick={() => setExpandedWeek(isExpanded ? null : weekNumber)}
-                  className="w-full flex items-center gap-4 p-4 text-left hover:bg-white/50 dark:hover:bg-gray-800/30 transition-colors"
+                  className={cn(
+                    'w-full flex items-center gap-4 p-4 text-left transition-colors',
+                    isCatchUp
+                      ? 'hover:bg-slate-200/50 dark:hover:bg-slate-800/40'
+                      : 'hover:bg-light-surface/80 dark:hover:bg-dark-surface/40',
+                  )}
                 >
                   <div
                     className={cn(
                       'flex-shrink-0 w-12 h-12 rounded-lg border flex items-center justify-center shadow-sm',
-                      isCurrentWeek
-                        ? 'bg-agora-blue text-white border-agora-blue'
-                        : 'bg-[var(--light-card)] dark:bg-[var(--dark-surface)] border-light-border dark:border-dark-border',
+                      isCatchUp
+                        ? 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-600'
+                        : isCurrentWeek
+                          ? 'bg-agora-blue text-white border-agora-blue'
+                          : 'bg-[var(--light-card)] dark:bg-[var(--dark-surface)] border-light-border dark:border-dark-border',
                     )}
                   >
                     <span
                       className={cn(
                         'text-sm font-bold',
-                        isCurrentWeek
-                          ? 'text-white'
-                          : 'text-light-text-primary dark:text-dark-text-primary',
+                        isCatchUp
+                          ? 'text-slate-500 dark:text-slate-400'
+                          : isCurrentWeek
+                            ? 'text-white'
+                            : 'text-light-text-primary dark:text-dark-text-primary',
                       )}
                     >
                       W{weekNumber}
@@ -282,12 +408,29 @@ export function CurriculumDetailModal({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-medium text-light-text-primary dark:text-dark-text-primary truncate">
+                      <h4
+                        className={cn(
+                          'font-medium truncate',
+                          isCatchUp
+                            ? 'text-slate-500 dark:text-slate-400'
+                            : 'text-light-text-primary dark:text-dark-text-primary',
+                        )}
+                      >
                         {item.topic}
                       </h4>
                       {isCurrentWeek && (
                         <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-agora-blue text-white">
                           This week
+                        </span>
+                      )}
+                      {isCatchUp && (
+                        <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-600">
+                          Catch-up
+                        </span>
+                      )}
+                      {item.outsideCalendar && (
+                        <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-light-surface dark:bg-dark-surface text-light-text-muted border border-light-border dark:border-dark-border">
+                          Outside this term calendar
                         </span>
                       )}
                     </div>
@@ -307,7 +450,7 @@ export function CurriculumDetailModal({
                 </button>
 
                 {isExpanded && (
-                  <div className="px-4 pb-4 pt-2 space-y-4 bg-[var(--light-surface)] dark:bg-[var(--dark-bg)]">
+                  <div className="px-4 pb-4 pt-2 space-y-4 bg-light-bg dark:bg-dark-bg">
                     {item.subTopics && item.subTopics.length > 0 && (
                       <div>
                         <h5 className="text-xs font-semibold text-light-text-muted dark:text-dark-text-muted uppercase tracking-wider mb-2">
@@ -317,7 +460,7 @@ export function CurriculumDetailModal({
                           {item.subTopics.map((topic, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-1 bg-gray-100 dark:bg-[var(--dark-surface)] rounded text-xs text-light-text-secondary dark:text-dark-text-secondary"
+                              className="px-2 py-1 bg-light-surface dark:bg-dark-surface rounded text-xs text-light-text-secondary dark:text-dark-text-secondary border border-light-border dark:border-dark-border"
                             >
                               {topic}
                             </span>
@@ -373,7 +516,7 @@ export function CurriculumDetailModal({
                           {item.resources.map((resource, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded text-xs text-purple-700 dark:text-purple-300"
+                              className="px-2 py-1 bg-agora-blue/10 dark:bg-agora-blue/15 rounded text-xs text-agora-blue border border-agora-blue/20"
                             >
                               {resource}
                             </span>
@@ -438,13 +581,38 @@ export function CurriculumDetailModal({
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-4 border-t border-light-border dark:border-dark-border">
           <div className="flex items-center gap-3">
+            {editing ? (
+              <>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="h-8 px-3"
+                  onClick={handleSaveWeeks}
+                  disabled={isSavingWeeks || !editingContent.length}
+                >
+                  {isSavingWeeks ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  Save weeks
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 px-3" onClick={discardEditing} disabled={isSavingWeeks}>
+                  Discard
+                </Button>
+              </>
+            ) : (
+              <>
+            {canStructureEdit && (
+              <Button variant="outline" size="sm" className="h-8 px-3" onClick={startEditing}>
+                <Pencil className="h-3.5 w-3.5" />
+                Edit scheme
+              </Button>
+            )}
             {curriculum.status === 'DRAFT' && canEdit && (
-              <Button variant="primary" onClick={handleSubmitForApproval} disabled={isMutating}>
-                <Send className="h-4 w-4 mr-2" />
+              <Button variant="primary" size="sm" className="h-8 px-3" onClick={handleSubmitForApproval} disabled={isMutating}>
+                <Send className="h-3.5 w-3.5" />
                 Submit for Approval
               </Button>
             )}
@@ -456,19 +624,27 @@ export function CurriculumDetailModal({
             {canEdit && onDelete && (
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => {
                   onClose();
                   onDelete(curriculumId);
                 }}
-                className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="h-8 px-3 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-3.5 w-3.5" />
                 Delete
               </Button>
             )}
+              </>
+            )}
           </div>
-          <Button variant="outline" onClick={onClose}>
-            Close
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3"
+            onClick={editing ? discardEditing : onClose}
+          >
+            {editing ? 'Cancel' : 'Close'}
           </Button>
         </div>
       </div>

@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import {
-  BookOpen,
   Users,
   Plus,
   Trash2,
@@ -36,6 +36,7 @@ import {
 } from '@/components/modals';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
 import {
+  schoolAdminApi,
   useGetMySchoolQuery,
   useGetClassByIdQuery,
   useRemoveTeacherFromClassMutation,
@@ -69,6 +70,12 @@ type TabType = 'students' | 'teachers' | 'timetable' | 'resources' | 'curriculum
 
 const DAYS_OF_WEEK = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function classLevelNumber(classLevel?: string | null, name?: string | null): string | null {
+  const source = classLevel || name || '';
+  const match = source.match(/\d+/);
+  return match?.[0] ?? null;
+}
 
 export default function ClassDetailPage() {
   const params = useParams();
@@ -126,7 +133,13 @@ export default function ClassDetailPage() {
   );
 
   const classData = classResponse?.data;
+  const sessionSchoolType = classData?.type || schoolType || undefined;
   const terminology = getTerminology(classData?.type || schoolType || 'SECONDARY');
+
+  const prefetchStudents = schoolAdminApi.usePrefetch('getClassStudents');
+  const prefetchTimetable = schoolAdminApi.usePrefetch('getTimetableForClass');
+  const prefetchResources = schoolAdminApi.usePrefetch('getClassResources');
+  const prefetchSchemes = schoolAdminApi.usePrefetch('getSchemesSummary');
 
   // Leave this class if the sidebar school type no longer matches it
   useEffect(() => {
@@ -154,13 +167,69 @@ export default function ClassDetailPage() {
   const [showStudentAdmissionModal, setShowStudentAdmissionModal] = useState(false);
   const [showRegistrationLinkModal, setShowRegistrationLinkModal] = useState(false);
 
-  // Get active session for timetable - use class's school type
+  // Get active session for timetable — use the sidebar type immediately so
+  // teachers / timetable / curriculum do not wait on getClassById.
   const { data: sessionResponse } = useGetActiveSessionQuery(
-    { schoolId: schoolId!, schoolType: classData?.type || schoolType || undefined },
-    { skip: !schoolId || !classData?.type }
+    { schoolId: schoolId!, schoolType: sessionSchoolType },
+    { skip: !schoolId || !sessionSchoolType }
   );
   const activeSession = sessionResponse?.data;
   const activeTerm = activeSession?.term;
+
+  useEffect(() => {
+    if (!schoolId || !classId) return;
+    prefetchStudents({ schoolId, classId });
+    if (activeTerm?.id) {
+      prefetchTimetable({ schoolId, classId, termId: activeTerm.id });
+    }
+    if (classData?.classLevelId && activeTerm?.id) {
+      prefetchSchemes({
+        schoolId,
+        classLevelId: classData.classLevelId,
+        termId: activeTerm.id,
+      });
+    }
+  }, [
+    schoolId,
+    classId,
+    activeTerm?.id,
+    classData?.classLevelId,
+    prefetchStudents,
+    prefetchTimetable,
+    prefetchSchemes,
+  ]);
+
+  const handleTabHover = useCallback(
+    (tab: TabType) => {
+      if (!schoolId || !classId) return;
+      if (tab === 'students') {
+        prefetchStudents({ schoolId, classId });
+      }
+      if ((tab === 'timetable' || tab === 'teachers') && activeTerm?.id) {
+        prefetchTimetable({ schoolId, classId, termId: activeTerm.id });
+      }
+      if (tab === 'resources') {
+        prefetchResources({ schoolId, classId });
+      }
+      if (tab === 'curriculum' && classData?.classLevelId && activeTerm?.id) {
+        prefetchSchemes({
+          schoolId,
+          classLevelId: classData.classLevelId,
+          termId: activeTerm.id,
+        });
+      }
+    },
+    [
+      schoolId,
+      classId,
+      activeTerm?.id,
+      classData?.classLevelId,
+      prefetchStudents,
+      prefetchTimetable,
+      prefetchResources,
+      prefetchSchemes,
+    ],
+  );
 
   // Build tabs array - include Teachers tab only for SECONDARY schools
   // Must be defined before early returns to follow React hooks rules
@@ -385,7 +454,7 @@ export default function ClassDetailPage() {
   const timeSlots = Object.keys(timetableByTimeSlot).sort();
 
   // Loading state
-  if (isLoading || isLoadingSchool) {
+  if ((isLoading || isLoadingSchool) && !classData) {
     return (
       <ProtectedRoute roles={['SCHOOL_ADMIN']}>
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -418,6 +487,7 @@ export default function ClassDetailPage() {
   const pageSize = studentsView === 'grid' ? pageSizeGrid : pageSizeList;
   const totalPages = Math.max(1, Math.ceil((students?.length || 0) / pageSize));
   const paginatedStudents = students.slice((studentsPage - 1) * pageSize, studentsPage * pageSize);
+  const classNumber = classLevelNumber(classData.classLevel, classData.name);
 
   return (
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
@@ -438,8 +508,20 @@ export default function ClassDetailPage() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               {/* Class Icon */}
-              <div className="w-12 h-12 rounded-lg bg-[var(--avatar-placeholder-bg)] flex items-center justify-center shadow-lg flex-shrink-0 text-[var(--avatar-placeholder-text)]">
-                <BookOpen className="h-6 w-6" />
+              <div className="relative w-12 h-12 rounded-lg bg-[var(--avatar-placeholder-bg)] flex items-center justify-center shadow-lg flex-shrink-0">
+                <Image
+                  src="/assets/logos/agora_main.png"
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="h-7 w-7 object-contain grayscale brightness-125"
+                  aria-hidden
+                />
+                {classNumber && (
+                  <span className="absolute bottom-0.5 right-1 text-[10px] font-bold leading-none text-[var(--avatar-placeholder-text)]">
+                    {classNumber}
+                  </span>
+                )}
               </div>
 
               {/* Class Info */}
@@ -579,6 +661,7 @@ export default function ClassDetailPage() {
           ariaLabel="Class sections"
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          onTabHover={handleTabHover}
           tabs={tabs.map((tab) => ({
             key: tab.id,
             label: tab.label,
@@ -876,7 +959,7 @@ export default function ClassDetailPage() {
                   )}
                 </div>
               </div>
-              {isLoadingTimetable ? (
+              {isLoadingTimetable && unifiedTeachers.length === 0 ? (
                 <div className="flex justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                 </div>
@@ -896,6 +979,12 @@ export default function ClassDetailPage() {
                 </Card>
               ) : (
                 <>
+                  {isLoadingTimetable && (
+                    <p className="text-xs font-medium text-light-text-muted dark:text-dark-text-muted flex items-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading subject teachers from timetable…
+                    </p>
+                  )}
                   <Card>
                     <CardContent className="p-0">
                       <div className="divide-y divide-light-border dark:divide-dark-border">

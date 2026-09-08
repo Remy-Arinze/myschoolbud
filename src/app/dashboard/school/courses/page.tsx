@@ -65,6 +65,7 @@ export default function ClassesPage() {
   });
   const { currentType } = useSchoolType();
   const terminology = getTerminology(currentType);
+  const isPrimaryOrSecondary = currentType === 'PRIMARY' || currentType === 'SECONDARY';
 
   // Deep-link from setup checklist: /courses?action=add
   useEffect(() => {
@@ -88,7 +89,8 @@ export default function ClassesPage() {
   const activeSession = activeSessionResponse?.data;
 
   // Get classes filtered by current school type. currentData is used so a
-  // type switch never keeps rendering the previous type's list.
+  // type switch never keeps rendering the previous type's list. Tertiary
+  // uses TertiaryDepartments and does not need this list.
   const {
     currentData: classesResponse,
     isLoading: isLoadingClasses,
@@ -96,11 +98,11 @@ export default function ClassesPage() {
     error: classesError,
   } = useGetClassesQuery(
     { schoolId: schoolId!, type: currentType! },
-    { skip: !schoolId || !currentType }
+    { skip: !schoolId || !isPrimaryOrSecondary }
   );
 
   const classes = classesResponse?.data || [];
-  const isSwitchingType = isFetchingClasses && !classesResponse;
+  const isTypeLoading = isFetchingClasses && !classesResponse;
 
   useEffect(() => {
     setSearchQuery('');
@@ -185,7 +187,7 @@ export default function ClassesPage() {
     setEditModal({ isOpen: false, classId: '', currentName: '' });
   };
 
-  if (isLoadingClasses || isLoadingSchool || !currentType || isSwitchingType) {
+  if (isLoadingSchool || !currentType || (isPrimaryOrSecondary && isLoadingClasses && !classesResponse)) {
     return (
       <ProtectedRoute roles={['SCHOOL_ADMIN']}>
         <div className="flex flex-col items-center justify-center min-h-screen">
@@ -198,7 +200,7 @@ export default function ClassesPage() {
     );
   }
 
-  if (classesError) {
+  if (isPrimaryOrSecondary && classesError) {
     return (
       <ProtectedRoute roles={['SCHOOL_ADMIN']}>
         <div className="w-full">
@@ -326,7 +328,14 @@ export default function ClassesPage() {
         </div>
 
         {/* Classes Grid */}
-        {filteredClasses.length === 0 ? (
+        {isTypeLoading ? (
+          <div className="flex flex-col items-center justify-center py-24">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-3" />
+            <p className="text-light-text-secondary dark:text-dark-text-secondary font-medium animate-pulse">
+              Loading {terminology.courses.toLowerCase()}...
+            </p>
+          </div>
+        ) : filteredClasses.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <EmptyStateIcon type="document" />
@@ -420,18 +429,6 @@ export default function ClassesPage() {
                               </Button>
                             </PermissionGate>
                           </div>
-                          {/* Status Badge */}
-                          <span
-                            className={cn(
-                              'px-2 py-1 rounded font-medium text-xs',
-                              classItem.isActive
-                                ? 'bg-green-100 text-green-900 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-400'
-                            )}
-                            style={{ fontSize: 'var(--text-small)' }}
-                          >
-                            {classItem.isActive ? 'Active' : 'Inactive'}
-                          </span>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -488,17 +485,6 @@ export default function ClassesPage() {
                                   ClassArm
                                 </span>
                               )}
-                              <span
-                                className={cn(
-                                  'px-2 py-1 rounded font-medium',
-                                  classItem.isActive
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
-                                )}
-                                style={{ fontSize: 'var(--text-small)' }}
-                              >
-                                {classItem.isActive ? 'Active' : 'Inactive'}
-                              </span>
                             </div>
                             <p className="text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: 'var(--text-body)' }}>
                               {teacherName} • {classItem.studentsCount || 0} students

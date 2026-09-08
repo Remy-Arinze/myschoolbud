@@ -5,7 +5,6 @@ import {
   Sparkles,
   BookOpen,
   Zap,
-  CreditCard,
   CheckCircle2,
   Loader2,
   X,
@@ -13,13 +12,12 @@ import {
   Search,
   FileUp,
   Info,
-  Calendar,
   Layers,
   ChevronRight,
   Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
+import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utils';
 import {
   useSetupSchemeOfWorkMutation,
@@ -29,9 +27,13 @@ import {
   useDeleteSchoolCurriculumDocMutation
 } from '@/lib/store/api/schoolAdminApi';
 import { toast } from 'react-hot-toast';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Input } from '@/components/ui/Input';
 import { AgoraCurriculumPreviewModal } from './AgoraCurriculumPreviewModal';
+import { CalendarCoverageBanner } from './CalendarCoverageBanner';
+import {
+  coverageFromPlanVsCalendar,
+  DEFAULT_LIBRARY_TERM_WEEKS,
+} from '@/lib/curriculum/calendar-coverage';
 
 interface CurriculumSetupModalProps {
   isOpen: boolean;
@@ -42,6 +44,13 @@ interface CurriculumSetupModalProps {
   classLevelName: string;
   termId: string;
   creditsRemaining: number;
+  instructionalWeeks?: number;
+}
+
+const LIVE_SCHEME_STATUSES = new Set(['DRAFT', 'APPROVED', 'PUBLISHED', 'GENERATING']);
+
+function isLiveSchemeStatus(status?: string | null) {
+  return !!status && LIVE_SCHEME_STATUSES.has(status);
 }
 
 export function CurriculumSetupModal({
@@ -53,6 +62,7 @@ export function CurriculumSetupModal({
   classLevelName,
   termId,
   creditsRemaining,
+  instructionalWeeks = 0,
 }: CurriculumSetupModalProps) {
   const [activeTab, setActiveTab] = useState<'AGORA' | 'CUSTOM' | 'MERGE'>('AGORA');
   const [mergeWeightAgora, setMergeWeightAgora] = useState(70);
@@ -68,6 +78,9 @@ export function CurriculumSetupModal({
   // Preview State
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
+  const [pendingOverwriteId, setPendingOverwriteId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   // Queries & Mutations
   const { data: agoraLibrary = [], isLoading: isLoadingLibrary } = useGetAgoraLibraryQuery(
@@ -91,18 +104,82 @@ export function CurriculumSetupModal({
 
   const handleDeleteDoc = async (e: React.MouseEvent, docId: string) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to permanently delete this document from your private vault?")) {
-      try {
-        await deleteDoc({ schoolId, docId }).unwrap();
-        toast.success("Document removed");
-      } catch (err: any) {
-        toast.error("Failed to delete document");
-      }
+    setShowDeleteConfirm(docId);
+  };
+
+  const confirmDeleteDoc = async () => {
+    if (!showDeleteConfirm) return;
+    try {
+      await deleteDoc({ schoolId, docId: showDeleteConfirm }).unwrap();
+      toast.success('Document removed');
+      setShowDeleteConfirm(null);
+    } catch {
+      toast.error('Failed to delete document');
     }
   };
 
-  const handleSetup = async () => {
-    if (activeTab === 'AGORA' && !selectedAgoraId) {
+  const buildSetupBody = (agoraId: string | null, forceOverwrite: boolean) => ({
+    classLevelId,
+    subjectId: subject.subjectId,
+    termId: activeTab === 'CUSTOM' ? undefined : termId,
+    mode: activeTab === 'AGORA' ? 'AGORA_ONLY' : activeTab === 'MERGE' ? 'MERGED' : 'SCHOOL_ONLY',
+    agoraCurriculumId: activeTab !== 'CUSTOM' ? agoraId : undefined,
+    schoolCurriculumDocIds: activeTab !== 'AGORA' ? selectedSourceIds : undefined,
+    mergeWeightAgora: activeTab === 'MERGE' ? mergeWeightAgora : undefined,
+    mergeWeightSchool: activeTab === 'MERGE' ? 100 - mergeWeightAgora : undefined,
+    forceOverwrite,
+  });
+
+  const submitSetup = async (agoraId: string | null, forceOverwrite: boolean) => {
+    try {
+      if (activeTab === 'CUSTOM' && file) {
+        setIsUploading(true);
+        toast.loading('Lois is uploading and scanning your document...', { id: 'upload-toast' });
+
+        await uploadDoc({
+          schoolId,
+          subjectId: subject.subjectId,
+          gradeLevel: classLevelName,
+          file
+        }).unwrap();
+
+        toast.success('Master document uploaded! Lois is now splitting and parsing the content.', { id: 'upload-toast' });
+        setIsUploading(false);
+        setFile(null);
+        return true;
+      }
+
+      await setupScheme({
+        schoolId,
+        body: buildSetupBody(agoraId, forceOverwrite),
+      }).unwrap();
+
+      toast.success(
+        activeTab === 'AGORA'
+          ? forceOverwrite
+            ? 'Curriculum replaced successfully'
+            : 'Curriculum imported successfully'
+          : 'Lois AI has started drafting your scheme of work'
+      );
+      setShowOverwriteConfirm(false);
+      onClose();
+      return true;
+    } catch (err: any) {
+      if (err?.status === 409) {
+        if (agoraId) setPendingOverwriteId(agoraId);
+        setShowOverwriteConfirm(true);
+        return false;
+      }
+      toast.error(err?.data?.message || 'Failed to setup curriculum', { id: 'upload-toast' });
+      setIsUploading(false);
+      return false;
+    }
+  };
+
+  const handleSetup = async (agoraId?: string) => {
+    const resolvedAgoraId = agoraId ?? selectedAgoraId;
+
+    if (activeTab === 'AGORA' && !resolvedAgoraId) {
       toast.error('Please select a curriculum template');
       return;
     }
@@ -112,85 +189,21 @@ export function CurriculumSetupModal({
       return;
     }
 
-    if (activeTab === 'MERGE' && (!selectedAgoraId || selectedSourceIds.length === 0)) {
+    if (activeTab === 'MERGE' && (!resolvedAgoraId || selectedSourceIds.length === 0)) {
       toast.error('Pick a Bud library version and at least one parsed school document');
       return;
     }
 
-    try {
-      if (activeTab === 'CUSTOM' && file) {
-        // INTELLIGENT SPLIT FLOW: Upload and start parsing
-        setIsUploading(true);
-        toast.loading('Lois is uploading and scanning your document...', { id: 'upload-toast' });
-        
-        // We'll upload for the first grade, but Lois will detect others based on selectedGrades
-        await uploadDoc({
-          schoolId,
-          subjectId: subject.subjectId,
-          gradeLevel: classLevelName,
-          file
-        }).unwrap();
-        
-        toast.success('Master document uploaded! Lois is now splitting and parsing the content.', { id: 'upload-toast' });
-        setIsUploading(false);
-        setFile(null);
-        // We don't close the modal yet because we want them to see the background progress in the library
-        return;
+    if (isLiveSchemeStatus(subject?.status) && !showOverwriteConfirm) {
+      if (resolvedAgoraId) {
+        setSelectedAgoraId(resolvedAgoraId);
+        setPendingOverwriteId(resolvedAgoraId);
       }
-
-      await setupScheme({
-        schoolId,
-        body: {
-          classLevelId,
-          subjectId: subject.subjectId,
-          termId: activeTab === 'CUSTOM' ? undefined : termId,
-          mode: activeTab === 'AGORA' ? 'AGORA_ONLY' : activeTab === 'MERGE' ? 'MERGED' : 'SCHOOL_ONLY',
-          agoraCurriculumId: activeTab !== 'CUSTOM' ? selectedAgoraId : undefined,
-          schoolCurriculumDocIds: activeTab !== 'AGORA' ? selectedSourceIds : undefined,
-          mergeWeightAgora: activeTab === 'MERGE' ? mergeWeightAgora : undefined,
-          mergeWeightSchool: activeTab === 'MERGE' ? 100 - mergeWeightAgora : undefined,
-          forceOverwrite: false
-        },
-      }).unwrap();
-
-      toast.success(
-        activeTab === 'AGORA'
-          ? 'Curriculum setup complete'
-          : 'Lois AI has started drafting your scheme of work'
-      );
-      onClose();
-    } catch (err: any) {
-      if (err?.status === 409 || err?.data?.message?.includes('overwrite')) {
-        const confirmReplace = window.confirm(
-          "A Scheme of Work already exists for this subject this term. Do you want to permanently overwrite it with this new selection?"
-        );
-        if (confirmReplace) {
-          try {
-            await setupScheme({
-              schoolId,
-              body: {
-                classLevelId,
-                subjectId: subject.subjectId,
-                termId: activeTab === 'CUSTOM' ? undefined : termId,
-                mode: activeTab === 'AGORA' ? 'AGORA_ONLY' : activeTab === 'MERGE' ? 'MERGED' : 'SCHOOL_ONLY',
-                agoraCurriculumId: activeTab !== 'CUSTOM' ? selectedAgoraId : undefined,
-                schoolCurriculumDocIds: activeTab !== 'AGORA' ? selectedSourceIds : undefined,
-                mergeWeightAgora: activeTab === 'MERGE' ? mergeWeightAgora : undefined,
-                mergeWeightSchool: activeTab === 'MERGE' ? 100 - mergeWeightAgora : undefined,
-                forceOverwrite: true
-              },
-            }).unwrap();
-            toast.success('Curriculum replaced successfully!');
-            onClose();
-          } catch (retryErr: any) {
-            toast.error(retryErr?.data?.message || 'Failed to replace curriculum');
-          }
-        }
-        return;
-      }
-      toast.error(err?.data?.message || 'Failed to setup curriculum', { id: 'upload-toast' });
-      setIsUploading(false);
+      setShowOverwriteConfirm(true);
+      return;
     }
+
+    await submitSetup(resolvedAgoraId, isLiveSchemeStatus(subject?.status));
   };
 
   const filteredLibrary = agoraLibrary.filter(item =>
@@ -206,23 +219,23 @@ export function CurriculumSetupModal({
   const handleSelectCurriculum = (id: string) => {
     setSelectedAgoraId(id);
     setIsPreviewOpen(false);
-    // Auto-trigger setup if you want, or just select it
-    // For now we just select it so they can see it's selected in the main modal too
+    void handleSetup(id);
   };
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       hideHeader={true}
       size="2xl"
-      className="p-0 border-none shadow-2xl rounded-2xl"
+      className="p-0 border-none shadow-2xl rounded-2xl bg-light-bg dark:bg-dark-bg"
       contentClassName="p-0"
     >
-      <div className="flex flex-col bg-white dark:bg-dark-surface font-sans min-h-[600px] overflow-hidden">
+      <div className="flex flex-col bg-light-bg dark:bg-dark-bg font-sans min-h-[600px] overflow-hidden">
         {/* Header Section */}
-        <div className="p-8 pb-4 border-b border-light-border dark:border-dark-border">
-          <div className="flex items-start justify-between mb-8">
+        <div className="px-6 pt-5 pb-3 border-b border-light-border dark:border-dark-border">
+          <div className="flex items-start justify-between mb-4">
             <div className="space-y-4">
 
               <div className="space-y-1">
@@ -237,15 +250,13 @@ export function CurriculumSetupModal({
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {((activeTab === 'AGORA' && selectedAgoraId) || activeTab === 'CUSTOM' || activeTab === 'MERGE') && (
-                <Button 
-                  className={cn(
-                    "px-8 h-10 rounded-xl font-black uppercase tracking-[0.15em] shadow-lg shadow-blue-500/10 transition-all hover:scale-[1.02] active:scale-[0.98]",
-                    activeTab === 'AGORA' ? "bg-blue-600 hover:bg-blue-500" : "bg-purple-600 hover:bg-purple-500"
-                  )}
-                  style={{ fontSize: 'var(--text-tiny)' }}
-                  onClick={handleSetup}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className={cn("h-8 px-3", activeTab !== 'AGORA' && "bg-purple-600 hover:bg-purple-500")}
+                  onClick={() => handleSetup()}
                   disabled={
                     isSubmitting ||
                     isUploadingDoc ||
@@ -257,23 +268,19 @@ export function CurriculumSetupModal({
                   }
                 >
                   {isSubmitting || isUploadingDoc ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : activeTab === 'AGORA' ? (
-                    <Plus className="h-4 w-4 mr-2" />
-                  ) : <Zap className="h-4 w-4 mr-2" />}
-                  {activeTab === 'AGORA' ? 'Use Template' : activeTab === 'MERGE' ? 'Confirm merge' : file ? 'Scan & Split' : '⚡ Compile Academic Year'}
+                    <Plus className="h-3.5 w-3.5" />
+                  ) : <Zap className="h-3.5 w-3.5" />}
+                  {activeTab === 'AGORA' ? 'Use Template' : activeTab === 'MERGE' ? 'Confirm merge' : file ? 'Scan & Split' : 'Compile year'}
                 </Button>
               )}
 
-              {((activeTab === 'AGORA' && selectedAgoraId) || activeTab === 'CUSTOM' || activeTab === 'MERGE') && (
-                <div className="h-8 w-[1px] bg-light-border dark:bg-dark-border mx-1" />
-              )}
-
-              <button 
+              <button
                 onClick={onClose}
-                className="h-10 w-10 rounded-xl bg-light-surface dark:bg-dark-bg flex items-center justify-center text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary transition-all border border-light-border dark:border-dark-border group"
+                className="h-8 w-8 rounded-lg bg-light-surface dark:bg-dark-bg flex items-center justify-center text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary transition-all border border-light-border dark:border-dark-border group"
               >
-                <X className="h-5 w-5 transition-transform group-hover:rotate-90 duration-300" />
+                <X className="h-4 w-4 transition-transform group-hover:rotate-90 duration-300" />
               </button>
             </div>
           </div>
@@ -285,7 +292,7 @@ export function CurriculumSetupModal({
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "flex items-center gap-2 px-6 py-3 font-black transition-all whitespace-nowrap uppercase tracking-[0.15em]",
+                  "flex items-center gap-2 px-4 py-2.5 font-black transition-all whitespace-nowrap uppercase tracking-[0.15em]",
                   activeTab === tab
                     ? "border-b-2 border-agora-blue text-agora-blue"
                     : "text-light-text-muted dark:text-dark-text-muted hover:text-light-text-primary dark:hover:text-dark-text-primary"
@@ -300,10 +307,19 @@ export function CurriculumSetupModal({
         </div>
 
         {/* Content Section */}
-        <div className="flex-1 bg-light-card dark:bg-dark-bg px-8 pb-8 overflow-y-auto max-h-[500px]">
+        <div className="flex-1 bg-light-bg dark:bg-dark-bg px-6 pb-6 overflow-y-auto max-h-[500px]">
           <div className="pt-6">
             {activeTab === 'AGORA' ? (
               <div className="space-y-6">
+                {instructionalWeeks > 0 && (
+                  <CalendarCoverageBanner
+                    variant="preview"
+                    coverage={coverageFromPlanVsCalendar(
+                      instructionalWeeks,
+                      DEFAULT_LIBRARY_TERM_WEEKS,
+                    )}
+                  />
+                )}
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-black text-light-text-primary dark:text-dark-text-primary uppercase tracking-tight font-heading" style={{ fontSize: 'var(--text-section-title)' }}>
@@ -608,7 +624,7 @@ export function CurriculumSetupModal({
                               e.stopPropagation();
                               setFile(null);
                             }}
-                            className="absolute top-4 right-4 h-8 w-8 rounded-full bg-white dark:bg-dark-bg shadow-sm border border-light-border dark:border-dark-border flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
+                            className="absolute top-4 right-4 h-8 w-8 rounded-full bg-light-card dark:bg-dark-bg shadow-sm border border-light-border dark:border-dark-border flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                           >
                             <X className="h-4 w-4" />
                           </button>
@@ -725,13 +741,39 @@ export function CurriculumSetupModal({
           </div>
         </div>
       </div>
-      <AgoraCurriculumPreviewModal
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        curriculumId={previewId || ''}
-        schoolId={schoolId}
-        onSelect={handleSelectCurriculum}
-      />
     </Modal>
+    <AgoraCurriculumPreviewModal
+      isOpen={isPreviewOpen}
+      onClose={() => setIsPreviewOpen(false)}
+      curriculumId={previewId || ''}
+      schoolId={schoolId}
+      onSelect={handleSelectCurriculum}
+      isImporting={isSubmitting}
+      instructionalWeeks={instructionalWeeks}
+    />
+    <ConfirmModal
+      isOpen={showOverwriteConfirm}
+      onClose={() => setShowOverwriteConfirm(false)}
+      onConfirm={async () => {
+        await submitSetup(pendingOverwriteId ?? selectedAgoraId, true);
+      }}
+      title="Replace existing scheme?"
+      message={`A scheme of work already exists for ${subject.subjectName} this term. Importing this template will permanently replace it.`}
+      confirmText="Replace scheme"
+      cancelText="Keep current"
+      variant="warning"
+      isLoading={isSubmitting}
+    />
+    <ConfirmModal
+      isOpen={!!showDeleteConfirm}
+      onClose={() => setShowDeleteConfirm(null)}
+      onConfirm={confirmDeleteDoc}
+      title="Remove document?"
+      message="This will permanently delete this document from your private vault."
+      confirmText="Delete"
+      variant="danger"
+      isLoading={isDeletingDoc}
+    />
+    </>
   );
 }
