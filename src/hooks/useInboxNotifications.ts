@@ -60,7 +60,7 @@ export function useInboxNotifications() {
 
         // Always refresh badge / inbox on new inbox rows
         if (data.type === 'INBOX_CREATED') {
-          dispatch(apiSlice.util.invalidateTags(['Notification']));
+          dispatch(apiSlice.util.invalidateTags(['Notification', 'LoisInsights']));
           playNotificationSound();
           if (data.title) {
             toast(data.title, {
@@ -89,7 +89,7 @@ export function useInboxNotifications() {
           data.type === 'ACADEMIC_RISK_DIGEST' ||
           data.type === 'LOIS_INSIGHT'
         ) {
-          dispatch(apiSlice.util.invalidateTags(['Notification']));
+          dispatch(apiSlice.util.invalidateTags(['Notification', 'LoisInsights']));
         }
       } catch {
         // ignore

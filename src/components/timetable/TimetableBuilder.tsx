@@ -36,10 +36,13 @@ import {
   type PeriodType,
 } from '@/lib/store/api/schoolAdminApi';
 import { getScheduleFromBellTemplates, getLessonPeriods } from '@/lib/utils/nigerianSchoolSchedule';
-import { useAutoGenerateTimetable } from '@/hooks/useAutoGenerateTimetable';
-import { useAutoGenerateWithTeachers } from '@/hooks/useAutoGenerateWithTeachers';
 import { useRuntimePolicies, useWorkingDays } from '@/hooks/useRuntimePolicies';
 import { useStreamMismatchConfirm } from '@/hooks/useStreamMismatchConfirm';
+import { usePreviewCurateTimetableMutation } from '@/lib/store/api/schoolAdminApi';
+import { useToolAccess } from '@/hooks/useToolAccess';
+import { ProChip } from '@/components/timetable/ProChip';
+import { LoisAutoFillUpgradeModal, curateErrorMessage } from '@/components/timetable/LoisAutoFillUpgradeModal';
+import { toast } from 'react-hot-toast';
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   MONDAY: 'Mon',
@@ -122,9 +125,11 @@ interface TimetableBuilderProps {
   timetable: TimetablePeriod[];
   classArmId: string;
   termId: string;
+  schoolId?: string;
+  classId?: string;
   onPeriodUpdate: (slot: TimetableSlot, subjectId?: string, courseId?: string, teacherId?: string) => Promise<void>;
   onPeriodDelete: (periodId: string) => Promise<void>;
-  onAutoGenerate?: (periods: GeneratedPeriod[]) => Promise<void>;
+  onAutoGenerate?: (periods: GeneratedPeriod[], analysis?: import('@/hooks/useAutoGenerateWithTeachers').GenerationAnalysis) => Promise<void>;
   isLoading?: boolean;
   readOnly?: boolean; // If true, disable drag-and-drop and editing
   // SECONDARY-specific props
@@ -283,6 +288,8 @@ export function TimetableBuilder({
   timetable,
   classArmId,
   termId,
+  schoolId,
+  classId,
   onPeriodUpdate,
   onPeriodDelete,
   onAutoGenerate,
@@ -293,7 +300,7 @@ export function TimetableBuilder({
   onTeacherSelectionNeeded,
   onEditPeriodTeacher,
   autoFillSubjects,
-  autoFillSubjectsWithTeachers,
+  autoFillSubjectsWithTeachers: _autoFillSubjectsWithTeachers,
   classStream = null,
   classLevelName = '',
 }: TimetableBuilderProps) {
@@ -307,53 +314,35 @@ export function TimetableBuilder({
     classLevelName,
   });
 
+  const [showProModal, setShowProModal] = useState(false);
+  const { hasLoisAccess } = useToolAccess();
+  const [previewCurate] = usePreviewCurateTimetableMutation();
   const autoFillPool = autoFillSubjects ?? subjects;
-  const autoFillPoolWithTeachers = autoFillSubjectsWithTeachers ?? subjectsWithTeachers;
-
-  // Basic auto-generate hook (for PRIMARY/TERTIARY)
-  const { 
-    generateTimetable: generateBasic, 
-    canGenerate: canGenerateBasic 
-  } = useAutoGenerateTimetable({
-    schoolType,
-    subjects: autoFillPool.filter(s => s.type !== 'free').map(s => ({ id: s.id, name: s.name, code: s.code })),
-    courses: courses.filter(c => c.type !== 'free').map(c => ({ id: c.id, name: c.name, code: c.code })),
-    existingPeriods: timetable,
-    workingDays: DAYS,
-    bellScheduleTemplates: policies.bellScheduleTemplates,
-  });
-
-  // Enhanced auto-generate hook with teacher assignment (for SECONDARY)
-  const { 
-    generateTimetable: generateWithTeachers, 
-    canGenerate: canGenerateWithTeachers 
-  } = useAutoGenerateWithTeachers({
-    schoolType,
-    subjects: autoFillPoolWithTeachers || autoFillPool.filter(s => s.type !== 'free').map(s => ({ 
-      id: s.id, 
-      name: s.name, 
-      code: s.code 
-    })),
-    existingPeriods: timetable,
-    workingDays: DAYS,
-    bellScheduleTemplates: policies.bellScheduleTemplates,
-    maxPeriodsPerTeacherPerDay: policies.timetable.maxPeriodsPerTeacherPerDay,
-  });
-
-  // Use appropriate generator based on school type
-  const generateTimetable = schoolType === 'SECONDARY' ? generateWithTeachers : generateBasic;
-  const canGenerate = schoolType === 'SECONDARY' ? canGenerateWithTeachers : canGenerateBasic;
+  const canGenerate = (schoolType === 'TERTIARY' ? courses : autoFillPool).filter((s) => s.type !== 'free').length > 0;
 
   const handleAutoGenerate = async () => {
     if (!onAutoGenerate) return;
-    
+    if (!hasLoisAccess) {
+      setShowProModal(true);
+      return;
+    }
+    if (!schoolId || !termId) return;
+
     setIsAutoGenerating(true);
     try {
-      const generatedPeriods = generateTimetable();
-      await onAutoGenerate(generatedPeriods);
+      const res = await previewCurate({
+        schoolId,
+        data: {
+          termId,
+          classId: classId || classArmId || undefined,
+          classArmId: classArmId || undefined,
+          mode: 'FILL_EMPTY',
+        },
+      }).unwrap();
+      await onAutoGenerate(res.data.periods, res.data.analysis);
       setShowAutoGenerateModal(false);
     } catch (error) {
-      console.error('Failed to auto-generate timetable:', error);
+      toast.error(curateErrorMessage(error));
     } finally {
       setIsAutoGenerating(false);
     }
@@ -651,12 +640,13 @@ export function TimetableBuilder({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setShowAutoGenerateModal(true)}
+                  onClick={() => (hasLoisAccess ? setShowAutoGenerateModal(true) : setShowProModal(true))}
                   disabled={isLoading || isAutoGenerating}
                   className="w-full mb-3"
                 >
                   <LoisOrb size="xs" className="mr-2" />
                   Auto-Fill Timetable
+                  <ProChip className="ml-2" />
                 </Button>
               )}
               
@@ -890,6 +880,7 @@ export function TimetableBuilder({
         </BodyPortal>
       )}
       {mismatchModal}
+      <LoisAutoFillUpgradeModal isOpen={showProModal} onClose={() => setShowProModal(false)} />
     </DndContext>
   );
 }

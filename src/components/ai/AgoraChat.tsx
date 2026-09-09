@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   Building2,
   ClipboardCheck,
+  Calendar,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
@@ -49,7 +50,9 @@ import { RootState } from '@/lib/store/store';
 import { SaveAssessmentEditor } from './SaveAssessmentEditor';
 import { inlineAssistantErrorNote, toastTextFromStreamError } from '@/lib/ai-chat-errors';
 import { useLoisWorkspaceOptional, type LoisPageContext, type LoisSource } from './LoisWorkspace';
+import { LoisPendingPlanCard } from './LoisPendingPlanCard';
 import { LoisOrb } from './LoisOrb';
+import { LoisBriefingPanel } from './LoisBriefingPanel';
 import Link from 'next/link';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -117,8 +120,17 @@ function loisPromptCards(params: {
     structuredFocus?.type === 'class' ||
     pathHint.includes('/classes') ||
     pathHint.includes('/levels');
+  const isTimetableContext =
+    structuredFocus?.type === 'timetable' || pathHint.includes('/timetables');
+  const isCurriculumContext =
+    structuredFocus?.type === 'scheme' ||
+    pathHint.includes('/curriculum') ||
+    pathHint.includes('/subjects');
   const studentName = structuredFocus?.type === 'student' ? structuredFocus.label : 'this student';
-  const className = structuredFocus?.type === 'class' ? structuredFocus.label : 'this class';
+  const className =
+    structuredFocus?.type === 'class' || structuredFocus?.type === 'timetable'
+      ? structuredFocus.label
+      : 'this class';
 
   if (isStudentsContext && structuredFocus?.type === 'student') {
     return [
@@ -162,6 +174,52 @@ function loisPromptCards(params: {
         description: 'Preview only — nothing is sent',
         icon: <Mail className="h-3.5 w-3.5" />,
         prompt: "Draft an email to a student's parents regarding their performance. Do not send it.",
+      },
+    ];
+  }
+
+  if (isTimetableContext) {
+    return [
+      {
+        title: 'Inspect this class',
+        description: 'Subjects, teachers, and empty slots',
+        icon: <Clock className="h-3.5 w-3.5" />,
+        prompt: `Inspect the scheduling context for ${className === 'Timetable' ? 'this class' : className}. Do not save anything yet.`,
+      },
+      {
+        title: 'Propose Auto-Fill',
+        description: 'Preview only — Apply on the card',
+        icon: <Calendar className="h-3.5 w-3.5" />,
+        prompt: 'Propose a fill-empty timetable for this class. Do not claim it is saved.',
+      },
+      {
+        title: 'Curriculum gaps',
+        description: 'Which grid subjects still need a scheme',
+        icon: <BookOpen className="h-3.5 w-3.5" />,
+        prompt: 'Inspect curriculum options for this class. Tell me if a timetable exists and which subjects have no scheme.',
+      },
+    ];
+  }
+
+  if (isCurriculumContext) {
+    return [
+      {
+        title: 'Library vs calendar',
+        description: 'Bud weeks vs this term’s teachable weeks',
+        icon: <BookOpen className="h-3.5 w-3.5" />,
+        prompt: 'Inspect curriculum options for this class. Compare Bud library weeks with teachable weeks. Do not generate yet.',
+      },
+      {
+        title: 'Propose a scheme',
+        description: 'Plan only — Apply on the card',
+        icon: <FileText className="h-3.5 w-3.5" />,
+        prompt: 'If a timetable exists, propose a library scheme for a subject that still needs one. Do not apply it.',
+      },
+      {
+        title: 'Need a timetable first?',
+        description: 'Schemes work better with periods on the grid',
+        icon: <Clock className="h-3.5 w-3.5" />,
+        prompt: 'Does this class have a timetable? If not, inspect scheduling and explain before proposing a scheme.',
       },
     ];
   }
@@ -305,7 +363,9 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
   const [expanded, setExpanded] = useState(
     event.toolName === 'generate_assessment' ||
     event.toolName === 'generate_quiz' ||
-    event.toolName === 'generate_lesson_plan'
+    event.toolName === 'generate_lesson_plan' ||
+    event.toolName === 'propose_timetable' ||
+    event.toolName === 'propose_scheme'
   );
 
   if (event.type === 'thinking') {
@@ -381,7 +441,11 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="px-4 pb-4 max-h-[320px] overflow-y-auto scrollbar-thin">
+              <div className={`px-4 pb-4 overflow-y-auto scrollbar-thin ${
+                event.toolName === 'propose_timetable' || event.toolName === 'propose_scheme'
+                  ? 'max-h-[420px]'
+                  : 'max-h-[320px]'
+              }`}>
                 <ToolResultContent toolName={event.toolName || ''} result={event.result} schoolId={schoolId} variant={variant} conversationId={conversationId} />
               </div>
             </motion.div>
@@ -527,6 +591,16 @@ const ToolResultContent = ({
     );
   }
 
+  if (toolName === 'propose_timetable' || toolName === 'propose_scheme') {
+    return (
+      <LoisPendingPlanCard
+        schoolId={schoolId}
+        conversationId={conversationId}
+        result={result}
+      />
+    );
+  }
+
   if (toolName === 'generate_quiz' || toolName === 'generate_assessment') {
     return <SaveAssessmentEditor toolName={toolName} initialData={result} schoolId={schoolId} variant={variant} conversationId={conversationId} />;
   }
@@ -642,10 +716,10 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
         greetingDesc = `You're with ${structuredFocus.label}. I can pull published grades, attendance, or draft a parent note.`;
       } else if (structuredFocus?.type === 'class') {
         greetingDesc = `You're looking at ${structuredFocus.label}. I can check performance, the timetable, or the scheme of work.`;
-      } else if (structuredFocus?.type === 'scheme') {
-        greetingDesc = `You're on the scheme of work for ${structuredFocus.label}. Ask what's planned or what's overdue.`;
       } else if (structuredFocus?.type === 'timetable') {
-        greetingDesc = `You're on the timetable. I can tell you what's on right now for a class.`;
+        greetingDesc = `You're on the timetable. I can inspect a class, propose Auto-Fill (not saved until you Apply), or check which subjects still need a scheme.`;
+      } else if (structuredFocus?.type === 'scheme') {
+        greetingDesc = `You're on the scheme of work for ${structuredFocus.label}. I can compare library weeks with this term, or propose a scheme — Apply on the card to generate.`;
       } else if (structuredFocus?.type === 'school') {
         greetingDesc = `I can summarise the school, explain what I noticed, or look up a student.`;
       } else if (pathHint.includes('/students')) {
@@ -1016,7 +1090,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               className="mt-1 text-light-text-secondary dark:text-dark-text-secondary truncate leading-none"
               style={{ fontSize: typeScale.tiny }}
             >
-              {structuredFocus?.label || 'School assistant'}
+              {structuredFocus?.label || (workspace?.briefingOpen ? 'Briefing ready' : 'School assistant')}
             </p>
           </div>
         </div>
@@ -1052,7 +1126,18 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               Loading conversations…
             </p>
           </div>
-        ) : messages.length <= 1 ? (
+        ) : (
+          <>
+            {isMinimal && workspace?.briefingOpen ? (
+              <LoisBriefingPanel
+                schoolId={schoolId}
+                focusInsightId={workspace.briefingInsightId}
+                compact={messages.length > 1}
+                onAsk={(prompt) => void handleSendMessage(prompt)}
+                onEmpty={workspace.clearBriefing}
+              />
+            ) : null}
+            {messages.length <= 1 && !(isMinimal && workspace?.briefingOpen) ? (
           <div className={cn(
             'flex-1 flex flex-col min-h-0',
             isMinimal ? 'px-3 py-5' : 'max-w-3xl mx-auto w-full px-4 py-6 md:px-5 md:py-8',
@@ -1091,7 +1176,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               />
             </div>
           </div>
-        ) : (
+        ) : messages.length > 1 ? (
           <div className={cn('space-y-4', isMinimal ? 'px-3 py-4' : 'px-4 md:px-5 py-4 md:py-6')}>
             {messages.map((msg, idx) => (
               idx === 0 ? null : (
@@ -1192,6 +1277,8 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
 
             <div ref={messagesEndRef} className="h-4" />
           </div>
+            ) : null}
+          </>
         )}
       </div>
 
@@ -1201,7 +1288,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
             <div className="flex items-center gap-2 rounded-[0.95rem] bg-[var(--input-field-bg)] px-2.5 py-2">
               <input
                 ref={inputRef}
-                placeholder="Ask Lois anything…"
+                placeholder={workspace?.briefingOpen ? 'Ask a follow-up…' : 'Ask Lois anything…'}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => {

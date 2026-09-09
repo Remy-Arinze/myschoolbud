@@ -1363,6 +1363,40 @@ export interface GeneratedPeriodWithTeacher {
   warningMessage?: string;
 }
 
+export interface CurateTimetablePreview {
+  classLabel: string;
+  schoolType: 'PRIMARY' | 'SECONDARY' | 'TERTIARY';
+  classId?: string;
+  classArmId?: string;
+  classLevelId?: string;
+  termId: string;
+  hasExistingTimetable: boolean;
+  periodCount: number;
+  primaryClassTeacher: { id: string; name: string } | null;
+  subjects: Array<{ id: string; name: string; teacherCount: number }>;
+  subjectsWithoutTeachers: Array<{ id: string; name: string }>;
+  periods: GeneratedPeriodWithTeacher[];
+  analysis: {
+    totalPeriods: number;
+    assignedWithTeacher: number;
+    unassignedTeacher: number;
+    freePeriods: number;
+    subjectsUsed: number;
+    teachersInvolved: number;
+    teacherAssignments: Array<{
+      teacherId: string;
+      teacherName: string;
+      subjectId: string;
+      subjectName: string;
+      periodCount: number;
+      totalLoad: number;
+      status: 'LOW' | 'NORMAL' | 'HIGH' | 'OVERLOADED';
+    }>;
+    subjectsWithoutTeachers: Array<{ id: string; name: string; periodCount: number }>;
+    warnings: string[];
+  };
+}
+
 export interface TimetableGenerationStats {
   totalPeriods: number;
   assignedPeriods: number;
@@ -2399,6 +2433,52 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       query: ({ schoolId, classId, data }) => ({
         url: `/schools/${schoolId}/timetable/class/${classId}/replace`,
         method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Timetable'],
+    }),
+    previewCurateTimetable: builder.mutation<
+      ResponseDto<CurateTimetablePreview>,
+      {
+        schoolId: string;
+        data: {
+          termId: string;
+          classId?: string;
+          classArmId?: string;
+          mode?: 'FILL_EMPTY' | 'REPLACE';
+        };
+      }
+    >({
+      query: ({ schoolId, data }) => ({
+        url: `/schools/${schoolId}/timetable/curate/preview`,
+        method: 'POST',
+        body: data,
+      }),
+    }),
+    applyCurateTimetable: builder.mutation<
+      ResponseDto<{ replaced: number; preview: CurateTimetablePreview }>,
+      {
+        schoolId: string;
+        data: {
+          termId: string;
+          classId?: string;
+          classArmId?: string;
+          mode?: 'FILL_EMPTY' | 'REPLACE';
+          periods?: Array<{
+            dayOfWeek: DayOfWeek;
+            startTime: string;
+            endTime: string;
+            type?: PeriodType;
+            subjectId?: string;
+            courseId?: string;
+            teacherId?: string;
+          }>;
+        };
+      }
+    >({
+      query: ({ schoolId, data }) => ({
+        url: `/schools/${schoolId}/timetable/curate/apply`,
+        method: 'POST',
         body: data,
       }),
       invalidatesTags: ['Timetable'],
@@ -4408,6 +4488,8 @@ export const {
   useDeleteTimetableForClassMutation,
   useCreateMasterScheduleMutation,
   useReplaceTimetableMutation,
+  usePreviewCurateTimetableMutation,
+  useApplyCurateTimetableMutation,
   // Resource hooks
   useGetClassLevelsQuery,
   useGetClassArmsQuery,

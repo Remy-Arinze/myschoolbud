@@ -17,6 +17,7 @@ interface AICredits {
 interface UseToolAccessReturn {
   aiCredits: AICredits;
   accessibleTools: Tool[];
+  hasLoisAccess: boolean;
 }
 
 /**
@@ -45,5 +46,6 @@ export function useToolAccess(): UseToolAccessReturn {
   return {
     aiCredits,
     accessibleTools,
+    hasLoisAccess: accessibleTools.some((t) => t.slug === 'agora-ai'),
   };
 }

@@ -10,11 +10,15 @@ import {
   type TimetablePeriod,
   type DayOfWeek,
 } from '@/lib/store/api/schoolAdminApi';
+import { usePreviewCurateTimetableMutation } from '@/lib/store/api/schoolAdminApi';
 import { DEFAULT_WORKING_DAYS } from '@/lib/calendar/instructionalDays';
-import { useAutoGenerateTimetable } from '@/hooks/useAutoGenerateTimetable';
 import { BodyPortal } from '@/components/ui/BodyPortal';
 import { useStreamMismatchConfirm } from '@/hooks/useStreamMismatchConfirm';
 import { type LevelStream } from '@/lib/utils/subject-level-stream';
+import { useToolAccess } from '@/hooks/useToolAccess';
+import { ProChip } from '@/components/timetable/ProChip';
+import { LoisAutoFillUpgradeModal, curateErrorMessage } from '@/components/timetable/LoisAutoFillUpgradeModal';
+import { toast } from 'react-hot-toast';
 
 const FALLBACK_DAYS: DayOfWeek[] = [...DEFAULT_WORKING_DAYS];
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -65,6 +69,9 @@ interface EditableTimetableTableProps {
   autoFillSubjects?: Array<{ id: string; name: string; code?: string }>;
   classStream?: LevelStream | null;
   classLevelName?: string;
+  schoolId?: string;
+  classId?: string;
+  termId?: string;
   onSave: (periods: Omit<EditablePeriod, 'slotId'>[]) => Promise<void>;
   onClose: () => void;
   isLoading?: boolean;
@@ -290,6 +297,9 @@ export function EditableTimetableTable({
   autoFillSubjects,
   classStream = null,
   classLevelName = '',
+  schoolId,
+  classId,
+  termId,
   onSave,
   onClose,
   isLoading = false,
@@ -306,14 +316,35 @@ export function EditableTimetableTable({
   const [showAutoGenerateModal, setShowAutoGenerateModal] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [showProModal, setShowProModal] = useState(false);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const { hasLoisAccess } = useToolAccess();
+  const [previewCurate] = usePreviewCurateTimetableMutation();
+  const canGenerate = (autoFillSubjects ?? subjects).length > 0;
 
-  const { generateTimetable, canGenerate } = useAutoGenerateTimetable({
-    schoolType,
-    subjects: autoFillSubjects ?? subjects,
-    courses,
-    existingPeriods: editablePeriods,
-    workingDays: DAYS,
-  });
+  const handleAutoGenerate = async () => {
+    if (!hasLoisAccess) {
+      setShowProModal(true);
+      return;
+    }
+    if (!schoolId || !termId) {
+      toast.error('Missing class or term for Auto-Fill.');
+      return;
+    }
+    setIsAutoGenerating(true);
+    try {
+      const res = await previewCurate({
+        schoolId,
+        data: { termId, classId, mode: 'FILL_EMPTY' },
+      }).unwrap();
+      setEditablePeriods(hydratePeriods(res.data.periods));
+      setShowAutoGenerateModal(false);
+    } catch (error) {
+      toast.error(curateErrorMessage(error));
+    } finally {
+      setIsAutoGenerating(false);
+    }
+  };
 
   const rows = useMemo(() => buildRows(editablePeriods), [editablePeriods]);
   const validationErrors = useMemo(() => collectErrors(rows), [rows]);
@@ -333,12 +364,6 @@ export function EditableTimetableTable({
     const timer = window.setTimeout(() => setActionNotice(null), 4000);
     return () => window.clearTimeout(timer);
   }, [actionNotice]);
-
-  const handleAutoGenerate = () => {
-    const generatedPeriods = generateTimetable();
-    setEditablePeriods(hydratePeriods(generatedPeriods));
-    setShowAutoGenerateModal(false);
-  };
 
   const getPeriodForSlot = (day: DayOfWeek, slotId: string) =>
     editablePeriods.find((p) => p.slotId === slotId && p.dayOfWeek === day);
@@ -553,11 +578,12 @@ export function EditableTimetableTable({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setShowAutoGenerateModal(true)}
-                  disabled={isLoading}
+                  onClick={() => (hasLoisAccess ? setShowAutoGenerateModal(true) : setShowProModal(true))}
+                  disabled={isLoading || isAutoGenerating}
                 >
                   <LoisOrb size="xs" className="mr-2" />
                   Auto-Fill
+                  <ProChip className="ml-2" />
                 </Button>
               )}
             </div>
@@ -821,8 +847,13 @@ export function EditableTimetableTable({
                   variant="primary"
                   onClick={handleAutoGenerate}
                   className="flex-1"
+                  disabled={isAutoGenerating}
                 >
-                  <LoisOrb size="xs" className="mr-2" />
+                  {isAutoGenerating ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <LoisOrb size="xs" className="mr-2" />
+                  )}
                   Generate
                 </Button>
                 <Button
@@ -865,6 +896,7 @@ export function EditableTimetableTable({
           </div>
         )}
         {mismatchModal}
+        <LoisAutoFillUpgradeModal isOpen={showProModal} onClose={() => setShowProModal(false)} />
       </div>
     </div>
     </BodyPortal>

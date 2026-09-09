@@ -43,6 +43,16 @@ function loisAskPrompt(n: InAppNotification): string | null {
   return null;
 }
 
+function loisInsightId(n: InAppNotification): string | null {
+  if (n.type !== 'LOIS_INSIGHT') return null;
+  const meta = n.metadata;
+  if (meta && typeof meta === 'object' && 'insightId' in meta) {
+    const id = (meta as { insightId?: unknown }).insightId;
+    if (typeof id === 'string' && id.trim()) return id;
+  }
+  return null;
+}
+
 export function NotificationCenter({
   title = 'Notifications',
 }: {
@@ -163,8 +173,8 @@ export function NotificationCenter({
         <ul className="rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-card)] dark:bg-[var(--dark-surface)] divide-y divide-[var(--light-border)] dark:divide-[var(--dark-border)] overflow-hidden">
           {items.map((n) => {
             const unread = !n.readAt;
-            const askPrompt = loisAskPrompt(n);
-            const openLois = askPrompt && workspace;
+            const insightId = loisInsightId(n);
+            const openLois = !!(insightId && workspace) || !!(loisAskPrompt(n) && workspace);
             const content = (
               <div
                 className={cn(
@@ -218,7 +228,11 @@ export function NotificationCenter({
                     className="w-full text-left"
                     onClick={() => {
                       void markRead({ id: n.id });
-                      if (askPrompt) workspace?.askLois(askPrompt);
+                      if (insightId) workspace?.openBriefing(insightId);
+                      else {
+                        const prompt = loisAskPrompt(n);
+                        if (prompt) workspace?.askLois(prompt);
+                      }
                     }}
                   >
                     {content}

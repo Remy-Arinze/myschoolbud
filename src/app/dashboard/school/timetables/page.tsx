@@ -41,6 +41,7 @@ import {
   useGetStaffListQuery,
   useCreateMasterScheduleMutation,
   useReplaceTimetableMutation,
+  useApplyCurateTimetableMutation,
   type TimetablePeriod,
   type Class,
   type DayOfWeek,
@@ -55,7 +56,8 @@ import { TimetablePreviewModal } from '@/components/timetable/TimetablePreviewMo
 import { getScheduleFromBellTemplates } from '@/lib/utils/nigerianSchoolSchedule';
 import { ConfirmModal, Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
-import { useAutoGenerateWithTeachers, type GeneratedPeriodWithTeacher } from '@/hooks/useAutoGenerateWithTeachers';
+import type { GeneratedPeriodWithTeacher, GenerationAnalysis } from '@/hooks/useAutoGenerateWithTeachers';
+import { curateErrorMessage } from '@/components/timetable/LoisAutoFillUpgradeModal';
 import { useRuntimePolicies, useWorkingDays } from '@/hooks/useRuntimePolicies';
 import toast from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -184,6 +186,7 @@ export default function TimetablesPage() {
   const [deleteTimetable, { isLoading: isDeletingTimetable }] = useDeleteTimetableForClassMutation();
   const [createMasterSchedule, { isLoading: isCreatingMaster }] = useCreateMasterScheduleMutation();
   const [replaceTimetable, { isLoading: isReplacing }] = useReplaceTimetableMutation();
+  const [applyCurate] = useApplyCurateTimetableMutation();
 
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ classId: string; className: string; termId: string } | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -192,6 +195,7 @@ export default function TimetablesPage() {
   const [teacherSelectionState, setTeacherSelectionState] = useState<TeacherSelectionState | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewPeriods, setPreviewPeriods] = useState<GeneratedPeriodWithTeacher[]>([]);
+  const [previewAnalysis, setPreviewAnalysis] = useState<GenerationAnalysis | null>(null);
   const [isApplyingPreview, setIsApplyingPreview] = useState(false);
 
   const classes = classesResponse?.data || [];
@@ -411,93 +415,31 @@ export default function TimetablesPage() {
     }
   };
 
-  const handleAutoGenerate = async (generatedPeriods: Array<{
-    dayOfWeek: DayOfWeek;
-    startTime: string;
-    endTime: string;
-    type: 'LESSON' | 'BREAK' | 'LUNCH' | 'ASSEMBLY';
-    subjectId?: string;
-    subjectName?: string;
-    courseId?: string;
-    courseName?: string;
-  }>) => {
+  const handleAutoGenerate = async (generatedPeriods: GeneratedPeriodWithTeacher[], analysis?: GenerationAnalysis) => {
     if (!schoolId || !selectedClassId || !termId) return;
-
     try {
-      // Create a map of existing periods with their IDs for updates
-      const existingMap = new Map<string, TimetablePeriod>();
-      timetable.forEach((period) => {
-        const key = `${period.dayOfWeek}-${period.startTime}-${period.endTime}`;
-        existingMap.set(key, period);
-      });
-
-      let createdCount = 0;
-      let updatedCount = 0;
-
-      for (const period of generatedPeriods) {
-        const key = `${period.dayOfWeek}-${period.startTime}-${period.endTime}`;
-        const existingPeriod = existingMap.get(key);
-
-        if (existingPeriod) {
-          // Period exists - check if we need to update it
-          const existingHasSubject = existingPeriod.subjectId || existingPeriod.courseId;
-          const newHasSubject = period.subjectId || period.courseId;
-
-          // Only update if:
-          // 1. Existing period has no subject (is a free period) AND new period has a subject
-          // 2. Or it's a break/lunch/assembly type update
-          if ((!existingHasSubject && newHasSubject) || period.type !== 'LESSON') {
-            await updatePeriod({
-              schoolId,
-              periodId: existingPeriod.id,
-              data: {
-                type: period.type as PeriodType,
-                subjectId: currentType !== 'TERTIARY' ? period.subjectId : undefined,
-                courseId: currentType === 'TERTIARY' ? period.courseId : undefined,
-              },
-            }).unwrap();
-            updatedCount++;
-          }
-        } else {
-          // Period doesn't exist - create new one
-          // Check if the selected class has a classArmId (ClassArm-based class)
-          const hasClassArmId = selectedClass?.classArmId;
-
-          await createPeriod({
-            schoolId,
-            data: {
-              dayOfWeek: period.dayOfWeek,
-              startTime: period.startTime,
-              endTime: period.endTime,
-              type: period.type as PeriodType,
-              subjectId: currentType !== 'TERTIARY' ? period.subjectId : undefined,
-              courseId: currentType === 'TERTIARY' ? period.courseId : undefined,
-              // Use classArmId if the class has one, otherwise use classId
-              ...(hasClassArmId
-                ? { classArmId: selectedClassId }
-                : { classId: selectedClassId }
-              ),
-              termId,
-            },
-          }).unwrap();
-          createdCount++;
-        }
-      }
-
-      const totalChanges = createdCount + updatedCount;
-      if (totalChanges > 0) {
-        toast.success(`Timetable generated! ${createdCount} created, ${updatedCount} updated.`);
-      } else {
-        toast.success('Timetable is already up to date!');
-      }
+      const res = await applyCurate({
+        schoolId,
+        data: {
+          termId,
+          classId: selectedClassId,
+          mode: 'FILL_EMPTY',
+          periods: generatedPeriods.map((p) => ({
+            dayOfWeek: p.dayOfWeek,
+            startTime: p.startTime,
+            endTime: p.endTime,
+            type: p.type as PeriodType,
+            subjectId: currentType !== 'TERTIARY' ? p.subjectId : undefined,
+            courseId: currentType === 'TERTIARY' ? p.courseId : undefined,
+            teacherId: p.teacherId,
+          })),
+        },
+      }).unwrap();
+      toast.success(`Timetable applied: ${res.data.replaced} periods saved.`);
       await refetchTimetable();
       refetchTimetables();
-    } catch (error: any) {
-      if (error?.status === 409) {
-        toast.error(error?.data?.message || 'Conflict detected');
-      } else {
-        toast.error(error?.data?.message || 'Failed to generate timetable');
-      }
+    } catch (error: unknown) {
+      toast.error(curateErrorMessage(error));
     }
   };
 
@@ -603,128 +545,51 @@ export default function TimetablesPage() {
   /**
    * Handle auto-generate with teacher preview (SECONDARY)
    */
-  const handleAutoGenerateWithPreview = useCallback(async (generatedPeriods: GeneratedPeriodWithTeacher[]) => {
+  const handleAutoGenerateWithPreview = useCallback(async (
+    generatedPeriods: GeneratedPeriodWithTeacher[],
+    analysis?: GenerationAnalysis,
+  ) => {
     if (currentType === 'SECONDARY') {
-      // Show preview modal instead of directly applying
       setPreviewPeriods(generatedPeriods);
+      setPreviewAnalysis(analysis ?? null);
       setShowPreviewModal(true);
     } else {
-      // PRIMARY/TERTIARY: Apply directly (existing behavior)
-      await handleAutoGenerate(generatedPeriods);
+      await handleAutoGenerate(generatedPeriods, analysis);
     }
   }, [currentType, handleAutoGenerate]);
 
-  /**
-   * Apply previewed timetable (from preview modal)
-   */
   const handleApplyPreview = useCallback(async (periods: GeneratedPeriodWithTeacher[]) => {
     if (!schoolId || !selectedClassId || !termId) return;
-
     setIsApplyingPreview(true);
-
     try {
-      const existingMap = new Map<string, TimetablePeriod>();
-      timetable.forEach((period) => {
-        const key = `${period.dayOfWeek}-${period.startTime}-${period.endTime}`;
-        existingMap.set(key, period);
-      });
-
-      let createdCount = 0;
-      let updatedCount = 0;
-
-      // Get selected class to check if it has classArmId
-      const currentSelectedClass = classes.find((c) => c.id === selectedClassId);
-      const hasClassArmId = currentSelectedClass?.classArmId;
-
-      for (const period of periods) {
-        if (period.type !== 'LESSON') continue;
-
-        const key = `${period.dayOfWeek}-${period.startTime}-${period.endTime}`;
-        const existingPeriod = existingMap.get(key);
-
-        if (existingPeriod) {
-          const existingHasSubject = existingPeriod.subjectId || existingPeriod.courseId;
-          const newHasSubject = period.subjectId || period.courseId;
-
-          // Only update if existing is empty or we have new data
-          if (!existingHasSubject && newHasSubject) {
-            await updatePeriod({
-              schoolId,
-              periodId: existingPeriod.id,
-              data: {
-                type: period.type as PeriodType,
-                subjectId: period.subjectId,
-                teacherId: period.teacherId,
-              },
-            }).unwrap();
-            updatedCount++;
-          }
-        } else if (period.subjectId) {
-          await createPeriod({
-            schoolId,
-            data: {
-              dayOfWeek: period.dayOfWeek,
-              startTime: period.startTime,
-              endTime: period.endTime,
-              type: period.type as PeriodType,
-              subjectId: period.subjectId,
-              teacherId: period.teacherId,
-              ...(hasClassArmId
-                ? { classArmId: selectedClassId }
-                : { classId: selectedClassId }
-              ),
-              termId,
-            },
-          }).unwrap();
-          createdCount++;
-        }
-      }
-
-      const totalChanges = createdCount + updatedCount;
-      if (totalChanges > 0) {
-        toast.success(`Timetable applied! ${createdCount} created, ${updatedCount} updated.`);
-      } else {
-        toast.success('Timetable is already up to date!');
-      }
-
-      await refetchTimetable();
-      refetchTimetables();
+      await handleAutoGenerate(periods);
       setShowPreviewModal(false);
       setPreviewPeriods([]);
-    } catch (error: any) {
-      if (error?.status === 409) {
-        toast.error(error?.data?.message || 'Conflict detected');
-      } else {
-        toast.error(error?.data?.message || 'Failed to apply timetable');
-      }
+      setPreviewAnalysis(null);
     } finally {
       setIsApplyingPreview(false);
     }
-  }, [
-    schoolId, selectedClassId, termId, timetable, classes,
-    updatePeriod, createPeriod, refetchTimetable, refetchTimetables
-  ]);
+  }, [schoolId, selectedClassId, termId, handleAutoGenerate]);
 
-  // Use enhanced auto-generate hook for SECONDARY
-  const {
-    generateTimetable: generateWithTeachers,
-    analyzeGeneration,
-    subjectsWithoutTeachers,
-    requiresTeacherAssignment,
-  } = useAutoGenerateWithTeachers({
-    schoolType: currentType,
-    subjects: offeredSubjects.map(s => ({
-      id: s.id,
-      name: s.name,
-      code: s.code,
-      type: 'subject' as const,
-      teachers: s.teachers,
-    })),
-    existingPeriods: timetable,
-    workingDays,
-    bellScheduleTemplates: policies.bellScheduleTemplates,
-    maxPeriodsPerTeacherPerDay: policies.timetable.maxPeriodsPerTeacherPerDay,
-  });
+  const subjectsWithoutTeachers = useMemo(
+    () =>
+      currentType === 'SECONDARY'
+        ? offeredSubjects.filter((s) => !s.teachers || s.teachers.length === 0)
+        : [],
+    [currentType, offeredSubjects],
+  );
+
+  const emptyPreviewAnalysis: GenerationAnalysis = {
+    totalPeriods: 0,
+    assignedWithTeacher: 0,
+    unassignedTeacher: 0,
+    freePeriods: 0,
+    subjectsUsed: 0,
+    teachersInvolved: 0,
+    teacherAssignments: [],
+    subjectsWithoutTeachers: [],
+    warnings: [],
+  };
 
   const handleDeleteTimetable = async () => {
     if (!schoolId || !deleteConfirmModal) return;
@@ -819,7 +684,8 @@ export default function TimetablesPage() {
             context={{
               type: 'timetable',
               schoolId,
-              label: 'Timetable',
+              classId: selectedClassId || undefined,
+              label: selectedClass?.name || 'Timetable',
               path: '/dashboard/school/timetables',
             }}
           />
@@ -1106,6 +972,8 @@ export default function TimetablesPage() {
                 timetable={timetable}
                 classArmId={''}
                 termId={termId}
+                schoolId={schoolId}
+                classId={selectedClassId}
                 onPeriodUpdate={handlePeriodUpdate}
                 onPeriodDelete={handlePeriodDelete}
                 onAutoGenerate={currentType === 'SECONDARY' ? handleAutoGenerateWithPreview : handleAutoGenerate}
@@ -1151,6 +1019,9 @@ export default function TimetablesPage() {
             autoFillSubjects={offeredSubjects}
             classStream={classStream}
             classLevelName={classLevelName}
+            schoolId={schoolId}
+            classId={selectedClassId}
+            termId={termId}
             onSave={handleBulkSave}
             onClose={() => setIsEditMode(false)}
             isLoading={isUpdating || isReplacing}
@@ -1318,7 +1189,7 @@ export default function TimetablesPage() {
           <TimetablePreviewModal
             className={selectedClass?.name || 'Unknown Class'}
             periods={previewPeriods}
-            analysis={analyzeGeneration(previewPeriods)}
+            analysis={previewAnalysis ?? emptyPreviewAnalysis}
             subjects={subjects.map(s => ({
               id: s.id,
               name: s.name,

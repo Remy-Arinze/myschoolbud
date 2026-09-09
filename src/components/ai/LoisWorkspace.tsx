@@ -33,14 +33,29 @@ type LoisWorkspaceValue = {
   seedPrompt: string | null;
   consumeSeedPrompt: () => string | null;
   askLois: (prompt?: string) => void;
+  briefingOpen: boolean;
+  briefingInsightId: string | null;
+  openBriefing: (insightId?: string) => void;
+  clearBriefing: () => void;
 };
 
 const LoisWorkspaceContext = createContext<LoisWorkspaceValue | null>(null);
 
 export function LoisWorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [focus, setFocus] = useState<LoisPageContext | null>(null);
-  const [isOpen, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [seedPrompt, setSeedPrompt] = useState<string | null>(null);
+  const [briefingOpen, setBriefingOpen] = useState(false);
+  const [briefingInsightId, setBriefingInsightId] = useState<string | null>(null);
+
+  const setOpen = useCallback((open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      setBriefingOpen(false);
+      setBriefingInsightId(null);
+      setSeedPrompt(null);
+    }
+  }, []);
 
   const consumeSeedPrompt = useCallback(() => {
     const next = seedPrompt;
@@ -50,12 +65,35 @@ export function LoisWorkspaceProvider({ children }: { children: React.ReactNode 
 
   const askLois = useCallback((prompt?: string) => {
     if (prompt) setSeedPrompt(prompt);
-    setOpen(true);
+    setIsOpen(true);
+  }, []);
+
+  const openBriefing = useCallback((insightId?: string) => {
+    setBriefingOpen(true);
+    setBriefingInsightId(insightId ?? null);
+    setIsOpen(true);
+  }, []);
+
+  const clearBriefing = useCallback(() => {
+    setBriefingOpen(false);
+    setBriefingInsightId(null);
   }, []);
 
   const value = useMemo(
-    () => ({ focus, setFocus, isOpen, setOpen, seedPrompt, consumeSeedPrompt, askLois }),
-    [focus, isOpen, seedPrompt, consumeSeedPrompt, askLois],
+    () => ({
+      focus,
+      setFocus,
+      isOpen,
+      setOpen,
+      seedPrompt,
+      consumeSeedPrompt,
+      askLois,
+      briefingOpen,
+      briefingInsightId,
+      openBriefing,
+      clearBriefing,
+    }),
+    [focus, isOpen, setOpen, seedPrompt, consumeSeedPrompt, askLois, briefingOpen, briefingInsightId, openBriefing, clearBriefing],
   );
 
   return <LoisWorkspaceContext.Provider value={value}>{children}</LoisWorkspaceContext.Provider>;

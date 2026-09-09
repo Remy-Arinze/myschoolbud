@@ -60,7 +60,7 @@ export function calendarCoverageMessage(
   const occupy =
     planWeeks === 1 ? 'it occupies week 1' : `they occupy weeks 1–${planWeeks}`;
   if (variant === 'preview') {
-    return `This term’s calendar has ${teachingWeeksLabel(instructionalWeeks)}. The scheme only has ${planWeeks} topic${planWeeks === 1 ? '' : 's'}, so ${occupy}. After import, ${leftover.toLowerCase()} become leftover calendar time (catch-up / revision) so teachers can finish, revise, or assess — they are not extra curriculum topics. You can then add or move topics into those weeks.`;
+    return `This term’s calendar has ${teachingWeeksLabel(instructionalWeeks)}. The default scheme only has ${planWeeks} topic${planWeeks === 1 ? '' : 's'}, so ${occupy}. After import, ${leftover.toLowerCase()} become leftover calendar time (catch-up / revision) so teachers can finish, revise, or assess — they are not extra curriculum topics. You can then add or move topics into those weeks.`;
   }
   return `This term’s calendar has ${teachingWeeksLabel(instructionalWeeks)}. The scheme only has ${planWeeks} topic${planWeeks === 1 ? '' : 's'}, so ${occupy}. ${leftover} ${coverage.bufferWeeks === 1 ? 'is' : 'are'} leftover calendar time added as catch-up / revision so teachers can finish, revise, or assess — they are not extra curriculum topics. Edit this scheme to put real topics in those weeks; later weeks will shift automatically.`;
 }

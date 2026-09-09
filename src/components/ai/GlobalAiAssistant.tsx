@@ -4,7 +4,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { FloatingAiCta } from './FloatingAiCta';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
-import { useParams, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useLoisWorkspaceOptional } from './LoisWorkspace';
 
@@ -24,9 +24,9 @@ export const GlobalAiAssistant: React.FC = () => {
 
   const user = useSelector((state: RootState) => state.auth.user);
   const tenantId = useSelector((state: RootState) => state.auth.tenantId);
-  const params = useParams();
   const pathname = usePathname();
-  const schoolId = (params?.schoolId as string) || (params?.id as string) || tenantId || user?.schoolId;
+  // Auth school id only — route `id` on class/student/staff pages is the entity, not the school.
+  const schoolId = tenantId || user?.schoolId;
 
   const { summary, isLoading: isLoadingSub } = useSubscription();
 
@@ -73,6 +73,9 @@ export const GlobalAiAssistant: React.FC = () => {
         {!panelOpen && (
           <FloatingAiCta
             onClick={() => setPanelOpen(true)}
+            onBriefingClick={
+              isSchoolAdmin && workspace ? () => workspace.openBriefing() : undefined
+            }
             schoolId={isSchoolAdmin ? schoolId : undefined}
           />
         )}

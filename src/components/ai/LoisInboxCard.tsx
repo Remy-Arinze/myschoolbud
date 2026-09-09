@@ -5,15 +5,15 @@ import { useGetLoisInsightsQuery } from '@/lib/store/api/aiApi';
 import { useLoisWorkspaceOptional } from './LoisWorkspace';
 import { LoisOrb } from './LoisOrb';
 import { cn } from '@/lib/utils';
+import { LOIS_INSIGHT_TYPE_LABEL } from './loisInsightUi';
 
-const TYPE_LABEL: Record<string, string> = {
-  ACADEMIC_RISK: 'Grades',
-  STUDENT_DROP: 'Performance',
-  SOW_GAP: 'Curriculum',
-  ATTENDANCE_RISK: 'Attendance',
-  FEE_ARREARS: 'Fees',
-  ADMISSIONS_BACKLOG: 'Admissions',
-};
+export function useUnreadLoisInsightCount(schoolId?: string) {
+  const { data } = useGetLoisInsightsQuery(
+    { schoolId: schoolId || '', limit: 8 },
+    { skip: !schoolId },
+  );
+  return (data?.data ?? []).filter((insight) => insight.unread).length;
+}
 
 export function LoisInboxCard({ schoolId }: { schoolId: string }) {
   const workspace = useLoisWorkspaceOptional();
@@ -46,18 +46,21 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
         {insights.map((insight) => (
           <li
             key={insight.id}
-            className="rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] px-3 py-3"
+            className={cn(
+              'rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] px-3 py-3',
+              insight.unread && 'bg-[var(--agora-blue)]/[0.04]',
+            )}
           >
             <div className="flex items-start justify-between gap-3">
               <p className="font-medium text-light-text-primary dark:text-dark-text-primary">
                 {insight.title}
               </p>
-              {TYPE_LABEL[insight.type] ? (
+              {LOIS_INSIGHT_TYPE_LABEL[insight.type] ? (
                 <span
                   className="shrink-0 text-light-text-muted dark:text-dark-text-muted"
                   style={{ fontSize: 'var(--text-small)' }}
                 >
-                  {TYPE_LABEL[insight.type]}
+                  {LOIS_INSIGHT_TYPE_LABEL[insight.type]}
                 </span>
               ) : null}
             </div>
@@ -74,13 +77,9 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
                 type="button"
                 className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
                 style={{ fontSize: 'var(--text-small)' }}
-                onClick={() =>
-                  workspace?.askLois(
-                    insight.askPrompt || `Explain this insight: ${insight.title}`,
-                  )
-                }
+                onClick={() => workspace?.openBriefing(insight.id)}
               >
-                Ask Lois why
+                {insight.unread ? 'Read briefing' : 'Open in Lois'}
               </button>
               {insight.href ? (
                 <Link
@@ -100,11 +99,7 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
 }
 
 export function LoisInsightBadge({ schoolId, className }: { schoolId?: string; className?: string }) {
-  const { data } = useGetLoisInsightsQuery(
-    { schoolId: schoolId || '', limit: 8 },
-    { skip: !schoolId },
-  );
-  const count = data?.data?.length ?? 0;
+  const count = useUnreadLoisInsightCount(schoolId);
   if (!count) return null;
   return (
     <span

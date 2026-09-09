@@ -59,6 +59,7 @@ import { ShareRegistrationLinkModal } from '@/components/modals/ShareRegistratio
 import { ConfirmModal } from '@/components/ui/Modal';
 import { BackButton } from '@/components/ui/BackButton';
 import { SubjectCurriculumList } from '@/components/curriculum';
+import { LoisFocus } from '@/components/ai/LoisFocus';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import toast from 'react-hot-toast';
@@ -500,6 +501,17 @@ export default function ClassDetailPage() {
   return (
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
       <div className="space-y-6">
+        {schoolId && classData && (
+          <LoisFocus
+            context={{
+              type: activeTab === 'curriculum' ? 'scheme' : activeTab === 'timetable' ? 'timetable' : 'class',
+              schoolId,
+              classId,
+              label: classData.name,
+              path: `/dashboard/school/courses/${classId}`,
+            }}
+          />
+        )}
         {/* Header */}
         <div className="space-y-6">
           {/* Back Button */}

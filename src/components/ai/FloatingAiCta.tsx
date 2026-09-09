@@ -4,19 +4,27 @@ import React from 'react';
 import { BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-import { LoisInsightBadge } from './LoisInboxCard';
+import { LoisInsightBadge, useUnreadLoisInsightCount } from './LoisInboxCard';
 import { LoisOrb } from './LoisOrb';
 
 interface FloatingAiCtaProps {
   onClick: () => void;
+  onBriefingClick?: () => void;
   className?: string;
   schoolId?: string;
 }
 
-export const FloatingAiCta: React.FC<FloatingAiCtaProps> = ({ onClick, className, schoolId }) => {
+export const FloatingAiCta: React.FC<FloatingAiCtaProps> = ({
+  onClick,
+  onBriefingClick,
+  className,
+  schoolId,
+}) => {
+  const unread = useUnreadLoisInsightCount(schoolId);
+
   return (
     <button
-      onClick={onClick}
+      onClick={() => (unread > 0 && onBriefingClick ? onBriefingClick() : onClick())}
       className={cn(
         "fixed bottom-8 right-8 z-[90] group flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0A0A0B] text-white shadow-[0_15px_30px_-8px_rgba(0,0,0,0.8)] transition-all duration-500 hover:scale-105 active:scale-95 border-none overflow-hidden isolate",
         className
@@ -37,7 +45,7 @@ export const FloatingAiCta: React.FC<FloatingAiCtaProps> = ({ onClick, className
         <LoisOrb size="xs" className="group-hover:scale-110 transition-transform duration-500" />
         
         <span className="font-heading text-sm font-semibold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
-          Ask Lois
+          {unread > 0 ? 'Lois briefing' : 'Ask Lois'}
         </span>
         {schoolId ? <LoisInsightBadge schoolId={schoolId} /> : null}
 

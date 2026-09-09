@@ -31,9 +31,11 @@ export interface LoisInsightDto {
     severity: string;
     title: string;
     summary: string;
+    evidence?: unknown;
     href: string | null;
     askPrompt: string | null;
     createdAt: string;
+    unread?: boolean;
 }
 
 export interface SystemPromptConfigDto {
@@ -331,6 +333,36 @@ export const aiApi = apiSlice.injectEndpoints({
             query: ({ schoolId, insightId }) =>
                 `/schools/${schoolId}/ai/insights/${insightId}`,
         }),
+        markLoisInsightRead: builder.mutation<
+            { success: boolean; data: LoisInsightDto },
+            { schoolId: string; insightId: string }
+        >({
+            query: ({ schoolId, insightId }) => ({
+                url: `/schools/${schoolId}/ai/insights/${insightId}/read`,
+                method: 'POST',
+            }),
+            invalidatesTags: ['LoisInsights', 'Notification'],
+        }),
+        applyLoisPlan: builder.mutation<
+            { success: boolean; data: { kind: 'TIMETABLE' | 'SCHEME'; message: string; [key: string]: unknown } },
+            { schoolId: string; planId: string; conversationId?: string | null }
+        >({
+            query: ({ schoolId, planId, conversationId }) => ({
+                url: `/schools/${schoolId}/ai/plans/${planId}/apply`,
+                method: 'POST',
+                body: { conversationId },
+            }),
+            invalidatesTags: ['Timetable', 'SchemeOfWork', 'Curriculum', 'LoisInsights'],
+        }),
+        cancelLoisPlan: builder.mutation<
+            { success: boolean; data: { cancelled: boolean } },
+            { schoolId: string; planId: string }
+        >({
+            query: ({ schoolId, planId }) => ({
+                url: `/schools/${schoolId}/ai/plans/${planId}/cancel`,
+                method: 'POST',
+            }),
+        }),
     }),
 });
 
@@ -368,6 +400,9 @@ export const {
     useAdminDeleteSkillMutation,
     useGetLoisInsightsQuery,
     useGetLoisInsightQuery,
+    useMarkLoisInsightReadMutation,
+    useApplyLoisPlanMutation,
+    useCancelLoisPlanMutation,
 } = aiApi;
 
 // ─── SSE Streaming Types ──────────────────────────────────────────────────────

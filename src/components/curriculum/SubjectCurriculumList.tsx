@@ -12,6 +12,7 @@ import { CurriculumCatalogModal } from './CurriculumCatalogModal';
 import { CurriculumDetailModal } from './CurriculumDetailModal';
 import { CurriculumUploadIntroModal, isCurriculumUploadIntroHidden } from './CurriculumUploadIntroModal';
 import { NoTimetableMessage } from './NoTimetableMessage';
+import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { 
   useGetSchemesSummaryQuery, 
@@ -210,10 +211,17 @@ export function SubjectCurriculumList({
           {canEdit && (
             <Button
               variant="outline"
-              className="rounded-xl h-11 px-6 font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all"
+              className="rounded-xl h-10 px-5 font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all gap-2"
               onClick={() => openCatalog(null)}
             >
-              <BookOpen className="h-4 w-4 mr-2" />
+              <Image
+                src="/assets/logos/agora_main.png"
+                alt=""
+                width={16}
+                height={16}
+                className="h-4 w-4 object-contain"
+                aria-hidden
+              />
               Browse library
             </Button>
           )}
