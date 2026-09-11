@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X, Maximize2, Minimize2 } from 'lucide-react';
 import { AgoraChat } from './AgoraChat';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,9 @@ import type { LoisPageContext } from './LoisWorkspace';
 interface AiChatDrawerProps {
   schoolId: string;
   isOpen: boolean;
+  /** Hide the panel but keep the conversation mounted. */
+  onHide: () => void;
+  /** Explicit close — caller should drop chat state. */
   onClose: () => void;
   docked?: boolean;
   pageContext?: LoisPageContext | null;
@@ -18,12 +21,14 @@ interface AiChatDrawerProps {
 export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
   schoolId,
   isOpen,
+  onHide,
   onClose,
   docked = false,
   pageContext,
 }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const { theme } = useTheme();
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const widthClass = docked && !isMaximized
     ? 'w-full lg:w-[400px]'
@@ -31,16 +36,30 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
       ? 'w-screen'
       : 'w-full lg:w-[550px]';
 
+  useEffect(() => {
+    if (!isOpen || isMaximized) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (panelRef.current?.contains(target)) return;
+      if (target.closest('[role="dialog"], [data-radix-popper-content-wrapper]')) return;
+      onHide();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [isOpen, isMaximized, onHide]);
+
   return (
     <>
-      {isOpen && !docked && (
+      {isOpen && !docked && !isMaximized && (
         <div
           className="fixed inset-0 bg-black/40 z-[99] animate-in fade-in duration-200"
-          onClick={onClose}
+          onClick={onHide}
         />
       )}
 
       <div
+        ref={panelRef}
         className={cn(
           'lois-panel lois-shell fixed z-[100] transition-all duration-300 flex flex-col overflow-hidden',
           isMaximized
@@ -50,10 +69,11 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
                 'lg:right-4 lg:bottom-4 lg:rounded-2xl',
                 'shadow-[0_18px_50px_-20px_rgba(2,23,61,0.35)]',
               ),
-          isOpen ? 'translate-y-0' : 'translate-y-full',
+          isOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none',
           widthClass,
           theme === 'dark' ? 'dark' : '',
         )}
+        aria-hidden={!isOpen}
       >
         <div
           aria-hidden
@@ -67,6 +87,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
         <AgoraChat
           schoolId={schoolId}
           variant="minimal"
+          isActive={isOpen}
           pageContext={pageContext || undefined}
           headerActions={
             <>
@@ -81,7 +102,10 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
               </button>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => {
+                  setIsMaximized(false);
+                  onClose();
+                }}
                 className="lois-icon-btn"
                 aria-label="Close Lois"
                 title="Close"

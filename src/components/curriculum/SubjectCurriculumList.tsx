@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AlertCircle,
   BookOpen,
@@ -31,6 +31,8 @@ interface SubjectCurriculumListProps {
   termId: string;
   schoolType: string;
   canEdit?: boolean;
+  initialSchemeId?: string | null;
+  initialWeekNumber?: number;
 }
 
 export function SubjectCurriculumList({
@@ -41,6 +43,8 @@ export function SubjectCurriculumList({
   termId,
   schoolType,
   canEdit = false,
+  initialSchemeId,
+  initialWeekNumber,
 }: SubjectCurriculumListProps) {
   const [setupSubject, setSetupSubject] = useState<any | null>(null);
   const [setupInitialTab, setSetupInitialTab] = useState<'AGORA' | 'CUSTOM' | 'MERGE'>('CUSTOM');
@@ -53,6 +57,10 @@ export function SubjectCurriculumList({
     subject: any;
     hideLibraryTab: boolean;
   } | null>(null);
+
+  useEffect(() => {
+    if (initialSchemeId) setViewCurriculumId(initialSchemeId);
+  }, [initialSchemeId]);
 
   // Fetch schemes summary (status-driven)
   const { 
@@ -309,6 +317,7 @@ export function SubjectCurriculumList({
           canEdit={canEdit}
           isScheme={true}
           schoolType={schoolType}
+          initialWeekNumber={initialWeekNumber}
           onDelete={handleDeleteScheme}
           onUpdate={() => refetchSchemes()}
         />

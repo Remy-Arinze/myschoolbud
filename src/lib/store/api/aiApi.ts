@@ -408,14 +408,19 @@ export const {
 // ─── SSE Streaming Types ──────────────────────────────────────────────────────
 
 export interface SSEToolStartEvent {
+    toolCallId?: string;
     toolName: string;
     toolDisplayName: string;
+    entityLabel?: string;
     args: Record<string, any>;
 }
 
 export interface SSEToolResultEvent {
+    toolCallId?: string;
     toolName: string;
     toolDisplayName: string;
+    entityLabel?: string;
+    args?: Record<string, any>;
     result: any;
 }
 

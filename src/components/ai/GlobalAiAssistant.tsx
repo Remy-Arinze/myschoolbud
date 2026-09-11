@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { FloatingAiCta } from './FloatingAiCta';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
@@ -49,11 +49,27 @@ export const GlobalAiAssistant: React.FC = () => {
 
   const isOpen = workspace ? workspace.isOpen : false;
   const [localOpen, setLocalOpen] = useState(false);
+  const [drawerMounted, setDrawerMounted] = useState(false);
+  const [chatEpoch, setChatEpoch] = useState(0);
   const panelOpen = workspace ? isOpen : localOpen;
-  const setPanelOpen = (open: boolean) => {
-    if (workspace) workspace.setOpen(open);
-    else setLocalOpen(open);
-  };
+  const hidePanel = useCallback(() => {
+    if (workspace) workspace.hide();
+    else setLocalOpen(false);
+  }, [workspace]);
+  const closePanel = useCallback(() => {
+    if (workspace) workspace.close();
+    else setLocalOpen(false);
+    setDrawerMounted(false);
+    setChatEpoch((n) => n + 1);
+  }, [workspace]);
+  const openPanel = useCallback(() => {
+    if (workspace) workspace.setOpen(true);
+    else setLocalOpen(true);
+  }, [workspace]);
+
+  useEffect(() => {
+    if (panelOpen) setDrawerMounted(true);
+  }, [panelOpen]);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -72,19 +88,21 @@ export const GlobalAiAssistant: React.FC = () => {
       <>
         {!panelOpen && (
           <FloatingAiCta
-            onClick={() => setPanelOpen(true)}
+            onClick={openPanel}
             onBriefingClick={
               isSchoolAdmin && workspace ? () => workspace.openBriefing() : undefined
             }
             schoolId={isSchoolAdmin ? schoolId : undefined}
           />
         )}
-        {panelOpen && (
+        {drawerMounted && (
           <Suspense fallback={null}>
             <AiChatDrawer
+              key={chatEpoch}
               schoolId={schoolId}
               isOpen={panelOpen}
-              onClose={() => setPanelOpen(false)}
+              onHide={hidePanel}
+              onClose={closePanel}
               docked={isSchoolAdmin}
               pageContext={workspace?.focus}
             />

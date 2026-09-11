@@ -1292,6 +1292,8 @@ export default function ClassDetailPage() {
                     termId={activeTerm.id}
                     schoolType={classData.type || schoolType || 'SECONDARY'}
                     canEdit={true}
+                    initialSchemeId={searchParams.get('scheme')}
+                    initialWeekNumber={Number(searchParams.get('week')) || undefined}
                   />
                 ) : (
                   <div className="text-center py-12">

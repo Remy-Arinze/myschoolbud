@@ -8,7 +8,11 @@ dotenv.config({ path: path.resolve(__dirname, '../backend/.env') });
 const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3000';
 const authFile = path.join(__dirname, 'e2e/.auth/school-admin.json');
 const teacherPrimaryAuth = path.join(__dirname, 'e2e/.auth/teacher-primary.json');
+const beulahAdminAuth = path.join(__dirname, 'e2e/.auth/beulah-admin.json');
 const headed = process.env.E2E_HEADED !== '0';
+const bravePath =
+  process.env.E2E_BROWSER_PATH ||
+  'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
 
 export default defineConfig({
   testDir: './e2e',
@@ -67,6 +71,21 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         headless: true,
+      },
+    },
+    {
+      // Beulah High School owner — minted JWT, not Demo Academy
+      name: 'beulah-admin',
+      testMatch: /beulah\/.*\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: beulahAdminAuth,
+        viewport: { width: 1440, height: 900 },
+        screenshot: 'on',
+        video: { mode: 'on', size: { width: 1440, height: 900 } },
+        launchOptions: {
+          executablePath: bravePath,
+        },
       },
     },
     {

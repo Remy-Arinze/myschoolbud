@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import Link from 'next/link';
@@ -116,6 +116,12 @@ export default function ClassDetailPage() {
   const [assessmentTermFilter, setAssessmentTermFilter] = useState<string>('');
   const [showDeleteAssessmentModal, setShowDeleteAssessmentModal] = useState(false);
   const [showAiChat, setShowAiChat] = useState(false);
+  const [aiChatMounted, setAiChatMounted] = useState(false);
+  const [aiChatEpoch, setAiChatEpoch] = useState(0);
+
+  useEffect(() => {
+    if (showAiChat) setAiChatMounted(true);
+  }, [showAiChat]);
 
   const { currentType } = useSchoolType();
   const terminology = getTerminology(currentType) || {
@@ -1715,11 +1721,17 @@ export default function ClassDetailPage() {
       <FloatingAiCta onClick={() => setShowAiChat(true)} />
 
       {/* AI Chat Drawer */}
-      {schoolId && (
+      {schoolId && aiChatMounted && (
         <AiChatDrawer
+          key={aiChatEpoch}
           schoolId={schoolId}
           isOpen={showAiChat}
-          onClose={() => setShowAiChat(false)}
+          onHide={() => setShowAiChat(false)}
+          onClose={() => {
+            setShowAiChat(false);
+            setAiChatMounted(false);
+            setAiChatEpoch((n) => n + 1);
+          }}
         />
       )}
       </div>

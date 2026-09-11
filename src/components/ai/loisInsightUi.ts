@@ -82,7 +82,86 @@ export function evidenceLines(type: string, evidence: unknown): LoisEvidenceLine
   if (type === 'SOW_GAP') {
     const topic = typeof e.topic === 'string' ? e.topic : 'Week not delivered';
     const week = typeof e.weekNumber === 'number' ? `Week ${e.weekNumber}` : undefined;
-    return [{ label: topic, detail: week }];
+    const lines: LoisEvidenceLine[] = [{ label: topic, detail: week }];
+    const outstanding = Array.isArray(e.outstandingArms)
+      ? e.outstandingArms
+          .map((row) => {
+            const item = asRecord(row);
+            return typeof item?.label === 'string' ? item.label : null;
+          })
+          .filter((label): label is string => !!label)
+      : [];
+    if (outstanding.length) {
+      lines.push({
+        label: outstanding.length === 1 ? 'Outstanding class' : 'Outstanding classes',
+        detail: outstanding.join(', '),
+      });
+    }
+    const delivered = Array.isArray(e.deliveredArms)
+      ? e.deliveredArms
+          .map((row) => {
+            const item = asRecord(row);
+            return typeof item?.label === 'string' ? item.label : null;
+          })
+          .filter((label): label is string => !!label)
+      : [];
+    if (delivered.length) {
+      lines.push({ label: 'Marked delivered', detail: delivered.join(', ') });
+    }
+    return lines;
   }
   return [];
+}
+
+function sowGapHrefFromEvidence(e: Record<string, unknown> | null): string | null {
+  if (!e) return null;
+  const outstanding = Array.isArray(e.outstandingArms) ? e.outstandingArms : [];
+  const firstArm = outstanding
+    .map((row) => asRecord(row))
+    .find((item) => item && (typeof item.classArmId === 'string' || typeof item.classId === 'string'));
+  const courseId =
+    (typeof firstArm?.classArmId === 'string' && firstArm.classArmId) ||
+    (typeof firstArm?.classId === 'string' && firstArm.classId) ||
+    (typeof e.classArmId === 'string' && e.classArmId) ||
+    (typeof e.classId === 'string' && e.classId) ||
+    null;
+  if (!courseId) return null;
+  const params = new URLSearchParams({ tab: 'curriculum' });
+  if (typeof e.schemeId === 'string' && e.schemeId) params.set('scheme', e.schemeId);
+  if (typeof e.weekNumber === 'number' && e.weekNumber > 0) params.set('week', String(e.weekNumber));
+  return `/dashboard/school/courses/${courseId}?${params.toString()}`;
+}
+
+function isGenericSowHref(href: string): boolean {
+  if (!href || href === '/dashboard/school/overview' || href === '/dashboard/school/courses') return true;
+  if (!href.startsWith('/dashboard/school/courses')) return false;
+  return !href.includes('scheme=');
+}
+
+export function insightListLabel(type: string): string {
+  return type === 'SOW_GAP' ? 'Open week' : 'Open list';
+}
+
+/** Where “Open list / Open week” should go. Overview and the classes index are not the scheme week. */
+export function insightListHref(insight: { type: string; href?: string | null; evidence?: unknown }): string | null {
+  const stored = insight.href?.trim() || '';
+  const e = asRecord(insight.evidence);
+
+  if (insight.type === 'SOW_GAP') {
+    const fromEvidence = sowGapHrefFromEvidence(e);
+    if (fromEvidence) return fromEvidence;
+    if (stored && !isGenericSowHref(stored)) return stored;
+    return '/dashboard/school/courses';
+  }
+
+  if (stored && stored !== '/dashboard/school/overview') return stored;
+
+  if (insight.type === 'ACADEMIC_RISK' || insight.type === 'ATTENDANCE_RISK' || insight.type === 'FEE_ARREARS') {
+    return '/dashboard/school/students';
+  }
+  if (insight.type === 'STUDENT_DROP') {
+    return typeof e?.studentId === 'string' ? `/dashboard/school/students/${e.studentId}` : '/dashboard/school/students';
+  }
+  if (insight.type === 'ADMISSIONS_BACKLOG') return '/dashboard/school/applications';
+  return stored || null;
 }

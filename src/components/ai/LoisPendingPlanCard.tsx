@@ -5,6 +5,7 @@ import { CalendarClock, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { useApplyLoisPlanMutation, useCancelLoisPlanMutation } from '@/lib/store/api/aiApi';
+import { useLoisPlanApply } from './LoisPlanApplySession';
 
 export function LoisPendingPlanCard({
   schoolId,
@@ -28,12 +29,19 @@ export function LoisPendingPlanCard({
     error?: string;
   };
 }) {
+  const session = useLoisPlanApply();
+  const sessionApplied = session?.isApplied({ planId: result.planId, classLabel: result.classLabel });
   const [status, setStatus] = useState<'open' | 'applied' | 'cancelled'>(
     result.saved ? 'applied' : 'open',
   );
   const [applyResult, setApplyResult] = useState<string | null>(null);
   const [applyPlan, { isLoading: applying }] = useApplyLoisPlanMutation();
   const [cancelPlan, { isLoading: cancelling }] = useCancelLoisPlanMutation();
+  const effectiveStatus = result.saved || sessionApplied ? 'applied' : status;
+  const sessionMessage = session?.appliedMessage({
+    planId: result.planId,
+    classLabel: result.classLabel,
+  });
 
   if (result.error || !result.planId) {
     return (
@@ -58,9 +66,15 @@ export function LoisPendingPlanCard({
         planId: result.planId!,
         conversationId,
       }).unwrap();
+      const message = res.data?.message || `${kindLabel} applied.`;
       setStatus('applied');
-      setApplyResult(res.data?.message || `${kindLabel} applied.`);
-      toast.success(res.data?.message || `${kindLabel} applied.`);
+      setApplyResult(message);
+      session?.markApplied({
+        planId: result.planId,
+        classLabel: result.classLabel,
+        message,
+      });
+      toast.success(message);
     } catch (err: any) {
       const message =
         err?.data?.message ||
@@ -87,7 +101,7 @@ export function LoisPendingPlanCard({
         <CalendarClock className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
         <div>
           <p className="font-semibold text-emerald-900 dark:text-emerald-200">
-            {kindLabel} proposal{result.classLabel ? ` — ${result.classLabel}` : ''}
+            {kindLabel}{result.classLabel ? ` — ${result.classLabel}` : ''}
           </p>
           <p className="text-emerald-800/80 dark:text-emerald-300/80 mt-1">
             {result.message || 'Preview only. Not saved until you Apply.'}
@@ -95,7 +109,7 @@ export function LoisPendingPlanCard({
         </div>
       </div>
 
-      {result.mode === 'REPLACE' && status === 'open' && (
+      {result.mode === 'REPLACE' && effectiveStatus === 'open' && (
         <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
           Applying will replace the existing timetable, not just fill empty slots.
         </p>
@@ -115,16 +129,16 @@ export function LoisPendingPlanCard({
         </p>
       )}
 
-      {status === 'applied' && (
+      {effectiveStatus === 'applied' && (
         <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-          {applyResult || 'Applied.'}
+          {applyResult || sessionMessage || 'Applied.'}
         </p>
       )}
-      {status === 'cancelled' && (
+      {effectiveStatus === 'cancelled' && (
         <p className="text-xs text-slate-500">This plan was cancelled.</p>
       )}
 
-      {status === 'open' && (
+      {effectiveStatus === 'open' && (
         <div className="flex items-center gap-2 pt-1">
           <Button
             type="button"

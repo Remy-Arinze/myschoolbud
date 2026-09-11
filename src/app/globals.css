@@ -1262,6 +1262,157 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--agora-blue) 26%, transparent);
 }
 
+.lois-history {
+  background: color-mix(in srgb, var(--light-bg) 92%, white);
+  backdrop-filter: blur(18px);
+}
+
+.dark .lois-history {
+  background: color-mix(in srgb, var(--dark-bg) 88%, black);
+}
+
+.lois-history-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2rem;
+  padding: 0 0.55rem;
+  border-radius: 0.7rem;
+  background: var(--input-field-bg);
+  border: 1px solid var(--light-border);
+}
+
+.dark .lois-history-search {
+  border-color: var(--dark-border);
+}
+
+.lois-history-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--light-text-primary);
+  font-size: var(--lois-small, 0.6875rem) !important;
+}
+
+.dark .lois-history-search input {
+  color: var(--dark-text-primary);
+}
+
+.lois-history-new {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.65rem;
+  border-radius: 0.7rem;
+  color: var(--light-text-primary);
+  font-size: var(--lois-small, 0.6875rem);
+  font-weight: 600;
+  transition: background-color 140ms ease;
+}
+
+.dark .lois-history-new {
+  color: var(--dark-text-primary);
+}
+
+.lois-history-new:hover {
+  background: color-mix(in srgb, var(--agora-blue) 8%, transparent);
+}
+
+.lois-history-label {
+  padding: 0.45rem 0.65rem 0.2rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--light-text-muted);
+}
+
+.dark .lois-history-label {
+  color: var(--dark-text-muted);
+}
+
+.lois-history-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  border-radius: 0.7rem;
+}
+
+.lois-history-row.is-active {
+  background: color-mix(in srgb, var(--agora-blue) 12%, transparent);
+}
+
+.lois-history-row:hover {
+  background: color-mix(in srgb, var(--agora-blue) 8%, transparent);
+}
+
+.lois-history-row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  text-align: left;
+  padding: 0.5rem 0.45rem 0.5rem 0.65rem;
+}
+
+.lois-history-row__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--lois-small, 0.6875rem);
+  font-weight: 500;
+  color: var(--light-text-primary);
+}
+
+.dark .lois-history-row__title {
+  color: var(--dark-text-primary);
+}
+
+.lois-history-row__time {
+  flex-shrink: 0;
+  font-size: 0.5625rem;
+  color: var(--light-text-muted);
+}
+
+.dark .lois-history-row__time {
+  color: var(--dark-text-muted);
+}
+
+.lois-history-row__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.6rem;
+  width: 1.6rem;
+  margin-right: 0.2rem;
+  border-radius: 0.45rem;
+  opacity: 0;
+  color: var(--light-text-muted);
+  transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.lois-history-row:hover .lois-history-row__delete,
+.lois-history-row:focus-within .lois-history-row__delete {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .lois-history-row__delete {
+    opacity: 1;
+  }
+}
+
+.lois-history-row__delete:hover {
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+  color: #dc2626;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lois-orb-ring,
   .lois-orb-glow,

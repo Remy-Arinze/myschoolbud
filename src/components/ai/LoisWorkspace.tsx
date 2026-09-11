@@ -14,6 +14,7 @@ export type LoisPageContext = {
   weekNumber?: number;
   label: string;
   path?: string;
+  insightId?: string;
 };
 
 export type LoisSource = {
@@ -30,6 +31,8 @@ type LoisWorkspaceValue = {
   setFocus: (ctx: LoisPageContext | null) => void;
   isOpen: boolean;
   setOpen: (open: boolean) => void;
+  hide: () => void;
+  close: () => void;
   seedPrompt: string | null;
   consumeSeedPrompt: () => string | null;
   askLois: (prompt?: string) => void;
@@ -48,14 +51,21 @@ export function LoisWorkspaceProvider({ children }: { children: React.ReactNode 
   const [briefingOpen, setBriefingOpen] = useState(false);
   const [briefingInsightId, setBriefingInsightId] = useState<string | null>(null);
 
-  const setOpen = useCallback((open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      setBriefingOpen(false);
-      setBriefingInsightId(null);
-      setSeedPrompt(null);
-    }
+  const hide = useCallback(() => {
+    setIsOpen(false);
   }, []);
+
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setBriefingOpen(false);
+    setBriefingInsightId(null);
+    setSeedPrompt(null);
+  }, []);
+
+  const setOpen = useCallback((open: boolean) => {
+    if (open) setIsOpen(true);
+    else hide();
+  }, [hide]);
 
   const consumeSeedPrompt = useCallback(() => {
     const next = seedPrompt;
@@ -85,6 +95,8 @@ export function LoisWorkspaceProvider({ children }: { children: React.ReactNode 
       setFocus,
       isOpen,
       setOpen,
+      hide,
+      close,
       seedPrompt,
       consumeSeedPrompt,
       askLois,
@@ -93,7 +105,7 @@ export function LoisWorkspaceProvider({ children }: { children: React.ReactNode 
       openBriefing,
       clearBriefing,
     }),
-    [focus, isOpen, setOpen, seedPrompt, consumeSeedPrompt, askLois, briefingOpen, briefingInsightId, openBriefing, clearBriefing],
+    [focus, isOpen, setOpen, hide, close, seedPrompt, consumeSeedPrompt, askLois, briefingOpen, briefingInsightId, openBriefing, clearBriefing],
   );
 
   return <LoisWorkspaceContext.Provider value={value}>{children}</LoisWorkspaceContext.Provider>;

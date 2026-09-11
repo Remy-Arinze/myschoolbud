@@ -43,6 +43,7 @@ interface CurriculumDetailModalProps {
   canEdit?: boolean;
   isScheme?: boolean;
   schoolType?: string;
+  initialWeekNumber?: number;
   onUpdate?: () => void;
   onDelete?: (curriculumId: string) => void;
 }
@@ -56,10 +57,11 @@ export function CurriculumDetailModal({
   canEdit = false,
   isScheme = false,
   schoolType,
+  initialWeekNumber,
   onUpdate,
   onDelete,
 }: CurriculumDetailModalProps) {
-  const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
+  const [expandedWeek, setExpandedWeek] = useState<number | null>(initialWeekNumber ?? null);
   const [markingWeek, setMarkingWeek] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [editing, setEditing] = useState(false);
@@ -177,15 +179,20 @@ export function CurriculumDetailModal({
     return Math.min(raw, maxWeek || raw);
   }, [activeSessionResponse?.data?.term?.currentWeek, sortedItems, curriculum?.totalWeeks]);
 
-  // Expand + scroll to the active school week when preview opens
+  // Expand + scroll to the focused week (Lois deep link) or the active school week
   useEffect(() => {
-    if (!isOpen || !currentSchoolWeek || !sortedItems.length) return;
+    if (!isOpen || !sortedItems.length) return;
+    const target =
+      typeof initialWeekNumber === 'number' && initialWeekNumber > 0
+        ? initialWeekNumber
+        : currentSchoolWeek;
+    if (!target) return;
     const hasWeek = sortedItems.some(
-      (item) => (item.weekNumber || item.week || 0) === currentSchoolWeek,
+      (item) => (item.weekNumber || item.week || 0) === target,
     );
     if (!hasWeek) return;
 
-    setExpandedWeek(currentSchoolWeek);
+    setExpandedWeek(target);
     didScrollToCurrent.current = false;
     const t = window.setTimeout(() => {
       if (!didScrollToCurrent.current && currentWeekRef.current) {
@@ -194,7 +201,7 @@ export function CurriculumDetailModal({
       }
     }, 150);
     return () => window.clearTimeout(t);
-  }, [isOpen, currentSchoolWeek, curriculumId, sortedItems]);
+  }, [isOpen, currentSchoolWeek, initialWeekNumber, curriculumId, sortedItems]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -356,6 +363,8 @@ export function CurriculumDetailModal({
             const isExpanded = expandedWeek === weekNumber;
             const isMarking = markingWeek === weekNumber;
             const isCatchUp = Boolean(item.isCatchUp);
+            const isFocusedWeek =
+              typeof initialWeekNumber === 'number' && weekNumber === initialWeekNumber;
             const isCurrentWeek =
               typeof currentSchoolWeek === 'number' &&
               currentSchoolWeek > 0 &&
@@ -366,7 +375,7 @@ export function CurriculumDetailModal({
             return (
               <div
                 key={item.id}
-                ref={isCurrentWeek ? currentWeekRef : undefined}
+                ref={isFocusedWeek || (!initialWeekNumber && isCurrentWeek) ? currentWeekRef : undefined}
                 className={cn(
                   'border-l-4 rounded-lg overflow-hidden transition-all',
                   isCatchUp

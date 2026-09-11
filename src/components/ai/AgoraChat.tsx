@@ -3,12 +3,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Trash2,
   User,
   Copy,
   History,
-  X,
-  MessageSquare,
   FileText,
   FileQuestion,
   BookOpen,
@@ -30,7 +27,6 @@ import {
   Calendar,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/Button';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import { cn } from '@/lib/utils';
 import {
@@ -50,7 +46,18 @@ import { RootState } from '@/lib/store/store';
 import { SaveAssessmentEditor } from './SaveAssessmentEditor';
 import { inlineAssistantErrorNote, toastTextFromStreamError } from '@/lib/ai-chat-errors';
 import { useLoisWorkspaceOptional, type LoisPageContext, type LoisSource } from './LoisWorkspace';
+import { LoisChatHistory } from './LoisChatHistory';
 import { LoisPendingPlanCard } from './LoisPendingPlanCard';
+import { LoisApplyAllBar, LoisPlanApplySession, useLoisPlanApply } from './LoisPlanApplySession';
+import {
+  GENERATE_TOOLS,
+  LABELED_LOOKUP_TOOLS,
+  PLAN_TOOLS,
+  QUIET_TOOLS,
+  quietChipFacts,
+  quietChipTitle,
+  toolCardTitle,
+} from './lois-tool-card-utils';
 import { LoisOrb } from './LoisOrb';
 import { LoisBriefingPanel } from './LoisBriefingPanel';
 import Link from 'next/link';
@@ -68,12 +75,65 @@ interface Message {
 
 interface ToolEvent {
   type: 'thinking' | 'tool_start' | 'tool_result' | 'sources';
+  toolCallId?: string;
   toolName?: string;
   toolDisplayName?: string;
+  entityLabel?: string;
   args?: Record<string, any>;
   result?: any;
   message?: string;
   sources?: LoisSource[];
+}
+
+function applyToolResultToEvents(events: ToolEvent[], data: SSEToolResultEvent): ToolEvent[] {
+  const withoutThinking = events.filter((e) => e.type !== 'thinking');
+  const mergeStart = (start?: ToolEvent): ToolEvent => ({
+    type: 'tool_result',
+    toolCallId: data.toolCallId || start?.toolCallId,
+    toolName: data.toolName,
+    toolDisplayName: data.toolDisplayName,
+    entityLabel: data.entityLabel || start?.entityLabel,
+    args: data.args || start?.args,
+    result: data.result,
+  });
+
+  if (data.toolCallId) {
+    const idx = withoutThinking.findIndex((e) => e.toolCallId === data.toolCallId);
+    if (idx >= 0) {
+      const next = [...withoutThinking];
+      next[idx] = mergeStart(withoutThinking[idx]);
+      return next;
+    }
+  }
+
+  const fallbackIdx = withoutThinking.findIndex(
+    (e) => e.type === 'tool_start' && e.toolName === data.toolName,
+  );
+  if (fallbackIdx >= 0) {
+    const next = [...withoutThinking];
+    next[fallbackIdx] = mergeStart(withoutThinking[fallbackIdx]);
+    return next;
+  }
+
+  return [...withoutThinking, mergeStart()];
+}
+
+/** Drop in-progress starts once a result for that call exists (live race + older persisted rows). */
+function visibleToolEvents(events: ToolEvent[]): ToolEvent[] {
+  const completedIds = new Set(
+    events
+      .filter((e) => e.type === 'tool_result' && e.toolCallId)
+      .map((e) => e.toolCallId as string),
+  );
+  return events.filter((e) => {
+    if (e.type === 'sources') return false;
+    if (e.type === 'tool_start' && e.toolCallId && completedIds.has(e.toolCallId)) return false;
+    return true;
+  });
+}
+
+function toolEventKey(event: ToolEvent, eventIdx: number): string {
+  return [event.type, event.toolCallId || event.toolName || 'evt', String(eventIdx)].join('-');
 }
 
 // ─── Tool Result Renderers ────────────────────────────────────────────────────
@@ -359,14 +419,52 @@ function LoisPromptSuggestions({
   );
 }
 
+function ApplyPendingPlansSync({ result }: { result: any }) {
+  const session = useLoisPlanApply();
+  const markApplied = session?.markApplied;
+  useEffect(() => {
+    const rows = Array.isArray(result?.applied) ? result.applied : [];
+    for (const row of rows) {
+      if (row?.classLabel) {
+        markApplied?.({ classLabel: row.classLabel, message: row.message });
+      }
+    }
+  }, [result, markApplied]);
+  return null;
+}
+
+function openPlansFromEvents(events: ToolEvent[]) {
+  return events
+    .filter(
+      (event) =>
+        event.type === 'tool_result' &&
+        event.toolName &&
+        PLAN_TOOLS.has(event.toolName) &&
+        event.result?.planId &&
+        !event.result?.error &&
+        !event.result?.saved,
+    )
+    .map((event) => ({
+      planId: event.result.planId as string,
+      classLabel: event.result.classLabel as string | undefined,
+      kind: event.result.kind as 'TIMETABLE' | 'SCHEME' | undefined,
+    }));
+}
+
 const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { event: ToolEvent; schoolId: string; conversationId?: string | null; variant?: 'default' | 'minimal' }) => {
-  const [expanded, setExpanded] = useState(
-    event.toolName === 'generate_assessment' ||
-    event.toolName === 'generate_quiz' ||
-    event.toolName === 'generate_lesson_plan' ||
-    event.toolName === 'propose_timetable' ||
-    event.toolName === 'propose_scheme'
-  );
+  const toolName = event.toolName || '';
+  const isQuiet = QUIET_TOOLS.has(toolName);
+  const isPlan = PLAN_TOOLS.has(toolName);
+  const isGenerate = GENERATE_TOOLS.has(toolName);
+  const [expanded, setExpanded] = useState(isGenerate);
+
+  const title = toolCardTitle({
+    toolName,
+    toolDisplayName: event.toolDisplayName,
+    entityLabel: event.entityLabel,
+    args: event.args,
+    result: event.result,
+  });
 
   if (event.type === 'thinking') {
     return (
@@ -384,6 +482,31 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
   }
 
   if (event.type === 'tool_start') {
+    const workingOn =
+      event.entityLabel ||
+      event.args?.classQuery ||
+      event.args?.topic ||
+      event.args?.subject ||
+      event.args?.query ||
+      'Processing...';
+    if (isQuiet) {
+      const quietStart =
+        toolName === 'apply_pending_plans'
+          ? 'Saving the previews…'
+          : `Checking ${workingOn === 'Processing...' ? '…' : workingOn}`;
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50/80 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10"
+        >
+          <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 truncate">
+            {quietStart}
+          </span>
+          <ThreeDotTyping />
+        </motion.div>
+      );
+    }
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -391,16 +514,16 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
         className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-amber-50/60 dark:bg-amber-500/[0.08] border border-amber-200/60 dark:border-amber-500/20"
       >
         <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400">
-          <ToolIcon toolName={event.toolName || ''} />
+          <ToolIcon toolName={toolName} />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-            {event.toolDisplayName}
+            {title}
           </span>
-          <p className="text-[11px] text-amber-600/70 dark:text-amber-400/60 font-medium">
+          <p className="text-[11px] text-amber-600/70 dark:text-amber-400/60 font-medium truncate">
             {event.toolName === 'execute_sql'
               ? 'Analyzing school database...'
-              : `Working on: ${event.args?.topic || event.args?.subject || 'Processing...'}`}
+              : `Working on: ${workingOn}`}
           </p>
         </div>
         <ThreeDotTyping />
@@ -409,6 +532,77 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
   }
 
   if (event.type === 'tool_result' && event.result) {
+    if (isPlan) {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl overflow-hidden border border-emerald-200/60 dark:border-emerald-500/20 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-500/[0.06] dark:to-transparent px-4 py-3"
+        >
+          <LoisPendingPlanCard
+            schoolId={schoolId}
+            conversationId={conversationId}
+            result={event.result}
+          />
+        </motion.div>
+      );
+    }
+
+    if (isQuiet) {
+      const chip = quietChipTitle({
+        toolName,
+        entityLabel: event.entityLabel,
+        args: event.args,
+        result: event.result,
+      });
+      const facts = quietChipFacts(toolName, event.result);
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border border-slate-200/80 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03] overflow-hidden"
+        >
+          {toolName === 'apply_pending_plans' ? <ApplyPendingPlansSync result={event.result} /> : null}
+          <button
+            type="button"
+            onClick={() => facts.length > 0 && setExpanded(!expanded)}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left"
+          >
+            <CheckCircle2 className="w-3 h-3 text-slate-400 shrink-0" />
+            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 flex-1 truncate">
+              {chip}
+            </span>
+            {facts.length > 0 ? (
+              expanded ? (
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              ) : (
+                <ChevronRight className="w-3 h-3 text-slate-400" />
+              )
+            ) : null}
+          </button>
+          <AnimatePresence>
+            {expanded && facts.length > 0 && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden"
+              >
+                <ul className="px-2.5 pb-2 space-y-0.5">
+                  {facts.map((fact) => (
+                    <li key={fact} className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {fact}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      );
+    }
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -416,6 +610,7 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
         className="rounded-2xl overflow-hidden border border-emerald-200/60 dark:border-emerald-500/20 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-500/[0.06] dark:to-transparent"
       >
         <button
+          type="button"
           onClick={() => setExpanded(!expanded)}
           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/[0.04] transition-colors"
         >
@@ -423,7 +618,7 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex-1 text-left">
-            {event.toolDisplayName} — Complete
+            {title}
           </span>
           {expanded ? (
             <ChevronDown className="w-4 h-4 text-emerald-500" />
@@ -442,11 +637,9 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
               className="overflow-hidden"
             >
               <div className={`px-4 pb-4 overflow-y-auto scrollbar-thin ${
-                event.toolName === 'propose_timetable' || event.toolName === 'propose_scheme'
-                  ? 'max-h-[420px]'
-                  : 'max-h-[320px]'
+                isGenerate ? 'max-h-[420px]' : 'max-h-[320px]'
               }`}>
-                <ToolResultContent toolName={event.toolName || ''} result={event.result} schoolId={schoolId} variant={variant} conversationId={conversationId} />
+                <ToolResultContent toolName={toolName} result={event.result} schoolId={schoolId} variant={variant} conversationId={conversationId} />
               </div>
             </motion.div>
           )}
@@ -605,63 +798,264 @@ const ToolResultContent = ({
     return <SaveAssessmentEditor toolName={toolName} initialData={result} schoolId={schoolId} variant={variant} conversationId={conversationId} />;
   }
 
-  // Fallback: render as formatted JSON
+  if (LABELED_LOOKUP_TOOLS.has(toolName)) {
+    return <LookupToolSummary toolName={toolName} result={result} />;
+  }
+
   if (typeof result === 'string') {
     return <p className="text-sm text-emerald-800/80 dark:text-emerald-300/80 whitespace-pre-wrap">{result}</p>;
   }
 
-  if (toolName === 'execute_sql') {
-    if (result.error) {
-      return (
-        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 text-xs text-red-600 dark:text-red-400 font-medium">
-          Lois hit a technical snag while querying the database. I'm refining the approach...
-        </div>
-      );
-    }
-
-    // Show a clean summary for SQL results
-    const data = Array.isArray(result) ? result : [result];
-    if (data.length === 0) return <div className="text-xs text-slate-500 italic">No records found matching this query.</div>;
-
+  if (result?.message || result?.error) {
     return (
-      <div className="overflow-x-auto rounded-xl border border-emerald-100 dark:border-white/5 bg-white/40 dark:bg-black/20">
-        <table className="w-full text-[11px] text-left border-collapse">
-          <thead>
-            <tr className="bg-emerald-500/5 dark:bg-white/5">
-              {Object.keys(data[0]).map(key => (
-                <th key={key} className="px-3 py-2 border-b border-emerald-100/50 dark:border-white/5 font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                  {key}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.slice(0, 5).map((row, i) => (
-              <tr key={i} className="hover:bg-emerald-500/[0.02] transition-colors">
-                {Object.values(row).map((val: any, j) => (
-                  <td key={j} className="px-3 py-2 border-b border-emerald-100/10 dark:border-white/5 text-emerald-900/80 dark:text-white/70">
-                    {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {data.length > 5 && (
-          <div className="px-3 py-1.5 bg-emerald-500/5 dark:bg-white/5 text-[9px] text-emerald-600 dark:text-emerald-500 italic font-medium">
-            + {data.length - 5} more records (Lois is summarizing the full set below)
-          </div>
-        )}
-      </div>
+      <p className="text-xs text-slate-500 italic">
+        {String(result.error || result.message)}
+      </p>
     );
   }
 
   return (
-    <pre className="text-xs text-emerald-700/80 dark:text-emerald-400/70 whitespace-pre-wrap bg-white/40 dark:bg-black/20 p-3 rounded-xl overflow-x-auto">
-      {JSON.stringify(result, null, 2)}
-    </pre>
+    <p className="text-xs text-slate-500 italic">
+      Used to answer below.
+    </p>
   );
 };
+
+function LookupToolSummary({ toolName, result }: { toolName: string; result: any }) {
+  if (!result || typeof result !== 'object') {
+    return <p className="text-sm text-emerald-800/80 dark:text-emerald-300/80">{String(result ?? '')}</p>;
+  }
+  if (result.error) {
+    return <p className="text-xs text-red-600 dark:text-red-400">{result.error}</p>;
+  }
+
+  const rows: Array<{ label: string; detail?: string }> = [];
+
+  if (toolName === 'get_timetable') {
+    const periods = Array.isArray(result.periods) ? result.periods : [];
+    if (periods.length === 0) {
+      return <p className="text-xs text-slate-500 italic">{result.message || 'No periods on this day.'}</p>;
+    }
+    periods.slice(0, 12).forEach((p: any) => {
+      rows.push({
+        label: [p.startTime, p.subject || p.type].filter(Boolean).join(' · '),
+        detail: [p.teacher, p.room].filter(Boolean).join(' · ') || undefined,
+      });
+    });
+  } else if (toolName === 'who_teaches') {
+    if (result.formTeacher) {
+      const ft = result.formTeacher;
+      const name = typeof ft === 'string' ? ft : ft?.name;
+      if (name) rows.push({ label: 'Form teacher', detail: name });
+    }
+    const teachers = Array.isArray(result.teachers) ? result.teachers : [];
+    teachers.slice(0, 10).forEach((t: any) => {
+      rows.push({ label: t.name || 'Teacher', detail: t.subject || undefined });
+    });
+    const specialists = Array.isArray(result.schoolSubjectStaff) ? result.schoolSubjectStaff : [];
+    specialists.slice(0, 8).forEach((t: any) => {
+      rows.push({
+        label: t.name || 'Specialist',
+        detail: Array.isArray(t.subjects) ? t.subjects.slice(0, 3).join(', ') : 'school staff',
+      });
+    });
+    if (rows.length === 0) {
+      return <p className="text-xs text-slate-500 italic">{result.message || 'No teacher assignment matched.'}</p>;
+    }
+  } else if (toolName === 'get_now_in_class') {
+    if (result.formTeacher && result.note) {
+      return (
+        <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">
+          Class teacher: {result.formTeacher}. {result.note}
+        </p>
+      );
+    }
+    if (result.status === 'free_period' || (!result.subject && result.message)) {
+      return (
+        <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80">
+          {result.message || result.note || 'No current period.'}
+        </p>
+      );
+    }
+    rows.push({
+      label: result.subject || result.type || 'Current period',
+      detail: [result.teacher, result.startTime && result.endTime ? `${result.startTime}–${result.endTime}` : null]
+        .filter(Boolean)
+        .join(' · ') || undefined,
+    });
+  } else if (toolName === 'get_scheme_of_work') {
+    const schemes = Array.isArray(result.schemes) ? result.schemes : [];
+    if (schemes.length === 0) {
+      return <p className="text-xs text-slate-500 italic">{result.message || 'No published scheme matched.'}</p>;
+    }
+    schemes.slice(0, 8).forEach((s: any) => {
+      const weeks = Array.isArray(s.weeks) ? s.weeks.length : 0;
+      rows.push({
+        label: [s.subject, s.classLevel].filter(Boolean).join(' · ') || 'Scheme',
+        detail: weeks ? `${weeks} week${weeks === 1 ? '' : 's'}` : undefined,
+      });
+    });
+  } else if (toolName === 'get_student_overview') {
+    rows.push({ label: result.name || 'Student', detail: result.className || undefined });
+    const grades = Array.isArray(result.recentPublishedGrades) ? result.recentPublishedGrades : [];
+    if (grades.length) {
+      rows.push({
+        label: `${grades.length} recent published grade${grades.length === 1 ? '' : 's'}`,
+        detail: grades[0]?.subject ? `latest: ${grades[0].subject}` : undefined,
+      });
+    }
+    const att = result.attendanceLast14Days;
+    if (att) {
+      rows.push({
+        label: 'Attendance (14 days)',
+        detail: `${att.present ?? 0} present · ${att.absent ?? 0} absent`,
+      });
+    }
+  } else if (toolName === 'get_class_performance') {
+    rows.push({
+      label: `${result.studentCount ?? 0} students`,
+      detail:
+        result.belowThreshold != null
+          ? `${result.belowThreshold} below ${result.thresholdPercent ?? 45}%`
+          : undefined,
+    });
+    const risk = Array.isArray(result.atRiskPreview) ? result.atRiskPreview : [];
+    risk.slice(0, 5).forEach((s: any) => {
+      rows.push({ label: s.name, detail: s.avgPercent != null ? `${s.avgPercent}%` : undefined });
+    });
+  } else if (toolName === 'list_students') {
+    const students = Array.isArray(result.students) ? result.students : [];
+    if (students.length === 0) {
+      return <p className="text-xs text-slate-500 italic">{result.message || 'No students found.'}</p>;
+    }
+    students.slice(0, 10).forEach((s: any) => {
+      rows.push({ label: s.name, detail: s.className || undefined });
+    });
+    if (students.length > 10) {
+      rows.push({ label: `+${students.length - 10} more` });
+    }
+    const staff = Array.isArray(result.staffMatches) ? result.staffMatches : [];
+    staff.slice(0, 6).forEach((s: any) => {
+      rows.push({
+        label: s.name || 'Staff',
+        detail: s.kind === 'admin' ? s.role || 'admin' : (Array.isArray(s.subjects) ? s.subjects.slice(0, 3).join(', ') : 'teacher'),
+      });
+    });
+  } else if (toolName === 'get_guardians') {
+    if (result.studentName) {
+      rows.push({ label: result.studentName, detail: result.className || undefined });
+    }
+    const guardians = Array.isArray(result.guardians) ? result.guardians : [];
+    if (guardians.length === 0) {
+      return <p className="text-xs text-slate-500 italic">{result.message || 'No guardians linked.'}</p>;
+    }
+    guardians.slice(0, 8).forEach((g: any) => {
+      rows.push({
+        label: g.name || 'Guardian',
+        detail: [g.relationship, g.phone].filter(Boolean).join(' · ') || undefined,
+      });
+    });
+  } else if (toolName === 'get_calendar') {
+    rows.push({
+      label: result.range === 'this_week' ? 'This week' : [result.from, result.to].filter(Boolean).join(' – ') || 'Calendar',
+      detail: `${result.count ?? 0} event${result.count === 1 ? '' : 's'}`,
+    });
+    const events = Array.isArray(result.events) ? result.events : [];
+    events.slice(0, 6).forEach((e: any) => {
+      rows.push({ label: e.title || 'Event', detail: e.type || undefined });
+    });
+    const named = Array.isArray(result.namedDates) ? result.namedDates : [];
+    named.forEach((n: any) => {
+      rows.push({
+        label: n.label || n.date,
+        detail: n.inThisWeek ? 'this week' : n.date,
+      });
+    });
+  } else if (toolName === 'list_staff') {
+    const teachers = Array.isArray(result.teachers) ? result.teachers : [];
+    const admins = Array.isArray(result.admins) ? result.admins : [];
+    teachers.slice(0, 8).forEach((t: any) => {
+      rows.push({
+        label: t.name || 'Teacher',
+        detail: Array.isArray(t.subjects) ? t.subjects.slice(0, 3).join(', ') : undefined,
+      });
+    });
+    admins.slice(0, 4).forEach((a: any) => {
+      rows.push({ label: a.name || 'Admin', detail: a.role || undefined });
+    });
+  } else if (toolName === 'list_fee_debtors') {
+    const debtors = Array.isArray(result.debtors) ? result.debtors : Array.isArray(result.students) ? result.students : [];
+    if (debtors.length === 0) {
+      return <p className="text-xs text-slate-500 italic">{result.message || result.note || 'No outstanding fees listed.'}</p>;
+    }
+    debtors.slice(0, 8).forEach((d: any) => {
+      rows.push({
+        label: d.name || d.studentName || 'Student',
+        detail: d.outstanding != null ? `₦${d.outstanding}` : d.amount != null ? `₦${d.amount}` : d.className,
+      });
+    });
+  } else if (toolName === 'list_admissions') {
+    const apps = Array.isArray(result.applications) ? result.applications : [];
+    const counts = result.counts || {};
+    rows.push({
+      label: 'Inbox',
+      detail: `Pending ${counts.PENDING ?? 0} · Accepted ${counts.ACCEPTED ?? 0} · Declined ${counts.DECLINED ?? 0}`,
+    });
+    apps.slice(0, 6).forEach((a: any) => {
+      rows.push({ label: a.name || 'Applicant', detail: [a.classLevel, a.status].filter(Boolean).join(' · ') });
+    });
+  } else if (toolName === 'get_school_stats') {
+    rows.push({ label: 'Students', detail: String(result.students ?? result.studentCount ?? '—') });
+    rows.push({ label: 'Teachers', detail: String(result.teachers ?? result.teacherCount ?? '—') });
+    rows.push({ label: 'Class arms', detail: String(result.classArms ?? result.classes ?? '—') });
+  } else if (toolName === 'get_attendance_summary') {
+    rows.push({
+      label: result.className || 'Attendance',
+      detail: `Present ${result.present ?? 0} · Absent ${result.absent ?? 0} · Late ${result.late ?? 0}`,
+    });
+  } else if (toolName === 'get_academic_risk_summary') {
+    const risk = Array.isArray(result.students) ? result.students : Array.isArray(result.atRisk) ? result.atRisk : [];
+    rows.push({ label: `${risk.length || result.count || 0} at risk` });
+    risk.slice(0, 6).forEach((s: any) => {
+      rows.push({ label: s.name || 'Student', detail: s.avgPercent != null ? `${s.avgPercent}%` : s.className });
+    });
+  } else if (toolName === 'draft_parent_message') {
+    rows.push({ label: 'Draft only — not sent' });
+    if (result.draft || result.text || result.message) {
+      rows.push({ label: String(result.draft || result.text || result.message).slice(0, 180) });
+    }
+  } else if (toolName === 'list_lois_insights') {
+    const items = Array.isArray(result.insights) ? result.insights : Array.isArray(result.items) ? result.items : [];
+    if (items.length === 0) {
+      return <p className="text-xs text-slate-500 italic">{result.message || 'No filed insights.'}</p>;
+    }
+    items.slice(0, 6).forEach((i: any) => {
+      rows.push({ label: i.title || i.type || 'Insight', detail: i.severity || i.status || undefined });
+    });
+  } else if (toolName === 'search_semantic') {
+    const hits = Array.isArray(result.sources) ? result.sources : Array.isArray(result.results) ? result.results : [];
+    hits.slice(0, 5).forEach((h: any) => {
+      rows.push({ label: h.title || h.label || 'Source' });
+    });
+  }
+
+  if (rows.length === 0) {
+    return result.message
+      ? <p className="text-xs text-slate-500 italic">{result.message}</p>
+      : <p className="text-xs text-slate-500 italic">No details to show.</p>;
+  }
+
+  return (
+    <ul className="space-y-1">
+      {rows.map((row, i) => (
+        <li key={`${row.label}-${i}`} className="text-xs text-emerald-900 dark:text-emerald-300/80">
+          <span className="font-medium">{row.label}</span>
+          {row.detail ? <span className="opacity-70"> — {row.detail}</span> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 // ─── Main Chat Component ──────────────────────────────────────────────────────
 
@@ -669,6 +1063,8 @@ interface AgoraChatProps {
   schoolId: string;
   initialConversationId?: string;
   variant?: 'default' | 'minimal';
+  /** When false, keep the conversation mounted but do not steal focus. */
+  isActive?: boolean;
   pageContext?: string | LoisPageContext;
   headerActions?: React.ReactNode;
 }
@@ -677,6 +1073,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   schoolId,
   initialConversationId,
   variant = 'default',
+  isActive = true,
   pageContext,
   headerActions,
 }) => {
@@ -692,6 +1089,11 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
     pageContext && typeof pageContext === 'object'
       ? pageContext
       : workspace?.focus ?? null;
+  const streamPageContext: LoisPageContext | undefined = structuredFocus
+    ? { ...structuredFocus, insightId: workspace?.briefingInsightId || structuredFocus.insightId }
+    : workspace?.briefingInsightId
+      ? { type: 'generic', schoolId, label: 'Lois briefing', insightId: workspace.briefingInsightId }
+      : undefined;
   const pathHint = typeof pageContext === 'string' ? pageContext : structuredFocus?.path || '';
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -730,13 +1132,22 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
         greetingDesc = "Working on assessments? I can build a new test or grade existing submissions.";
       }
 
-      setMessages([
-        {
-          role: 'assistant',
-          content: `Hello ${firstName}! I'm Lois, your dedicated Myschoolbud AI Assistant. ${greetingDesc}`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      const greetingContent = `Hello ${firstName}! I'm Lois, your dedicated Myschoolbud AI Assistant. ${greetingDesc}`;
+      setMessages((prev) => {
+        // Screen focus / firstName can settle after the owner has already sent.
+        // Replacing the array here wiped the live thread and left the empty greeting.
+        if (prev.some((m) => m.role === 'user' || m.isStreaming)) return prev;
+        if (prev.length === 1 && prev[0]?.role === 'assistant' && prev[0].content === greetingContent) {
+          return prev;
         }
-      ]);
+        return [
+          {
+            role: 'assistant',
+            content: greetingContent,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ];
+      });
     } else if (initialConversationId !== currentConversationId) {
       handleSelectConversation(initialConversationId, 'Existing Chat');
     }
@@ -763,15 +1174,13 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   }, [messages]);
 
   useEffect(() => {
-    // Focus the input field whenever the chat is ready or a new chat starts
-    if (!isStreaming && !isHistoryOpen) {
-      inputRef.current?.focus();
-    }
-  }, [isStreaming, isHistoryOpen, messages.length]);
+    if (!isActive || isStreaming || isHistoryOpen) return;
+    inputRef.current?.focus();
+  }, [isActive, isStreaming, isHistoryOpen, messages.length]);
 
   // ─── SSE Streaming Send ─────────────────────────────────────────────────
 
-  const handleSendMessage = useCallback(async (overrideText?: string) => {
+  const handleSendMessage = useCallback(async (overrideText?: string, insightIdOverride?: string) => {
     const textToSubmit = overrideText || inputValue;
     if (!textToSubmit.trim() || isStreaming) return;
 
@@ -856,8 +1265,10 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                     ...(last.toolEvents || []),
                     {
                       type: 'tool_start',
+                      toolCallId: data.toolCallId,
                       toolName: data.toolName,
                       toolDisplayName: data.toolDisplayName,
+                      entityLabel: data.entityLabel,
                       args: data.args,
                     },
                   ],
@@ -871,27 +1282,15 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               const updated = [...prev];
               const last = updated[updated.length - 1];
               if (last && last.role === 'assistant') {
-                // Replace tool_start with tool_result, remove thinking
-                const filteredEvents = (last.toolEvents || []).filter(
-                  e => e.type !== 'thinking' && !(e.type === 'tool_start' && e.toolName === data.toolName)
-                );
                 updated[updated.length - 1] = {
                   ...last,
-                  toolEvents: [
-                    ...filteredEvents,
-                    {
-                      type: 'tool_result',
-                      toolName: data.toolName,
-                      toolDisplayName: data.toolDisplayName,
-                      result: data.result,
-                    },
-                  ],
+                  toolEvents: applyToolResultToEvents(last.toolEvents || [], data),
                 };
               }
               return updated;
             });
           },
-            onDone: (data) => {
+          onDone: (data) => {
             if (!currentConversationId && data.conversationId) {
               setCurrentConversationId(data.conversationId);
             }
@@ -932,7 +1331,14 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
         currentConversationId || undefined,
         abortController.signal,
         token || undefined,
-        structuredFocus || undefined
+        {
+          ...(streamPageContext || { type: 'generic', schoolId, label: 'Lois briefing' }),
+          insightId:
+            insightIdOverride ||
+            streamPageContext?.insightId ||
+            workspace?.briefingInsightId ||
+            undefined,
+        }
       );
     } catch (error: unknown) {
       const err = error as { name?: string };
@@ -952,7 +1358,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
         });
       }
     }
-  }, [inputValue, isStreaming, messages, schoolId, currentConversationId, token, structuredFocus]);
+  }, [inputValue, isStreaming, messages, schoolId, currentConversationId, token, streamPageContext, workspace?.briefingInsightId]);
 
   useEffect(() => {
     if (variant !== 'minimal' || !workspace?.seedPrompt) return;
@@ -975,6 +1381,12 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       return updated;
     });
   };
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   // ─── History Management ─────────────────────────────────────────────────
 
@@ -1055,6 +1467,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   };
 
   return (
+    <LoisPlanApplySession conversationId={currentConversationId}>
     <div
       className={cn(
         'lois-panel flex flex-col h-full w-full max-w-7xl mx-auto bg-transparent overflow-hidden relative',
@@ -1133,8 +1546,9 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                 schoolId={schoolId}
                 focusInsightId={workspace.briefingInsightId}
                 compact={messages.length > 1}
-                onAsk={(prompt) => void handleSendMessage(prompt)}
+                onAsk={(prompt, insight) => void handleSendMessage(prompt, insight.id)}
                 onEmpty={workspace.clearBriefing}
+                onOpenList={() => workspace.hide()}
               />
             ) : null}
             {messages.length <= 1 && !(isMinimal && workspace?.briefingOpen) ? (
@@ -1200,11 +1614,30 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                     )}>
                       {msg.role === 'assistant' && msg.toolEvents && msg.toolEvents.length > 0 && (
                         <div className="w-full space-y-2 mb-1">
-                          {msg.toolEvents.map((event, eventIdx) => (
-                            event.type === 'sources' ? null : (
-                            <ToolCard key={eventIdx} event={event} schoolId={schoolId} variant={variant} conversationId={currentConversationId} />
-                            )
-                          ))}
+                          {(() => {
+                            const visible = visibleToolEvents(msg.toolEvents);
+                            const openPlans = openPlansFromEvents(visible);
+                            return (
+                              <>
+                                {openPlans.length >= 2 ? (
+                                  <LoisApplyAllBar
+                                    schoolId={schoolId}
+                                    conversationId={currentConversationId}
+                                    plans={openPlans}
+                                  />
+                                ) : null}
+                                {visible.map((event, eventIdx) => (
+                                  <ToolCard
+                                    key={toolEventKey(event, eventIdx)}
+                                    event={event}
+                                    schoolId={schoolId}
+                                    variant={variant}
+                                    conversationId={currentConversationId}
+                                  />
+                                ))}
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -1325,110 +1758,17 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       </div>
 
 
-      {/* History Drawer Overlay */}
-      <AnimatePresence>
-        {isHistoryOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsHistoryOpen(false)}
-              className={cn(
-                'z-[100]',
-                variant === 'minimal' ? 'absolute inset-0 bg-black/20' : 'fixed inset-0 bg-black/40',
-              )}
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                'z-[101] flex flex-col bg-[var(--light-bg)] dark:bg-[var(--dark-bg)] border-l border-[var(--light-border)] dark:border-[var(--dark-border)]',
-                variant === 'minimal' ? 'absolute inset-y-0 right-0 w-full' : 'fixed right-0 top-0 bottom-0 w-80 md:w-96',
-              )}
-            >
-              <div className="px-3.5 py-2.5 border-b border-[var(--light-border)] dark:border-[var(--dark-border)] flex items-center justify-between">
-                <div>
-                  <h3
-                    className="font-semibold text-light-text-primary dark:text-dark-text-primary"
-                    style={{ fontFamily: 'var(--font-heading)', fontSize: typeScale.title }}
-                  >
-                    Chat history
-                  </h3>
-                  <p className="mt-0.5 text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: typeScale.tiny }}>
-                    Previous conversations
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsHistoryOpen(false)}
-                  className="lois-icon-btn"
-                  aria-label="Close history"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-                {!historyData || historyData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-                    <MessageSquare className="w-5 h-5 text-light-text-secondary dark:text-dark-text-secondary mb-2" />
-                    <p className="font-semibold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: typeScale.body }}>
-                      No conversations yet
-                    </p>
-                    <p className="mt-1 text-light-text-secondary dark:text-dark-text-secondary" style={{ fontSize: typeScale.small }}>
-                      New chats with Lois will show up here.
-                    </p>
-                  </div>
-                ) : (
-                  historyData.map((chat: any) => (
-                    <div
-                      key={chat.id}
-                      onClick={() => handleSelectConversation(chat.id, chat.title)}
-                      className={cn(
-                        'group relative cursor-pointer rounded-lg border px-3 py-2.5 pr-9',
-                        currentConversationId === chat.id
-                          ? 'bg-[var(--light-sidebar-active)] dark:bg-[var(--dark-sidebar-active)] border-[var(--dashboard-sidebar-active-border)]'
-                          : 'bg-[var(--light-card)] dark:bg-[var(--dark-surface)] border-[var(--light-border)] dark:border-[var(--dark-border)] hover:border-[var(--dashboard-sidebar-active-border)]',
-                      )}
-                    >
-                      {currentConversationId === chat.id && (
-                        <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-[var(--agora-blue)]" />
-                      )}
-                      <p
-                        className="font-semibold text-light-text-primary dark:text-dark-text-primary truncate"
-                        style={{ fontSize: typeScale.body }}
-                      >
-                        {chat.title || 'Untitled conversation'}
-                      </p>
-                      <p className="text-light-text-secondary dark:text-dark-text-secondary mt-0.5" style={{ fontSize: typeScale.tiny }}>
-                        {new Date(chat.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteConversation(e, chat.id)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 text-light-text-secondary hover:text-red-600 rounded-md hover:bg-[var(--light-hover)]"
-                        aria-label="Delete conversation"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="p-3 border-t border-[var(--light-border)] dark:border-[var(--dark-border)]">
-                <Button onClick={handleNewChat} variant="primary" fullWidth>
-                  <Plus className="w-4 h-4 mr-2" />
-                  New chat
-                </Button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <LoisChatHistory
+        isOpen={isHistoryOpen}
+        contained={isMinimal}
+        chats={historyData ?? []}
+        activeId={currentConversationId}
+        onClose={() => setIsHistoryOpen(false)}
+        onSelect={(id, title) => void handleSelectConversation(id, title)}
+        onDelete={(e, id) => void handleDeleteConversation(e, id)}
+        onNewChat={handleNewChat}
+      />
     </div>
+    </LoisPlanApplySession>
   );
 };

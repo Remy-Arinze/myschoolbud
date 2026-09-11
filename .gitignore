@@ -19,6 +19,7 @@ coverage
 .env.test.local
 .env.production.local
 e2e/.env.e2e
+# Playwright storageState (JWTs) including beulah-admin.json
 e2e/.auth/
 e2e/.otp
 e2e/.roster.json

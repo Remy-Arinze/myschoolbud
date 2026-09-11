@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 import {
   useGetLoisInsightQuery,
@@ -10,7 +9,8 @@ import {
   type LoisInsightDto,
 } from '@/lib/store/api/aiApi';
 import { cn } from '@/lib/utils';
-import { evidenceLines, LOIS_INSIGHT_TYPE_LABEL } from './loisInsightUi';
+import { useRouter } from 'next/navigation';
+import { evidenceLines, insightListHref, insightListLabel, LOIS_INSIGHT_TYPE_LABEL } from './loisInsightUi';
 
 function severityLabel(severity: string) {
   if (severity === 'critical') return 'Urgent';
@@ -21,12 +21,16 @@ function severityLabel(severity: string) {
 function BriefingReport({
   insight,
   onAsk,
+  onOpenList,
 }: {
   insight: LoisInsightDto;
-  onAsk?: (prompt: string) => void;
+  onAsk?: (prompt: string, insight: LoisInsightDto) => void;
+  onOpenList?: () => void;
 }) {
+  const router = useRouter();
   const lines = evidenceLines(insight.type, insight.evidence);
   const prompt = insight.askPrompt || `Explain this insight: ${insight.title}`;
+  const listHref = insightListHref(insight);
 
   return (
     <div className="px-3 pb-3">
@@ -60,19 +64,23 @@ function BriefingReport({
             type="button"
             className="rounded-md bg-[var(--agora-blue)] px-2.5 py-1 font-medium text-white"
             style={{ fontSize: 'var(--lois-small)' }}
-            onClick={() => onAsk(prompt)}
+            onClick={() => onAsk(prompt, insight)}
           >
             Ask about this
           </button>
         ) : null}
-        {insight.href ? (
-          <Link
-            href={insight.href}
+        {listHref ? (
+          <button
+            type="button"
             className="rounded-md px-2.5 py-1 font-medium text-light-text-secondary dark:text-dark-text-secondary hover:text-[var(--agora-blue)]"
             style={{ fontSize: 'var(--lois-small)' }}
+            onClick={() => {
+              onOpenList?.();
+              router.push(listHref);
+            }}
           >
-            Open list
-          </Link>
+            {insightListLabel(insight.type)}
+          </button>
         ) : null}
       </div>
     </div>
@@ -85,12 +93,14 @@ export function LoisBriefingPanel({
   compact,
   onAsk,
   onEmpty,
+  onOpenList,
 }: {
   schoolId: string;
   focusInsightId?: string | null;
   compact?: boolean;
-  onAsk?: (prompt: string) => void;
+  onAsk?: (prompt: string, insight: LoisInsightDto) => void;
   onEmpty?: () => void;
+  onOpenList?: () => void;
 }) {
   const { data, isLoading, isError } = useGetLoisInsightsQuery(
     { schoolId, limit: 15 },
@@ -182,7 +192,7 @@ export function LoisBriefingPanel({
         </button>
         {expandedId === current.id ? (
           <div className="mt-2 rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] overflow-hidden">
-            <BriefingReport insight={current} onAsk={onAsk} />
+            <BriefingReport insight={current} onAsk={onAsk} onOpenList={onOpenList} />
           </div>
         ) : null}
       </div>
@@ -233,7 +243,7 @@ export function LoisBriefingPanel({
                   </span>
                 </div>
               </button>
-              {open ? <BriefingReport insight={insight} onAsk={onAsk} /> : null}
+              {open ? <BriefingReport insight={insight} onAsk={onAsk} onOpenList={onOpenList} /> : null}
             </li>
           );
         })}
