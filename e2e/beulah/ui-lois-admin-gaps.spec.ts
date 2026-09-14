@@ -4,6 +4,7 @@ import path from 'path';
 import {
   askLois,
   dashboardBrushOff,
+  looksLikeBackendWording,
   looksLikeInternalId,
   looksLikeToolJsonDump,
   openLois,
@@ -67,6 +68,9 @@ async function scoreDesk(
   }
   if (looksLikeInternalId(reply) || looksLikeToolJsonDump(reply)) {
     note('major', area, `Leaked id or JSON: ${excerpt(reply)}`);
+  }
+  if (looksLikeBackendWording(reply)) {
+    note('major', area, `Backend wording leaked: ${excerpt(reply)}`);
   }
   const panel = ((await page.locator('.lois-panel').last().innerText().catch(() => '')) || '');
   if (looksLikeToolJsonDump(panel)) {

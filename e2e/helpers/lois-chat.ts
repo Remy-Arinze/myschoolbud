@@ -121,6 +121,16 @@ export function looksLikeInternalId(text: string): boolean {
   return /\bcmt[a-z0-9]{20,}\b/i.test(text) || /\bpaste this id\b/i.test(text);
 }
 
+/** Role enums, snake_case keys, and tool names the facing agent must not speak. */
+export function looksLikeBackendWording(text: string): boolean {
+  return (
+    /\b(?:SCHOOL_ADMIN|SUPER_ADMIN)\b/.test(text) ||
+    /\b(?:school_owner|head_teacher)\b/.test(text) ||
+    /\b(?:adminRole|userRole|UserRole|contextRole)\b/.test(text) ||
+    /\b(?:list_students|list_staff|get_school_overview|list_lois_insights)\b/.test(text)
+  );
+}
+
 export function refusedCapability(text: string): boolean {
   return /can(?:not|'t)|unable to|don't have a (?:tool|way)|use the (?:school administration )?dashboard|staff page|fees page|applications page|not sent|wasn't sent|was not sent/i.test(
     text,

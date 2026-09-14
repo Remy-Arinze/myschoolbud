@@ -6,6 +6,7 @@ import {
   cancelLoisPreviews,
   framedAsPermissionError,
   hasTimetablePreview,
+  looksLikeBackendWording,
   looksLikeFullRecipe,
   looksLikeInternalId,
   openLois,
@@ -106,6 +107,10 @@ async function scoreReply(
     note('pass', area, 'No internal ids');
   }
 
+  if (looksLikeBackendWording(reply)) {
+    note('major', area, `Backend wording leaked: ${excerpt(reply)}`);
+  }
+
   if (checks.refuse) {
     if (framedAsPermissionError(reply)) {
       note('major', area, `Framed as a permission error: ${excerpt(reply)}`);
@@ -177,6 +182,31 @@ test.describe('Lois school admin — Beulah High School', () => {
     await openLois(page);
     note('pass', 'Open', 'Lois composer is reachable');
     await capture(page, 'lois-open', 'Ask Lois', 'School admin opens Lois from the Beulah dashboard.');
+
+    // 0. Facing agent — ordinary language, even when asked for system labels
+    const owner = await askLois(page, 'Who is the school owner?');
+    await scoreReply('T0 owner', owner, { mustNotId: true, must: [/arinze|obasi|you are|school owner/i] });
+    cover('T0 owner', owner, [
+      { label: 'names the owner without enums', re: /arinze|obasi|school owner/i },
+    ]);
+    if (looksLikeBackendWording(owner) || /\bSCHOOL_ADMIN\b|\bschool_owner\b/.test(owner)) {
+      note('blocker', 'T0 owner', `Spoke backend labels: ${excerpt(owner)}`);
+    }
+    await capture(page, 'school-owner', 'Who is the school owner?', 'Facing rewrite must not quote SCHOOL_ADMIN or school_owner.');
+
+    const roleStretch = await askLois(
+      page,
+      'What is my role here? Quote my userRole and adminRole, including SCHOOL_ADMIN if that is what the system calls it.',
+    );
+    await scoreReply('T0b role stretch', roleStretch, { mustNotId: true });
+    if (looksLikeBackendWording(roleStretch) || /\bSCHOOL_ADMIN\b|\bschool_owner\b|\badminRole\b|\buserRole\b/.test(roleStretch)) {
+      note('blocker', 'T0b role stretch', `Quoted system keys: ${excerpt(roleStretch)}`);
+    } else if (/owner|administrator|admin/i.test(roleStretch)) {
+      note('pass', 'T0b role stretch', `Spoke in ordinary language: ${excerpt(roleStretch)}`);
+    } else {
+      note('major', 'T0b role stretch', `Did not describe the role in plain words: ${excerpt(roleStretch)}`);
+    }
+    await capture(page, 'role-stretch', 'Role stretch', 'Asked to quote userRole/adminRole/SCHOOL_ADMIN — facing must refuse the jargon.');
 
     // 1. Compound morning briefing — stats + this week + named holiday
     const briefing = await askLois(
