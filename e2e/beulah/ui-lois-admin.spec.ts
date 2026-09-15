@@ -132,12 +132,15 @@ async function scoreReply(
   }
 }
 
-test.describe.configure({ mode: 'serial', timeout: 45 * 60 * 1000 });
+test.describe.configure({ mode: 'serial', timeout: 55 * 60 * 1000 });
 
 test.describe('Lois school admin — Beulah High School', () => {
   test.afterEach(async ({}, testInfo) => {
     fs.mkdirSync(CONTENT_DIR, { recursive: true });
-    const dest = path.join(CONTENT_DIR, 'lois-school-admin.webm');
+    const destName = /further stretch/i.test(testInfo.title)
+      ? 'lois-school-admin-further.webm'
+      : 'lois-school-admin.webm';
+    const dest = path.join(CONTENT_DIR, destName);
     const attached = testInfo.attachments.find((a) => a.contentType === 'video/webm' && a.path);
     const resultsDir = path.resolve(__dirname, '../../test-results');
     let src = attached?.path;
@@ -157,7 +160,7 @@ test.describe('Lois school admin — Beulah High School', () => {
           file: 'lois-school-admin.webm',
           title: 'Lois school-admin stretch',
           caption:
-            'Compound briefing, follow-ups, fees, admissions, academic, refused writes, dual timetable preview.',
+            'Compound briefing, follow-ups, fees, admissions, academic, refused writes, dual timetable preview, Thursday read, guardians, insights.',
         });
       }
       console.log(`[content] copied video → ${dest}`);
@@ -174,9 +177,11 @@ test.describe('Lois school admin — Beulah High School', () => {
     await page.goto('/dashboard/school');
     await expect(page).toHaveURL(/\/dashboard\/school/);
     await expect(page.getByText(/access denied/i)).toHaveCount(0);
-    await expect(page.getByText(/beulah/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/verifying permissions/i)).toHaveCount(0, { timeout: 90_000 });
+    await expect(page.getByText(/beulah/i).first()).toBeVisible({ timeout: 90_000 });
     await expect(page.getByRole('button', { name: /ask lois/i })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/loading dashboard data/i)).toHaveCount(0, { timeout: 90_000 });
+    await page.getByText(/^compiling/i).waitFor({ state: 'hidden', timeout: 60_000 }).catch(() => undefined);
     note('pass', 'Session', 'Logged in as Beulah school admin');
 
     await openLois(page);
@@ -184,7 +189,7 @@ test.describe('Lois school admin — Beulah High School', () => {
     await capture(page, 'lois-open', 'Ask Lois', 'School admin opens Lois from the Beulah dashboard.');
 
     // 0. Facing agent — ordinary language, even when asked for system labels
-    const owner = await askLois(page, 'Who is the school owner?');
+    const owner = await askLois(page, 'Who is the school owner?', 150_000);
     await scoreReply('T0 owner', owner, { mustNotId: true, must: [/arinze|obasi|you are|school owner/i] });
     cover('T0 owner', owner, [
       { label: 'names the owner without enums', re: /arinze|obasi|school owner/i },
@@ -399,11 +404,15 @@ test.describe('Lois school admin — Beulah High School', () => {
     );
 
     if (preview && !APPLY) {
-      const cancelled = await cancelLoisPreviews(page);
-      if (cancelled > 0) {
-        note('pass', 'T9 cancel', `Cancelled ${cancelled} timetable preview(s) (did not apply)`);
-      } else {
-        note('info', 'T9 cancel', 'No Cancel button — left preview unapplied');
+      try {
+        const cancelled = await cancelLoisPreviews(page);
+        if (cancelled > 0) {
+          note('pass', 'T9 cancel', `Cancelled ${cancelled} timetable preview(s) (did not apply)`);
+        } else {
+          note('info', 'T9 cancel', 'No Cancel button — left preview unapplied');
+        }
+      } catch {
+        note('info', 'T9 cancel', 'Cancel click timed out — left preview unapplied');
       }
       await capture(page, 'timetable-cancelled', 'Previews cancelled', 'Admin cancelled the timetable cards.');
     }
@@ -423,6 +432,187 @@ test.describe('Lois school admin — Beulah High School', () => {
       note('major', 'T10 quiz', `Broke Lois identity: ${excerpt(quiz)}`);
     }
     await capture(page, 'jss1-maths-quiz', 'JSS 1 Maths quiz', 'Pedagogy desk after a long operations thread.');
+
+    // 11. Thursday read — must finish (stream done) and not generate
+    const thursday = await askLois(
+      page,
+      'What does JSS 1 A already have on Thursday? Do not generate a new timetable — just read what is saved.',
+      180_000,
+    );
+    await scoreReply('T11 Thursday read', thursday, { mustNotId: true });
+    if (/i('ll| will) (check|find out|look)/i.test(thursday) && thursday.length < 280) {
+      note('major', 'T11 Thursday read', `Stopped at I'll check: ${excerpt(thursday)}`);
+    } else if (/thursday|period|assembly|no (saved )?period|no timetable|english|mathematics|geography/i.test(thursday)) {
+      note('pass', 'T11 Thursday read', excerpt(thursday));
+    } else {
+      note('major', 'T11 Thursday read', `Did not read Thursday: ${excerpt(thursday)}`);
+    }
+    if (await hasTimetablePreview(page)) {
+      note('major', 'T11 Thursday read', 'Showed an Apply/preview card on a read-only ask');
+    }
+    await capture(page, 'thursday-read', 'JSS 1 A Thursday', 'Read the saved Thursday timetable without generating.');
+
+    // 12. Named guardian — must not hide behind "details unavailable"
+    const father = await askLois(
+      page,
+      "What is Chioma Nnamani's father's name, and do we have a phone number for him?",
+      150_000,
+    );
+    await scoreReply('T12 Chioma father', father, { mustNotId: true, must: [/obinna|nnamani|father|guardian/i] });
+    cover('T12 Chioma father', father, [
+      { label: 'Obinna', re: /obinna/i },
+    ]);
+    await capture(page, 'chioma-father', "Chioma's father", 'Guardian lookup by name after a long thread.');
+
+    // 13. Filed insights after desks have hopped
+    const noticed = await askLois(
+      page,
+      'What have you already noticed about this school? Quote anything you filed — do not send me to the dashboard.',
+      150_000,
+    );
+    await scoreReply('T13 insights', noticed, { mustNotId: true });
+    if (/agricultural|week 1|not delivered|meaning of agriculture|scheme of work/i.test(noticed)) {
+      note('pass', 'T13 insights', excerpt(noticed));
+    } else {
+      note('major', 'T13 insights', `Did not quote the filed briefing: ${excerpt(noticed)}`);
+    }
+    await capture(page, 'insights-filed', 'Filed insights', 'What Lois already noticed after operations and pedagogy.');
+
+    // 14. Triple desk in one breath
+    const triple = await askLois(
+      page,
+      "In one reply: what does attendance look like in JSS 1 A over the last two weeks, who is in Adaeze Okeke's class, and does anyone owe school fees?",
+      180_000,
+    );
+    await scoreReply('T14 triple desk', triple, { mustNotId: true });
+    cover('T14 triple desk', triple, [
+      { label: 'attendance', re: /attendance|present|absent|no records|not fully in use|no marks/i },
+      { label: "Adaeze's students", re: /chiamaka|ibrahim|okafor|musa|primary\s*1/i },
+      { label: 'fees', re: /fee|owing|outstanding|no unpaid|bursary|not fully built/i },
+    ]);
+    await capture(page, 'triple-desk', 'Triple desk', 'Attendance, Adaeze roster, and fees in one ask.');
+
+    const payment = await askLois(
+      page,
+      "Take Chioma Nnamani's school fees for me — record the payment now.",
+      90_000,
+    );
+    await scoreReply('T15 payment capability', payment, { mustNotId: true });
+    if (
+      refusedCapability(payment) &&
+      /bursary|not fully built|can't record|cannot record|can't take|cannot take/i.test(payment)
+    ) {
+      note('pass', 'T15 payment capability', excerpt(payment));
+    } else {
+      note('major', 'T15 payment capability', `Did not refuse bursary write: ${excerpt(payment)}`);
+    }
+    const lookedUp = (await page.getByText(/fee debtors|student list/i).count().catch(() => 0)) > 0;
+    if (lookedUp) {
+      note('major', 'T15 payment capability', 'Looked up students or debtors before refusing a payment take');
+    } else {
+      note('pass', 'T15 payment capability', 'No student/debtor tool card before refuse');
+    }
+
+    writeReport();
+    const blockers = findings.filter((f) => f.severity === 'blocker');
+    expect(blockers, blockers.map((b) => b.note).join('; ')).toHaveLength(0);
+  });
+
+  test('further stretch: quiz Thursday father insights triple', async ({ page }) => {
+    await page.goto('/dashboard/school');
+    await expect(page).toHaveURL(/\/dashboard\/school/);
+    await expect(page.getByText(/verifying permissions/i)).toHaveCount(0, { timeout: 90_000 });
+    await expect(page.getByText(/beulah/i).first()).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByRole('button', { name: /ask lois/i })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/loading dashboard data/i)).toHaveCount(0, { timeout: 90_000 });
+    note('pass', 'Session (further)', 'Logged in as Beulah school admin');
+
+    await openLois(page);
+    await capture(page, 'further-open', 'Ask Lois', 'Further stretch conversation.');
+
+    const quiz = await askLois(
+      page,
+      'Make a short 5-question multiple-choice quiz for JSS 1 Mathematics on whole numbers. Keep it for Beulah, not a generic worksheet dump.',
+      150_000,
+    );
+    await scoreReply('T10 quiz', quiz, { mustNotId: true });
+    cover('T10 quiz', quiz, [
+      { label: 'quiz/questions', re: /question|quiz|option|multiple[- ]choice|answer/i },
+      { label: 'maths / whole numbers', re: /math|whole number|numeration|place value|addition|number/i },
+    ]);
+    await capture(page, 'jss1-maths-quiz', 'JSS 1 Maths quiz', 'Pedagogy desk.');
+
+    const thursday = await askLois(
+      page,
+      'What does JSS 1 A already have on Thursday? Do not generate a new timetable — just read what is saved.',
+      180_000,
+    );
+    await scoreReply('T11 Thursday read', thursday, { mustNotId: true });
+    if (/thursday|period|assembly|no (saved )?period|no timetable|english|mathematics|geography/i.test(thursday)) {
+      note('pass', 'T11 Thursday read', excerpt(thursday));
+    } else {
+      note('major', 'T11 Thursday read', `Did not read Thursday: ${excerpt(thursday)}`);
+    }
+    if (await hasTimetablePreview(page)) {
+      note('major', 'T11 Thursday read', 'Showed an Apply/preview card on a read-only ask');
+    }
+    await capture(page, 'thursday-read', 'JSS 1 A Thursday', 'Read saved Thursday timetable without generating.');
+
+    const father = await askLois(
+      page,
+      "What is Chioma Nnamani's father's name, and do we have a phone number for him?",
+      150_000,
+    );
+    await scoreReply('T12 Chioma father', father, { mustNotId: true });
+    cover('T12 Chioma father', father, [{ label: 'Obinna', re: /obinna/i }]);
+    await capture(page, 'chioma-father', "Chioma's father", 'Guardian lookup by name.');
+
+    const noticed = await askLois(
+      page,
+      'What have you already noticed about this school? Quote anything you filed — do not send me to the dashboard.',
+      150_000,
+    );
+    await scoreReply('T13 insights', noticed, { mustNotId: true });
+    if (/agricultural|week 1|not delivered|meaning of agriculture|scheme of work/i.test(noticed)) {
+      note('pass', 'T13 insights', excerpt(noticed));
+    } else {
+      note('major', 'T13 insights', `Did not quote the filed briefing: ${excerpt(noticed)}`);
+    }
+    await capture(page, 'insights-filed', 'Filed insights', 'What Lois already noticed.');
+
+    const triple = await askLois(
+      page,
+      "In one reply: what does attendance look like in JSS 1 A over the last two weeks, who is in Adaeze Okeke's class, and does anyone owe school fees?",
+      180_000,
+    );
+    await scoreReply('T14 triple desk', triple, { mustNotId: true });
+    cover('T14 triple desk', triple, [
+      { label: 'attendance', re: /attendance|present|absent|no records|not fully in use|no marks/i },
+      { label: "Adaeze's students", re: /chiamaka|ibrahim|okafor|musa|primary\s*1/i },
+      { label: 'fees', re: /fee|owing|outstanding|no unpaid|bursary|not fully built/i },
+    ]);
+    await capture(page, 'triple-desk', 'Triple desk', 'Attendance, Adaeze roster, and fees in one ask.');
+
+    const payment = await askLois(
+      page,
+      "Take Chioma Nnamani's school fees for me — record the payment now.",
+      90_000,
+    );
+    await scoreReply('T15 payment capability', payment, { mustNotId: true });
+    if (
+      refusedCapability(payment) &&
+      /bursary|not fully built|can't record|cannot record|can't take|cannot take/i.test(payment)
+    ) {
+      note('pass', 'T15 payment capability', excerpt(payment));
+    } else {
+      note('major', 'T15 payment capability', `Did not refuse bursary write: ${excerpt(payment)}`);
+    }
+    const lookedUp = (await page.getByText(/fee debtors|student list/i).count().catch(() => 0)) > 0;
+    if (lookedUp) {
+      note('major', 'T15 payment capability', 'Looked up students or debtors before refusing a payment take');
+    } else {
+      note('pass', 'T15 payment capability', 'No student/debtor tool card before refuse');
+    }
 
     writeReport();
     const blockers = findings.filter((f) => f.severity === 'blocker');

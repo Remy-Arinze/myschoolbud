@@ -5,23 +5,37 @@ export function loisPanel(page: Page) {
 }
 
 export async function openLois(page: Page) {
+  await expect(page.getByText(/^compiling/i)).toHaveCount(0, { timeout: 180_000 });
+  await expect(page.getByText(/loading your dashboard/i)).toHaveCount(0, { timeout: 90_000 });
   const composer = page.getByPlaceholder(/ask lois anything|ask a follow-up/i);
-  if (await composer.isVisible().catch(() => false)) {
-    return loisPanel(page);
+  if (!(await composer.isVisible().catch(() => false))) {
+    const cta = page.getByRole('button', { name: /ask lois|lois briefing/i }).first();
+    await expect(cta).toBeVisible({ timeout: 60_000 });
+    await cta.click();
+    if (!(await composer.isVisible().catch(() => false))) {
+      await page.waitForTimeout(800);
+      await cta.click({ force: true }).catch(() => undefined);
+    }
+  }
+  await expect(composer).toBeVisible({ timeout: 40_000 });
+
+  // Unread insights open a briefing, not a blank thread. Start a new chat for stretch QA.
+  const followUp = page.getByPlaceholder(/ask a follow-up/i);
+  if (await followUp.isVisible().catch(() => false)) {
+    const newChat = loisPanel(page).getByRole('button', { name: /new chat/i }).first();
+    await expect(newChat).toBeVisible({ timeout: 10_000 });
+    await newChat.click();
+    await expect(page.getByPlaceholder(/ask lois anything/i)).toBeVisible({ timeout: 15_000 });
   }
 
-  const cta = page.getByRole('button', { name: /ask lois|lois briefing/i }).first();
-  await expect(cta).toBeVisible({ timeout: 30_000 });
-  await cta.click();
-  await expect(composer).toBeVisible({ timeout: 20_000 });
   // Let greeting / screen-focus effects settle so they do not wipe the first turn.
-  await expect(loisPanel(page).getByText(/how can i help/i).first()).toBeVisible({ timeout: 10_000 });
+  await expect(loisPanel(page).getByText(/how can i help/i).first()).toBeVisible({ timeout: 15_000 });
   await page.waitForTimeout(2500);
   return loisPanel(page);
 }
 
 function isLoisChrome(text: string): boolean {
-  return /try asking/i.test(text) && /how can i help/i.test(text);
+  return /how can i help/i.test(text) && /lois can make mistakes/i.test(text);
 }
 
 export async function waitForLoisIdle(page: Page, timeoutMs = 120_000) {
@@ -46,6 +60,12 @@ export async function waitForLoisIdle(page: Page, timeoutMs = 120_000) {
 
 export async function lastAssistantText(page: Page): Promise<string> {
   const panel = loisPanel(page);
+  // Assistant turns render through LoisMarkdown (`.lois-md`); user turns still use pre-wrap.
+  const markdown = panel.locator('.lois-md');
+  const mdCount = await markdown.count();
+  if (mdCount > 0) {
+    return ((await markdown.nth(mdCount - 1).innerText()) || '').trim();
+  }
   const bubbles = panel.locator('.flex-row:not(.flex-row-reverse) .whitespace-pre-wrap');
   const count = await bubbles.count();
   if (count === 0) {
@@ -56,22 +76,22 @@ export async function lastAssistantText(page: Page): Promise<string> {
 }
 
 export async function askLois(page: Page, prompt: string, timeoutMs = 120_000): Promise<string> {
-  const input = page.getByPlaceholder(/ask lois anything|ask a follow-up/i);
+  const panel = loisPanel(page);
+  const input = panel.getByPlaceholder(/ask lois anything|ask a follow-up/i);
   await expect(input).toBeVisible({ timeout: 15_000 });
   await expect(input).toBeEnabled();
-  await input.click();
+  await input.click({ force: true });
   await input.fill(prompt);
   await expect(input).toHaveValue(prompt);
 
-  const send = page.getByRole('button', { name: /^send$/i });
+  const send = panel.getByRole('button', { name: /^send$/i });
   await expect(send).toBeEnabled();
-  await send.click();
+  await send.click({ force: true });
 
-  const panel = loisPanel(page);
   // Composer still holds the text until React clears it — require the user bubble.
   const userBubble = panel.locator('.flex-row-reverse .whitespace-pre-wrap').filter({ hasText: prompt });
   await expect(userBubble.first()).toBeVisible({ timeout: 20_000 });
-  await expect(panel.getByText(/try asking/i)).toHaveCount(0, { timeout: 15_000 });
+  await expect(panel.getByText(/how can i help,/i)).toHaveCount(0, { timeout: 15_000 });
 
   await waitForLoisIdle(page, timeoutMs);
 
@@ -80,7 +100,7 @@ export async function askLois(page: Page, prompt: string, timeoutMs = 120_000): 
       timeout: Math.max(30_000, Math.min(timeoutMs, 60_000)),
       intervals: [500, 1000],
     })
-    .not.toMatch(/^\s*$|try asking/i);
+    .not.toMatch(/^\s*$|how can i help,/i);
 
   return lastAssistantText(page);
 }
@@ -105,7 +125,11 @@ export async function cancelLoisPreviews(page: Page): Promise<number> {
     for (let j = 0; j < n; j += 1) {
       const btn = buttons.nth(j);
       if ((await btn.isVisible().catch(() => false)) && (await btn.isEnabled().catch(() => false))) {
-        await btn.click();
+        try {
+          await btn.click({ timeout: 8_000 });
+        } catch {
+          continue;
+        }
         cancelled += 1;
         clicked = true;
         await page.waitForTimeout(500);
@@ -165,4 +189,39 @@ export function dashboardBrushOff(text: string): boolean {
   return /don'?t have (?:access|the information)|do not have access|cannot provide (?:that|this) directly|i currently don'?t have access|check the (?:fees|admissions|academic|curriculum|dashboard)/i.test(
     text,
   );
+}
+
+const TOOL_NOUN_HINTS = [
+  'Fees',
+  'Students',
+  'Staff',
+  'Applications',
+  'Attendance',
+  'Academic risk',
+  'Class performance',
+  'Scheme of work',
+  'Insights',
+  'Timetable preview',
+  'Timetable',
+  'Quiz',
+  'Lesson plan',
+  'Knowledge',
+  'Guardians',
+  'Calendar',
+  'School snapshot',
+  'Who teaches',
+  'Parent draft',
+  'Now in class',
+];
+
+export async function loisPanelText(page: Page): Promise<string> {
+  return ((await loisPanel(page).innerText().catch(() => '')) || '').trim();
+}
+
+/** Tool-card nouns that appeared in the panel after a turn. */
+export function toolCardHintsGained(before: string, after: string): string[] {
+  return TOOL_NOUN_HINTS.filter((noun) => {
+    const re = new RegExp(noun.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    return re.test(after) && (!re.test(before) || after.split(noun).length > before.split(noun).length);
+  });
 }

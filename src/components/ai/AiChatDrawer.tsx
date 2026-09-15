@@ -34,7 +34,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
     ? 'w-full lg:w-[400px]'
     : isMaximized
       ? 'w-screen'
-      : 'w-full lg:w-[550px]';
+      : 'w-full lg:w-[min(36rem,calc(100vw-2rem))]';
 
   useEffect(() => {
     if (!isOpen || isMaximized) return;
@@ -61,15 +61,22 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
       <div
         ref={panelRef}
         className={cn(
-          'lois-panel lois-shell fixed z-[100] transition-all duration-300 flex flex-col overflow-hidden',
+          'lois-panel lois-shell fixed z-[100] flex flex-col overflow-hidden',
           isMaximized
-            ? 'lois-shell--max inset-0 h-screen rounded-none shadow-none'
-            : cn(
-                'right-0 bottom-0 h-[70vh] rounded-t-2xl',
-                'lg:right-4 lg:bottom-4 lg:rounded-2xl',
-                'shadow-[0_18px_50px_-20px_rgba(2,23,61,0.35)]',
-              ),
-          isOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none',
+            ? 'lois-shell--max inset-0 h-screen rounded-none shadow-none transition-all duration-300'
+            : docked
+              ? cn(
+                  'right-0 bottom-0 h-[70vh] rounded-t-2xl transition-all duration-300',
+                  'lg:right-4 lg:bottom-4 lg:rounded-2xl',
+                  'shadow-[0_18px_50px_-20px_rgba(2,23,61,0.35)]',
+                  isOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none',
+                )
+              : cn(
+                  'lois-shell-float inset-x-0 bottom-0 h-[78dvh] w-full rounded-t-3xl',
+                  'shadow-[0_24px_70px_-24px_rgba(2,23,61,0.4)]',
+                  !isOpen && 'lois-shell-float--closed',
+                ),
+          isMaximized && (isOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none'),
           widthClass,
           theme === 'dark' ? 'dark' : '',
         )}

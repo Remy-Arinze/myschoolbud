@@ -60,6 +60,7 @@ import {
 } from './lois-tool-card-utils';
 import { LoisOrb } from './LoisOrb';
 import { LoisBriefingPanel } from './LoisBriefingPanel';
+import { LoisMarkdown } from './LoisMarkdown';
 import Link from 'next/link';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -354,23 +355,15 @@ function loisPromptCards(params: {
 
 function LoisPromptSuggestions({
   cards,
-  isMinimal,
   typeScale,
   onSelect,
 }: {
   cards: PromptCard[];
-  isMinimal: boolean;
-  typeScale: { body: string; tiny: string };
+  typeScale: { body: string };
   onSelect: (prompt: string) => void;
 }) {
   return (
-    <div
-      className={cn(
-        isMinimal
-          ? 'flex flex-wrap gap-1.5'
-          : 'grid grid-cols-1 sm:grid-cols-3 gap-2 w-full',
-      )}
-    >
+    <div className="flex flex-wrap justify-center gap-1.5">
       {cards.map((card, i) => (
         <motion.button
           key={card.title}
@@ -380,38 +373,18 @@ function LoisPromptSuggestions({
           transition={{ duration: 0.28, delay: 0.05 * i, ease: 'easeOut' }}
           onClick={() => onSelect(card.prompt)}
           title={card.description}
-          className={cn(
-            'lois-prompt-chip group text-left',
-            isMinimal
-              ? 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 max-w-full'
-              : 'flex flex-col items-start gap-2.5 rounded-2xl p-3.5 h-full',
-          )}
+          className="lois-prompt-chip group inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1.5 text-left"
         >
-          <span
-            className={cn(
-              'inline-flex items-center justify-center shrink-0 text-[var(--agora-blue)] bg-[var(--agora-blue)]/10',
-              isMinimal ? 'h-5 w-5 rounded-full' : 'h-8 w-8 rounded-xl',
-            )}
-          >
+          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[var(--agora-blue)] bg-[var(--agora-blue)]/10">
             {React.cloneElement(card.icon as React.ReactElement<{ className?: string }>, {
-              className: isMinimal ? 'h-3 w-3' : 'h-4 w-4',
+              className: 'h-3 w-3',
             })}
           </span>
-          <span className="min-w-0">
-            <span
-              className="block font-semibold text-light-text-primary dark:text-dark-text-primary leading-tight transition-colors group-hover:text-[var(--agora-blue)]"
-              style={{ fontSize: typeScale.body }}
-            >
-              {card.title}
-            </span>
-            {!isMinimal && (
-              <span
-                className="block mt-1 text-light-text-secondary dark:text-dark-text-secondary leading-snug"
-                style={{ fontSize: typeScale.tiny }}
-              >
-                {card.description}
-              </span>
-            )}
+          <span
+            className="min-w-0 font-semibold text-light-text-primary dark:text-dark-text-primary leading-tight transition-colors group-hover:text-[var(--agora-blue)]"
+            style={{ fontSize: typeScale.body }}
+          >
+            {card.title}
           </span>
         </motion.button>
       ))}
@@ -1460,17 +1433,72 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   const isMinimal = variant === 'minimal';
   const typeScale = {
     title: isMinimal ? 'var(--lois-title)' : 'var(--text-section-title)',
-    greeting: isMinimal ? 'var(--lois-greeting)' : '1.15rem',
+    greeting: isMinimal ? 'var(--lois-greeting)' : '1.5rem',
     body: isMinimal ? 'var(--lois-body)' : 'var(--text-body)',
     small: isMinimal ? 'var(--lois-small)' : 'var(--text-small)',
     tiny: isMinimal ? 'var(--lois-tiny)' : 'var(--text-tiny)',
   };
+  const briefingOpen = isMinimal && Boolean(workspace?.briefingOpen);
+  const showEmpty = messages.length <= 1 && !briefingOpen && !isHistoryLoading;
+  const showThread = messages.length > 1 && !isHistoryLoading;
+  const columnClass = isMinimal ? 'w-full' : 'lois-chat-column';
+
+  const composerField = (
+    <div className="lois-composer">
+      <div
+        className={cn(
+          'flex items-center gap-2 bg-[var(--input-field-bg)]',
+          isMinimal ? 'rounded-[0.95rem] px-2.5 py-2' : 'rounded-[1.35rem] px-3.5 py-2.5',
+        )}
+      >
+        <input
+          ref={inputRef}
+          placeholder={workspace?.briefingOpen ? 'Ask a follow-up…' : 'Ask Lois anything…'}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSendMessage();
+            }
+          }}
+          disabled={isStreaming}
+          className="flex-1 min-w-0 disabled:cursor-not-allowed"
+        />
+        <button
+          type="button"
+          onClick={() => (isStreaming ? handleStopStreaming() : handleSendMessage())}
+          disabled={!isStreaming && !inputValue.trim()}
+          className={cn(
+            'relative shrink-0 overflow-hidden rounded-lg text-white disabled:opacity-35 transition-transform active:scale-95',
+            isMinimal ? 'h-7 w-7' : 'h-8 w-8 rounded-xl',
+          )}
+          aria-label={isStreaming ? 'Stop' : 'Send'}
+        >
+          <span className="absolute inset-0 bg-[#0A0A0B]" />
+          <span className="absolute inset-0 bg-gradient-to-br from-[#7D52FF]/50 via-[var(--agora-blue)]/30 to-[#00D1FF]/40" />
+          <span className="relative flex items-center justify-center">
+            {isStreaming ? <StopCircle className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+
+  const disclaimer = (
+    <p
+      className="mt-1.5 text-center text-light-text-muted dark:text-dark-text-muted"
+      style={{ fontSize: typeScale.tiny }}
+    >
+      Lois can make mistakes — double-check important details.
+    </p>
+  );
 
   return (
     <LoisPlanApplySession conversationId={currentConversationId}>
     <div
       className={cn(
-        'lois-panel flex flex-col h-full w-full max-w-7xl mx-auto bg-transparent overflow-hidden relative',
+        'lois-panel flex flex-col h-full w-full bg-transparent overflow-hidden relative',
       )}
       style={{ fontFamily: 'var(--font-sans)' }}
     >
@@ -1479,7 +1507,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
           'relative z-10 shrink-0 flex items-center justify-between gap-2',
           isMinimal
             ? 'px-3 py-2.5 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]'
-            : 'px-4 md:px-8 py-4 md:py-6 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]',
+            : 'px-4 py-3 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]',
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
@@ -1551,23 +1579,17 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                 onOpenList={() => workspace.hide()}
               />
             ) : null}
-            {messages.length <= 1 && !(isMinimal && workspace?.briefingOpen) ? (
-          <div className={cn(
-            'flex-1 flex flex-col min-h-0',
-            isMinimal ? 'px-3 py-5' : 'max-w-3xl mx-auto w-full px-4 py-6 md:px-5 md:py-8',
-          )}>
-            <div className="flex-1 min-h-4" />
-
-            <div className={cn('flex flex-col gap-3', isMinimal ? 'items-stretch text-left' : 'items-center text-center')}>
+            {showEmpty ? (
+          <div
+            className={cn(
+              'flex-1 flex flex-col justify-center min-h-0',
+              isMinimal ? 'px-3 py-5' : 'px-4 py-8',
+            )}
+          >
+            <div className={cn(columnClass, 'flex flex-col items-center gap-5 text-center')}>
               <div>
-                <span
-                  className="uppercase tracking-[0.18em] text-light-text-muted dark:text-dark-text-muted font-medium"
-                  style={{ fontSize: typeScale.tiny }}
-                >
-                  Try asking
-                </span>
                 <h3
-                  className="mt-2 font-semibold text-light-text-primary dark:text-dark-text-primary tracking-tight leading-snug"
+                  className="font-semibold text-light-text-primary dark:text-dark-text-primary tracking-tight leading-snug"
                   style={{ fontFamily: 'var(--font-heading)', fontSize: typeScale.greeting }}
                 >
                   How can I help, {firstName}?
@@ -1582,16 +1604,21 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                 </p>
               </div>
 
+              <div className="w-full">
+                {composerField}
+              </div>
+
               <LoisPromptSuggestions
                 cards={loisPromptCards({ isSchoolAdmin, structuredFocus, pathHint })}
-                isMinimal={isMinimal}
                 typeScale={typeScale}
                 onSelect={handleSendMessage}
               />
+
+              {disclaimer}
             </div>
           </div>
-        ) : messages.length > 1 ? (
-          <div className={cn('space-y-4', isMinimal ? 'px-3 py-4' : 'px-4 md:px-5 py-4 md:py-6')}>
+        ) : showThread ? (
+          <div className={cn('space-y-4', columnClass, isMinimal ? 'px-3 py-4' : 'px-4 py-5')}>
             {messages.map((msg, idx) => (
               idx === 0 ? null : (
                 <FadeInUp key={idx} duration={0.25} delay={0}>
@@ -1651,9 +1678,13 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                           )}
                           style={{ fontSize: typeScale.body }}
                         >
-                          <div className="whitespace-pre-wrap">
+                          <div className={msg.role === 'user' ? 'whitespace-pre-wrap' : undefined}>
                             <div className="flex flex-col gap-1.5">
-                              {msg.content}
+                              {msg.role === 'assistant' ? (
+                                <LoisMarkdown text={msg.content} />
+                              ) : (
+                                msg.content
+                              )}
                               {msg.isStreaming && (
                                 <div className="mt-0.5">
                                   <ThreeDotTyping />
@@ -1715,47 +1746,14 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
         )}
       </div>
 
-      <div className={cn('z-20 shrink-0', isMinimal ? 'px-3 pb-3 pt-1' : 'p-2 md:p-12 pb-6 md:pb-12')}>
-        <div className="max-w-4xl mx-auto">
-          <div className="lois-composer">
-            <div className="flex items-center gap-2 rounded-[0.95rem] bg-[var(--input-field-bg)] px-2.5 py-2">
-              <input
-                ref={inputRef}
-                placeholder={workspace?.briefingOpen ? 'Ask a follow-up…' : 'Ask Lois anything…'}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                disabled={isStreaming}
-                className="flex-1 min-w-0 disabled:cursor-not-allowed"
-              />
-              <button
-                type="button"
-                onClick={() => (isStreaming ? handleStopStreaming() : handleSendMessage())}
-                disabled={!isStreaming && !inputValue.trim()}
-                className="relative h-7 w-7 shrink-0 rounded-lg overflow-hidden text-white disabled:opacity-35 transition-transform active:scale-95"
-                aria-label={isStreaming ? 'Stop' : 'Send'}
-              >
-                <span className="absolute inset-0 bg-[#0A0A0B]" />
-                <span className="absolute inset-0 bg-gradient-to-br from-[#7D52FF]/50 via-[var(--agora-blue)]/30 to-[#00D1FF]/40" />
-                <span className="relative flex items-center justify-center">
-                  {isStreaming ? <StopCircle className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />}
-                </span>
-              </button>
-            </div>
+      {!showEmpty && (
+        <div className={cn('z-20 shrink-0', isMinimal ? 'px-3 pb-3 pt-1' : 'px-4 pb-5 pt-2')}>
+          <div className={columnClass}>
+            {composerField}
+            {disclaimer}
           </div>
-          <p
-            className="mt-1.5 text-center text-light-text-muted dark:text-dark-text-muted"
-            style={{ fontSize: typeScale.tiny }}
-          >
-            Lois can be wrong — double-check important details.
-          </p>
         </div>
-      </div>
+      )}
 
 
       <LoisChatHistory

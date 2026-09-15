@@ -1053,6 +1053,147 @@
   --lois-tiny: 0.625rem;
 }
 
+.lois-chat-column {
+  width: 100%;
+  max-width: 38rem;
+  margin-inline: auto;
+}
+
+.lois-stage {
+  border-radius: 1.5rem;
+  min-height: min(42rem, calc(100vh - 9.5rem));
+  box-shadow: 0 24px 70px -28px rgba(2, 23, 61, 0.28);
+}
+
+.dark .lois-stage {
+  box-shadow: 0 24px 70px -28px rgba(0, 0, 0, 0.55);
+}
+
+.lois-md {
+  line-height: 1.55;
+}
+
+.lois-md > *:first-child {
+  margin-top: 0;
+}
+
+.lois-md > *:last-child {
+  margin-bottom: 0;
+}
+
+.lois-md p {
+  margin: 0.4em 0;
+}
+
+.lois-md h1,
+.lois-md h2,
+.lois-md h3,
+.lois-md h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin: 0.75em 0 0.35em;
+}
+
+.lois-md h1 { font-size: 1.05em; }
+.lois-md h2 { font-size: 1em; }
+.lois-md h3 { font-size: 0.98em; }
+.lois-md h4 { font-size: 0.95em; }
+
+.lois-md ul,
+.lois-md ol {
+  margin: 0.35em 0;
+  padding-left: 1.2em;
+}
+
+.lois-md ul { list-style-type: disc; }
+.lois-md ol { list-style-type: decimal; }
+
+.lois-md li {
+  margin: 0.15em 0;
+}
+
+.lois-md li > ul,
+.lois-md li > ol {
+  margin: 0.15em 0;
+}
+
+.lois-md strong {
+  font-weight: 600;
+}
+
+.lois-md a {
+  color: var(--agora-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.lois-md hr {
+  border: 0;
+  border-top: 1px solid var(--light-border);
+  margin: 0.7em 0;
+}
+
+.dark .lois-md hr {
+  border-top-color: var(--dark-border);
+}
+
+.lois-md code {
+  font-size: 0.92em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  background: var(--light-hover);
+}
+
+.dark .lois-md code {
+  background: var(--dark-hover);
+}
+
+.lois-md pre {
+  margin: 0.5em 0;
+  padding: 0.6em 0.75em;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: var(--light-hover);
+  font-size: 0.92em;
+}
+
+.dark .lois-md pre {
+  background: var(--dark-hover);
+}
+
+.lois-md pre code {
+  padding: 0;
+  background: none;
+}
+
+.lois-md table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  margin: 0.5em 0;
+}
+
+.lois-md th,
+.lois-md td {
+  border-bottom: 1px solid var(--light-border);
+  padding: 0.25em 0.4em;
+  text-align: left;
+}
+
+.dark .lois-md th,
+.dark .lois-md td {
+  border-bottom-color: var(--dark-border);
+}
+
+.lois-md blockquote {
+  margin: 0.4em 0;
+  padding-left: 0.75em;
+  border-left: 2px solid var(--agora-blue);
+  opacity: 0.92;
+}
+
 .lois-shell {
   border: 1px solid transparent;
   background-color: transparent;
@@ -1077,6 +1218,29 @@
 
 .dark .lois-shell.lois-shell--max {
   background-color: var(--dark-bg);
+}
+
+.lois-shell-float {
+  transition: transform 300ms ease, opacity 300ms ease;
+}
+
+.lois-shell-float.lois-shell-float--closed {
+  transform: translateY(110%);
+  pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+  .lois-shell-float {
+    inset: auto auto 1.5rem 50%;
+    width: min(36rem, calc(100vw - 2rem));
+    height: min(36rem, 78vh);
+    border-radius: 1.5rem;
+    transform: translateX(-50%);
+  }
+
+  .lois-shell-float.lois-shell-float--closed {
+    transform: translateX(-50%) translateY(120%);
+  }
 }
 
 @keyframes lois-spin {
@@ -1158,7 +1322,8 @@
 
 .lois-composer {
   position: relative;
-  border-radius: 1.05rem;
+  border-radius: 1.5rem;
+  overflow: hidden;
   padding: 1px;
   border: 1px solid transparent;
   background:
@@ -1418,5 +1583,9 @@
   .lois-orb-glow,
   .lois-mesh-blob {
     animation: none;
+  }
+
+  .lois-shell-float {
+    transition: none;
   }
 }
