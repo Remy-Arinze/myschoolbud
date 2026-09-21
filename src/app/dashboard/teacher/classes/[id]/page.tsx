@@ -1717,8 +1717,9 @@ export default function ClassDetailPage() {
         </div>
       )}
 
-      {/* Floating AI CTA */}
-      <FloatingAiCta onClick={() => setShowAiChat(true)} />
+      {!aiChatMounted && (
+        <FloatingAiCta onClick={() => setShowAiChat(true)} />
+      )}
 
       {/* AI Chat Drawer */}
       {schoolId && aiChatMounted && (
@@ -1727,6 +1728,7 @@ export default function ClassDetailPage() {
           schoolId={schoolId}
           isOpen={showAiChat}
           onHide={() => setShowAiChat(false)}
+          onExpand={() => setShowAiChat(true)}
           onClose={() => {
             setShowAiChat(false);
             setAiChatMounted(false);

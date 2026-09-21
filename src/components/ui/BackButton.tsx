@@ -12,6 +12,11 @@ interface BackButtonProps {
   fallbackUrl?: string;
   /** Additional CSS classes */
   className?: string;
+  /**
+   * Return true when the click was handled (for example a wizard step)
+   * so the button does not leave the page.
+   */
+  onClick?: () => boolean | void;
 }
 
 /**
@@ -22,10 +27,13 @@ export function BackButton({
   label,
   fallbackUrl,
   className,
+  onClick,
 }: BackButtonProps) {
   const router = useRouter();
 
   const handleBack = () => {
+    if (onClick?.() === true) return;
+
     // If there is history (length > 1), go back. Otherwise use fallback.
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();

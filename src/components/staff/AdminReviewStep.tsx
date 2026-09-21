@@ -9,6 +9,7 @@ interface AdminReviewStepProps {
   lastName: string;
   email: string;
   phone: string;
+  dateOfBirth?: string;
   roleTitle: string;
   /** The role the access came from, when it still matches it. */
   template: RoleTemplate | null;
@@ -45,6 +46,7 @@ export function AdminReviewStep({
   lastName,
   email,
   phone,
+  dateOfBirth,
   roleTitle,
   template,
   templateCustomised,
@@ -96,6 +98,16 @@ export function AdminReviewStep({
             <Row label="Name" value={fullName} />
             <Row label="Email" value={email} />
             <Row label="Phone" value={phone} />
+            {dateOfBirth && (
+              <Row
+                label="Date of birth"
+                value={new Date(`${dateOfBirth}T00:00:00`).toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              />
+            )}
           </dl>
         </section>
 

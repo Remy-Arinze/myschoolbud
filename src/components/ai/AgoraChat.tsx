@@ -18,6 +18,7 @@ import {
   StopCircle,
   Plus,
   ArrowUp,
+  ChevronUp,
   Clock,
   BarChart3,
   Mail,
@@ -1038,6 +1039,8 @@ interface AgoraChatProps {
   variant?: 'default' | 'minimal';
   /** When false, keep the conversation mounted but do not steal focus. */
   isActive?: boolean;
+  /** Slim header-only chrome while the session is docked. */
+  collapsed?: boolean;
   pageContext?: string | LoisPageContext;
   headerActions?: React.ReactNode;
 }
@@ -1047,6 +1050,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   initialConversationId,
   variant = 'default',
   isActive = true,
+  collapsed = false,
   pageContext,
   headerActions,
 }) => {
@@ -1150,6 +1154,10 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
     if (!isActive || isStreaming || isHistoryOpen) return;
     inputRef.current?.focus();
   }, [isActive, isStreaming, isHistoryOpen, messages.length]);
+
+  useEffect(() => {
+    if (collapsed) setIsHistoryOpen(false);
+  }, [collapsed]);
 
   // ─── SSE Streaming Send ─────────────────────────────────────────────────
 
@@ -1505,13 +1513,15 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       <div
         className={cn(
           'relative z-10 shrink-0 flex items-center justify-between gap-2',
-          isMinimal
-            ? 'px-3 py-2.5 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]'
-            : 'px-4 py-3 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]',
+          collapsed
+            ? 'px-2.5 py-1.5'
+            : isMinimal
+              ? 'px-3 py-2.5 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]'
+              : 'px-4 py-3 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]',
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <LoisOrb size={isMinimal ? 'md' : 'lg'} pulse />
+          <LoisOrb size={collapsed ? 'sm' : isMinimal ? 'md' : 'lg'} pulse />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h2
@@ -1527,38 +1537,48 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                 </span>
               )}
             </div>
+            {!collapsed && (
             <p
               className="mt-1 text-light-text-secondary dark:text-dark-text-secondary truncate leading-none"
               style={{ fontSize: typeScale.tiny }}
             >
               {structuredFocus?.label || (workspace?.briefingOpen ? 'Briefing ready' : 'School assistant')}
             </p>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
-          <button
-            type="button"
-            onClick={handleNewChat}
-            className="lois-icon-btn"
-            title="New chat"
-            aria-label="New chat"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsHistoryOpen(true)}
-            className="lois-icon-btn"
-            title="History"
-            aria-label="Chat history"
-          >
-            <History className="w-3.5 h-3.5" />
-          </button>
+          {collapsed ? (
+            <ChevronUp className="w-4 h-4 text-light-text-muted dark:text-dark-text-muted mr-0.5" />
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleNewChat}
+                className="lois-icon-btn"
+                title="New chat"
+                aria-label="New chat"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsHistoryOpen(true)}
+                className="lois-icon-btn"
+                title="History"
+                aria-label="Chat history"
+              >
+                <History className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
           {headerActions}
         </div>
       </div>
 
+      {!collapsed && (
+      <>
       <div className="flex-1 relative flex flex-col z-10 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-light-border dark:scrollbar-thumb-white/10 scroll-smooth">
         {isHistoryLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-2">
@@ -1754,10 +1774,12 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
           </div>
         </div>
       )}
+      </>
+      )}
 
 
       <LoisChatHistory
-        isOpen={isHistoryOpen}
+        isOpen={!collapsed && isHistoryOpen}
         contained={isMinimal}
         chats={historyData ?? []}
         activeId={currentConversationId}

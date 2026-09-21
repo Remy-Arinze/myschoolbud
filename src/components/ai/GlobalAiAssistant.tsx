@@ -88,7 +88,7 @@ export const GlobalAiAssistant: React.FC = () => {
     if (!dataReady) return null;
     return (
       <>
-        {!panelOpen && (
+        {!panelOpen && !drawerMounted && (
           <FloatingAiCta
             onClick={openPanel}
             onBriefingClick={
@@ -104,6 +104,7 @@ export const GlobalAiAssistant: React.FC = () => {
               schoolId={schoolId}
               isOpen={panelOpen}
               onHide={hidePanel}
+              onExpand={openPanel}
               onClose={closePanel}
               docked={isSchoolAdmin}
               pageContext={workspace?.focus}

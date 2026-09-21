@@ -12,6 +12,8 @@ interface AiChatDrawerProps {
   isOpen: boolean;
   /** Hide the panel but keep the conversation mounted. */
   onHide: () => void;
+  /** Re-open a persisted session from the collapsed dock. */
+  onExpand?: () => void;
   /** Explicit close — caller should drop chat state. */
   onClose: () => void;
   docked?: boolean;
@@ -22,6 +24,7 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
   schoolId,
   isOpen,
   onHide,
+  onExpand,
   onClose,
   docked = false,
   pageContext,
@@ -30,11 +33,17 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
   const { theme } = useTheme();
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const widthClass = docked && !isMaximized
-    ? 'w-full lg:w-[400px]'
-    : isMaximized
-      ? 'w-screen'
-      : 'w-full lg:w-[min(36rem,calc(100vw-2rem))]';
+  const widthClass = !isOpen
+    ? 'w-[min(20rem,calc(100vw-1.5rem))]'
+    : docked && !isMaximized
+      ? 'w-full lg:w-[400px]'
+      : isMaximized
+        ? 'w-full'
+        : 'w-full lg:w-[min(36rem,calc(100vw-2rem))]';
+
+  useEffect(() => {
+    if (!isOpen) setIsMaximized(false);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || isMaximized) return;
@@ -60,27 +69,42 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
 
       <div
         ref={panelRef}
+        tabIndex={!isOpen ? 0 : undefined}
+        aria-label={!isOpen ? 'Continue Lois chat' : undefined}
+        onClick={!isOpen ? onExpand : undefined}
+        onKeyDown={
+          !isOpen
+            ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onExpand?.();
+                }
+              }
+            : undefined
+        }
         className={cn(
-          'lois-panel lois-shell fixed z-[100] flex flex-col overflow-hidden',
-          isMaximized
-            ? 'lois-shell--max inset-0 h-screen rounded-none shadow-none transition-all duration-300'
-            : docked
-              ? cn(
-                  'right-0 bottom-0 h-[70vh] rounded-t-2xl transition-all duration-300',
-                  'lg:right-4 lg:bottom-4 lg:rounded-2xl',
-                  'shadow-[0_18px_50px_-20px_rgba(2,23,61,0.35)]',
-                  isOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none',
-                )
-              : cn(
-                  'lois-shell-float inset-x-0 bottom-0 h-[78dvh] w-full rounded-t-3xl',
-                  'shadow-[0_24px_70px_-24px_rgba(2,23,61,0.4)]',
-                  !isOpen && 'lois-shell-float--closed',
-                ),
-          isMaximized && (isOpen ? 'translate-y-0' : 'translate-y-full pointer-events-none'),
+          'lois-panel lois-shell fixed z-[100] flex flex-col overflow-hidden origin-bottom-right',
+          'transition-[width,height,border-radius,box-shadow,right,bottom,left,transform] duration-300 ease-out',
+          !isOpen
+            ? cn(
+                'right-4 bottom-0 h-12 rounded-t-2xl rounded-b-none cursor-pointer',
+                'shadow-[0_18px_50px_-20px_rgba(2,23,61,0.35)]',
+              )
+            : isMaximized
+              ? 'lois-shell--max right-0 bottom-0 top-auto left-auto h-dvh rounded-none shadow-none'
+              : docked
+                ? cn(
+                    'right-0 bottom-0 h-[70vh] rounded-t-2xl',
+                    'lg:right-4 lg:bottom-4 lg:rounded-2xl',
+                    'shadow-[0_18px_50px_-20px_rgba(2,23,61,0.35)]',
+                  )
+                : cn(
+                    'lois-shell-float inset-x-0 bottom-0 h-[78dvh] w-full rounded-t-3xl',
+                    'shadow-[0_24px_70px_-24px_rgba(2,23,61,0.4)]',
+                  ),
           widthClass,
           theme === 'dark' ? 'dark' : '',
         )}
-        aria-hidden={!isOpen}
       >
         <div
           aria-hidden
@@ -95,21 +119,25 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
           schoolId={schoolId}
           variant="minimal"
           isActive={isOpen}
+          collapsed={!isOpen}
           pageContext={pageContext || undefined}
           headerActions={
             <>
+              {isOpen && (
+                <button
+                  type="button"
+                  onClick={() => setIsMaximized(!isMaximized)}
+                  className="lois-icon-btn hidden lg:inline-flex"
+                  aria-label={isMaximized ? 'Restore panel size' : 'Expand panel'}
+                  title={isMaximized ? 'Restore' : 'Expand'}
+                >
+                  {isMaximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => setIsMaximized(!isMaximized)}
-                className="lois-icon-btn hidden lg:inline-flex"
-                aria-label={isMaximized ? 'Restore panel size' : 'Expand panel'}
-                title={isMaximized ? 'Restore' : 'Expand'}
-              >
-                {isMaximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation();
                   setIsMaximized(false);
                   onClose();
                 }}

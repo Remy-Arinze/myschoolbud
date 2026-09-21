@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Lightbulb } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import {
@@ -72,6 +72,17 @@ export function AdminAccessStep({
   onCopyFromAdmin,
   disabled = false,
 }: AdminAccessStepProps) {
+  const jobTitleRef = useRef<HTMLDivElement>(null);
+  const jobTitleInputRef = useRef<HTMLInputElement>(null);
+
+  const handleStartFromScratch = () => {
+    onStartFromScratch();
+    requestAnimationFrame(() => {
+      jobTitleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      jobTitleInputRef.current?.focus({ preventScroll: true });
+    });
+  };
+
   // A title typed without picking a role: the school clearly means something by
   // it, and we usually have the bundle they are describing.
   const titleSuggestion = useMemo(() => {
@@ -101,7 +112,7 @@ export function AdminAccessStep({
           selectedId={templateId}
           customised={templateCustomised}
           onSelect={onApplyTemplate}
-          onStartFromScratch={onStartFromScratch}
+          onStartFromScratch={handleStartFromScratch}
           onReapply={onReapplyTemplate}
           disabled={disabled}
         />
@@ -114,8 +125,13 @@ export function AdminAccessStep({
           disabled={disabled}
         />
 
-        <div className="space-y-2 border-t border-light-border pt-5 dark:border-dark-border">
+        <div
+          ref={jobTitleRef}
+          id="admin-job-title"
+          className="scroll-mt-24 space-y-2 border-t border-light-border pt-5 dark:border-dark-border"
+        >
           <Input
+            ref={jobTitleInputRef}
             label="Job title *"
             name="roleTitle"
             value={roleTitle}

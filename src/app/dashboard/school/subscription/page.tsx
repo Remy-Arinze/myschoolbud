@@ -4,10 +4,24 @@ import { useSubscription, SubscriptionTier } from '@/hooks/useSubscription';
 import { useToolAccess } from '@/hooks/useToolAccess';
 import { PricingTable } from '@/components/subscriptions/PricingTable';
 import { FadeInUp } from '@/components/ui/FadeInUp';
-import { Sparkles, Zap, ShieldCheck, ChevronDown, Coins } from 'lucide-react';
+import { Zap, ShieldCheck, ChevronDown, Coins } from 'lucide-react';
 
 import { useCurrentAdminPermissions } from '@/hooks/usePermissions';
 import { AiUsageHistory } from '@/components/subscriptions/AiUsageHistory';
+import { LoisOrb } from '@/components/ai/LoisOrb';
+import { cn } from '@/lib/utils';
+
+function formatSeatUse(used: number | undefined, max: number | undefined) {
+  const current = used ?? 0;
+  if (max == null) return current.toLocaleString();
+  if (max === -1) return `${current.toLocaleString()} / Unlimited`;
+  return `${current.toLocaleString()} / ${max.toLocaleString()}`;
+}
+
+function isAtSeatCap(used: number | undefined, max: number | undefined) {
+  if (max == null || max === -1) return false;
+  return (used ?? 0) >= max;
+}
 
 export default function SubscriptionPage() {
   const { isPrincipal, isLoading: isLoadingAuth } = useCurrentAdminPermissions();
@@ -45,35 +59,30 @@ export default function SubscriptionPage() {
 
   const tier = summary?.tier || SubscriptionTier.FREE;
 
-  const tierInfo: Record<string, { name: string; color: string; bgClass: string; icon: any }> = {
+  const tierInfo: Record<string, { name: string; color: string; bgClass: string }> = {
     [SubscriptionTier.FREE]: {
       name: 'Free Plan',
       color: 'text-light-text-primary dark:text-dark-text-primary',
       bgClass: 'bg-gray-50 dark:bg-gray-900/40',
-      icon: ShieldCheck
     },
     [SubscriptionTier.PRO]: {
       name: 'Pro',
       color: 'text-blue-600 dark:text-blue-400',
       bgClass: 'bg-blue-50 dark:bg-blue-900/20',
-      icon: Sparkles
     },
     [SubscriptionTier.PRO_PLUS]: {
       name: 'Pro+',
       color: 'text-amber-600 dark:text-amber-400',
       bgClass: 'bg-amber-50 dark:bg-amber-900/20',
-      icon: ShieldCheck
     },
     [SubscriptionTier.CUSTOM]: {
       name: 'Custom',
       color: 'text-purple-600 dark:text-purple-400',
       bgClass: 'bg-purple-50 dark:bg-purple-900/20',
-      icon: Zap
     },
   };
 
   const currentTierInfo = tierInfo[tier];
-  const Icon = currentTierInfo.icon;
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-12">
@@ -123,8 +132,7 @@ export default function SubscriptionPage() {
                     <p className="uppercase tracking-widest text-light-text-muted dark:text-dark-text-muted mb-1" style={{ fontSize: 'var(--text-small)' }}>
                       Current Plan
                     </p>
-                    <h2 className={`font-black ${currentTierInfo.color} flex items-center gap-2`} style={{ fontSize: 'var(--text-card-title)' }}>
-                      <Icon className="w-5 h-5" />
+                    <h2 className={`font-black ${currentTierInfo.color}`} style={{ fontSize: 'var(--text-card-title)' }}>
                       {currentTierInfo.name}
                     </h2>
                   </div>
@@ -163,20 +171,47 @@ export default function SubscriptionPage() {
                   );
                 })()}
 
-                <div className="space-y-4 pt-4 border-t border-light-border dark:border-dark-border">
+                <div className="space-y-3 pt-4 border-t border-light-border dark:border-dark-border">
+                  <div className="flex justify-between items-center" style={{ fontSize: 'var(--text-body)' }}>
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Student seats</span>
+                    <span className={cn(
+                      'font-bold tabular-nums',
+                      isAtSeatCap(summary?.usage?.students, summary?.limits.maxStudents)
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-light-text-primary dark:text-dark-text-primary',
+                    )}>
+                      {formatSeatUse(summary?.usage?.students, summary?.limits.maxStudents)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center" style={{ fontSize: 'var(--text-body)' }}>
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Teacher seats</span>
+                    <span className={cn(
+                      'font-bold tabular-nums',
+                      isAtSeatCap(summary?.usage?.teachers, summary?.limits.maxTeachers)
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-light-text-primary dark:text-dark-text-primary',
+                    )}>
+                      {formatSeatUse(summary?.usage?.teachers, summary?.limits.maxTeachers)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center" style={{ fontSize: 'var(--text-body)' }}>
+                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Admin seats</span>
+                    <span className={cn(
+                      'font-bold tabular-nums',
+                      isAtSeatCap(summary?.usage?.admins, summary?.limits.maxAdmins)
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-light-text-primary dark:text-dark-text-primary',
+                    )}>
+                      {formatSeatUse(summary?.usage?.admins, summary?.limits.maxAdmins)}
+                    </span>
+                  </div>
                   <div className="flex justify-between items-center" style={{ fontSize: 'var(--text-body)' }}>
                     <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Myschoolbud AI Tokens</span>
-                    <span className="font-bold text-light-text-primary dark:text-dark-text-primary">
+                    <span className="font-bold tabular-nums text-light-text-primary dark:text-dark-text-primary">
                       {aiCredits.remaining === -1 ? 'Unlimited' : `${aiCredits.remaining.toLocaleString()}`}
                       {aiCredits.total > 0 && aiCredits.total !== -1 && (
                         <span className="text-light-text-muted dark:text-dark-text-muted font-medium"> / {aiCredits.total.toLocaleString()}</span>
                       )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center" style={{ fontSize: 'var(--text-body)' }}>
-                    <span className="text-light-text-secondary dark:text-dark-text-secondary font-medium">Admin Seats</span>
-                    <span className="font-bold text-light-text-primary dark:text-dark-text-primary">
-                      {summary?.limits.maxAdmins === -1 ? 'Unlimited' : summary?.limits.maxAdmins}
                     </span>
                   </div>
                 </div>
@@ -196,14 +231,14 @@ export default function SubscriptionPage() {
 
           {/* Sidebar Metrics/Info */}
           <div className="space-y-6">
-            <div className={`relative overflow-hidden group p-8 rounded-3xl border border-light-border dark:border-dark-border shadow-xl ${tier === SubscriptionTier.FREE
+            <div className={`relative overflow-hidden group p-8 rounded-3xl border border-light-border dark:border-dark-border ${tier === SubscriptionTier.FREE
               ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white'
               : 'bg-light-card dark:bg-dark-surface'
               }`}>
               <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-6 opacity-70">
-                  <Sparkles className="w-5 h-5 text-amber-300" />
-                  <span className="font-bold tracking-widest uppercase text-[10px]">AI Utilization</span>
+                <div className="flex items-center gap-2.5 mb-6">
+                  <LoisOrb size="sm" />
+                  <span className="font-bold tracking-widest uppercase text-[10px] opacity-70">AI Utilization</span>
                 </div>
 
                 <h3 className={`text-2xl font-black mb-4 ${tier === SubscriptionTier.FREE ? 'text-white' : 'text-light-text-primary dark:text-dark-text-primary'

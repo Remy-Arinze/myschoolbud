@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
@@ -67,14 +67,37 @@ interface FormErrors {
 }
 
 const ADMIN_STEPS = ['Who', 'Access', 'Review'];
+const ADMIN_STEP_KEYS = ['who', 'access', 'review'] as const;
+
+function parseAdminStep(value: string | null): number {
+  if (!value) return 1;
+  const keyIndex = ADMIN_STEP_KEYS.indexOf(value as (typeof ADMIN_STEP_KEYS)[number]);
+  if (keyIndex >= 0) return keyIndex + 1;
+  const asNumber = Number(value);
+  if (asNumber === 2 || asNumber === 3) return asNumber;
+  return 1;
+}
+
+function hrefForAdminStep(step: number, currentSearch: string, basePath: string): string {
+  const params = new URLSearchParams(currentSearch);
+  if (step <= 1) params.delete('step');
+  else params.set('step', ADMIN_STEP_KEYS[step - 1] ?? 'who');
+  const query = params.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
 
 export default function AddStaffPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { apiCall } = useApi();
   const user = useSelector((state: RootState) => state.auth.user);
   const [isLoading, setIsLoading] = useState(false);
-  const [staffType, setStaffType] = useState<StaffType>('teacher');
-  const [step, setStep] = useState(1);
+  const [staffType, setStaffType] = useState<StaffType>(
+    parseAdminStep(searchParams.get('step')) > 1 ? 'admin' : 'teacher'
+  );
+  const step = staffType === 'admin' ? parseAdminStep(searchParams.get('step')) : 1;
+  const stepNavDepth = useRef(0);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [adminRole, setAdminRole] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -96,6 +119,12 @@ export default function AddStaffPage() {
   // account as well, rather than abandoning the form.
   const [convertTeacherId, setConvertTeacherId] = useState<string | null>(null);
   const [keepAsTeacher, setKeepAsTeacher] = useState(true);
+
+  useEffect(() => {
+    if (parseAdminStep(searchParams.get('step')) > 1) {
+      setStaffType('admin');
+    }
+  }, [searchParams]);
 
   const { addTeacher, isLoading: isAddingTeacher } = useAddTeacher(schoolId);
   const { addAdmin, isLoading: isAddingAdmin } = useAddAdmin(schoolId);
@@ -330,7 +359,7 @@ export default function AddStaffPage() {
     setConvertTeacherId(null);
   };
 
-  /** The four things we genuinely need before anything else can be decided. */
+  /** Name, email, phone, and — for admins — date of birth. */
   const validateIdentity = (): boolean => {
     const next: FormErrors = {};
     if (!formData.firstName.trim()) next.firstName = 'First name is required';
@@ -341,6 +370,9 @@ export default function AddStaffPage() {
       next.email = 'Enter a valid email address';
     }
     if (!formData.phone.trim()) next.phone = 'Phone is required';
+    if (staffType === 'admin' && !formData.dateOfBirth.trim()) {
+      next.dateOfBirth = 'Date of birth is required';
+    }
 
     if (emailMatch?.kind === 'admin') {
       next.email = `${emailMatch.name} is already an administrator here.`;
@@ -413,13 +445,37 @@ export default function AddStaffPage() {
     }
   };
 
-  const goToStep = (next: number) => {
+  const goToStep = useCallback((next: number) => {
     setSubmitError(null);
-    setStep(next);
-    if (typeof window !== 'undefined') {
+    const clamped = Math.min(ADMIN_STEPS.length, Math.max(1, next));
+    if (staffType !== 'admin' || clamped === step) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
-  };
+
+    const href = hrefForAdminStep(clamped, searchParams.toString(), pathname);
+    const delta = clamped - step;
+
+    if (delta > 0) {
+      stepNavDepth.current += delta;
+      router.push(href, { scroll: false });
+    } else {
+      const backBy = -delta;
+      if (stepNavDepth.current >= backBy) {
+        stepNavDepth.current -= backBy;
+        if (backBy === 1) {
+          router.back();
+        } else {
+          window.history.go(-backBy);
+        }
+      } else {
+        stepNavDepth.current = 0;
+        router.replace(href, { scroll: false });
+      }
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [pathname, router, searchParams, staffType, step]);
 
   const handleContinue = () => {
     if (step === 1) {
@@ -616,7 +672,6 @@ export default function AddStaffPage() {
         error?.data?.message ||
         'Failed to add staff member. Please try again.';
       setSubmitError(errorMessage);
-      if (staffType === 'admin') setStep(3);
       setIsLoading(false);
     }
   };
@@ -628,9 +683,12 @@ export default function AddStaffPage() {
 
   const switchStaffType = (type: StaffType) => {
     setStaffType(type);
-    setStep(1);
     setErrors({});
     setSubmitError(null);
+    stepNavDepth.current = 0;
+    if (searchParams.get('step')) {
+      router.replace(pathname, { scroll: false });
+    }
     if (type === 'teacher') {
       setConvertTeacherId(null);
     } else {
@@ -644,7 +702,16 @@ export default function AddStaffPage() {
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
       <div className={`mx-auto w-full ${isTeacher || step === 1 ? 'max-w-4xl' : 'max-w-6xl'}`}>
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-8">
-          <BackButton fallbackUrl="/dashboard/school/staff" className="mb-4" />
+          <BackButton
+            fallbackUrl="/dashboard/school/staff"
+            className="mb-4"
+            onClick={() => {
+              if (!isTeacher && step > 1) {
+                goToStep(step - 1);
+                return true;
+              }
+            }}
+          />
           <h1 className="font-semibold text-light-text-primary dark:text-dark-text-primary mb-2" style={{ fontSize: 'var(--text-page-title)' }}>
             Add New Staff
           </h1>
@@ -837,6 +904,22 @@ export default function AddStaffPage() {
                         disabled={isLoadingState}
                         defaultCountryCode="NG"
                       />
+                      {!isTeacher && (
+                        <DatePicker
+                          label="Date of Birth"
+                          value={formData.dateOfBirth}
+                          onChange={(value) => {
+                            setFormData({ ...formData, dateOfBirth: value });
+                            if (errors.dateOfBirth) {
+                              setErrors({ ...errors, dateOfBirth: undefined });
+                            }
+                          }}
+                          required
+                          error={errors.dateOfBirth}
+                          disabled={isLoadingState}
+                          placeholder="Select date of birth"
+                        />
+                      )}
                     </div>
 
                     {/* Somebody with this email already works here. Said now, not
@@ -942,13 +1025,15 @@ export default function AddStaffPage() {
                             helperText="Optional internal identifier for this staff member"
                             error={errors.employeeId}
                           />
-                          <DatePicker
-                            label="Date of Birth"
-                            value={formData.dateOfBirth}
-                            onChange={(value) => setFormData({ ...formData, dateOfBirth: value })}
-                            disabled={isLoadingState}
-                            placeholder="Select date of birth"
-                          />
+                          {isTeacher && (
+                            <DatePicker
+                              label="Date of Birth"
+                              value={formData.dateOfBirth}
+                              onChange={(value) => setFormData({ ...formData, dateOfBirth: value })}
+                              disabled={isLoadingState}
+                              placeholder="Select date of birth"
+                            />
+                          )}
                         </div>
                       )}
                     </div>
@@ -1172,6 +1257,7 @@ export default function AddStaffPage() {
                   lastName={capitalizeWords(formData.lastName)}
                   email={formData.email.trim().toLowerCase()}
                   phone={formData.phone}
+                  dateOfBirth={formData.dateOfBirth}
                   roleTitle={capitalizeWords(adminRole)}
                   template={selectedTemplate}
                   templateCustomised={!!selectedTemplate && !templateStillMatches}

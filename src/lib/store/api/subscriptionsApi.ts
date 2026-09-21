@@ -79,6 +79,11 @@ export interface SubscriptionSummaryDto {
     maxTeachers: number;    // -1 = unlimited
     maxAdmins: number;      // -1 = unlimited (Enterprise only)
   };
+  usage?: {
+    students: number;
+    teachers: number;
+    admins: number;
+  };
   tools: {
     slug: string;
     name: string;
@@ -135,6 +140,8 @@ export interface ToolAccessResultDto {
   trialDaysRemaining?: number;
 }
 
+export type AiUsagePeriod = 'day' | 'week' | 'month';
+
 export interface AiUsageLogDto {
   id: string;
   action: string;
@@ -145,6 +152,7 @@ export interface AiUsageLogDto {
     firstName: string | null;
     lastName: string | null;
     email: string | null;
+    profileImage?: string | null;
   };
 }
 
@@ -283,8 +291,11 @@ export const subscriptionsApi = apiSlice.injectEndpoints({
     }),
 
     // AI Usage History
-    getAiUsageHistory: builder.query<ResponseDto<AiUsageLogDto[]>, void>({
-      query: () => '/subscriptions/ai-usage',
+    getAiUsageHistory: builder.query<ResponseDto<AiUsageLogDto[]>, AiUsagePeriod | void>({
+      query: (period = 'week') => ({
+        url: '/subscriptions/ai-usage',
+        params: { period },
+      }),
       providesTags: ['Subscription'],
     }),
 

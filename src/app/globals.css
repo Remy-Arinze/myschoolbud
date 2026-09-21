@@ -1216,6 +1216,12 @@
   background-color: var(--light-bg);
 }
 
+.lois-shell.lois-shell--max .lois-composer {
+  width: 100%;
+  max-width: 36rem;
+  margin-inline: auto;
+}
+
 .dark .lois-shell.lois-shell--max {
   background-color: var(--dark-bg);
 }
