@@ -50,11 +50,10 @@ export function useQuickSearchItems(fallbackItems: SidebarSearchItem[]): Sidebar
   const { currentType } = useSchoolType();
   const terminology = useTerminology();
   const { policies } = useRuntimePolicies();
-  const { canView, canEdit, isPrincipal, isLoading } = useCurrentAdminPermissions();
+  const { canView, canEdit, isPrincipal, permissionsReady } = useCurrentAdminPermissions();
 
   return useMemo(() => {
     if (user?.role !== 'SCHOOL_ADMIN') return fallbackItems;
-    if (!isPrincipal && isLoading) return [];
 
     const classesLabel = currentType === 'TERTIARY' ? 'Departments' : terminology.courses;
     const subjectsLabel = currentType === 'TERTIARY' ? 'Courses' : 'Subjects';
@@ -191,7 +190,6 @@ export function useQuickSearchItems(fallbackItems: SidebarSearchItem[]): Sidebar
         group: 'Settings',
         keywords: ['configuration', 'preferences'],
         permission: PermissionResource.SETTINGS,
-        principalOnly: true,
       },
       {
         label: 'School profile',
@@ -270,9 +268,8 @@ export function useQuickSearchItems(fallbackItems: SidebarSearchItem[]): Sidebar
         href: '/dashboard/school/settings/profile?tab=finance',
         icon: Wallet,
         group: 'Settings',
-        keywords: ['billing', 'payments'],
+        keywords: ['billing', 'payments', 'fees'],
         permission: PermissionResource.SETTINGS,
-        principalOnly: true,
       },
       {
         label: 'Communications settings',
@@ -320,6 +317,7 @@ export function useQuickSearchItems(fallbackItems: SidebarSearchItem[]): Sidebar
         if (entry.principalOnly && !isPrincipal) return false;
         if (entry.schoolTypes && currentType && !entry.schoolTypes.includes(currentType)) return false;
         if (!entry.permission) return true;
+        if (!permissionsReady && !isPrincipal) return false;
         if (entry.permissionType === PermissionType.WRITE) return canEdit(entry.permission);
         return canView(entry.permission);
       })
@@ -342,6 +340,6 @@ export function useQuickSearchItems(fallbackItems: SidebarSearchItem[]): Sidebar
     canView,
     canEdit,
     isPrincipal,
-    isLoading,
+    permissionsReady,
   ]);
 }

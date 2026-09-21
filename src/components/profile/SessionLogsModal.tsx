@@ -12,7 +12,9 @@ interface SessionLogsModalProps {
 }
 
 export function SessionLogsModal({ isOpen, onClose }: SessionLogsModalProps) {
-  const [expandedDates, setExpandedDates] = useState<string[]>([]);
+  // Null means the reader has not opened or closed anything yet, which is how
+  // the most recent day can default to open without writing state during render.
+  const [expandedDates, setExpandedDates] = useState<string[] | null>(null);
 
   const { data: response, isLoading, isError, refetch } = useGetLoginSessionsQuery(undefined, {
     skip: !isOpen,
@@ -34,17 +36,20 @@ export function SessionLogsModal({ isOpen, onClose }: SessionLogsModalProps) {
     return Object.keys(groupedSessions).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   }, [groupedSessions]);
 
-  // Expand the most recent date by default
-  useMemo(() => {
-    if (sortedDates.length > 0 && expandedDates.length === 0) {
-      setExpandedDates([sortedDates[0]]);
-    }
-  }, [sortedDates]);
+  // The most recent date is open until the reader says otherwise.
+  const defaultExpanded = useMemo(
+    () => (sortedDates.length > 0 ? [sortedDates[0]] : []),
+    [sortedDates]
+  );
+  const visibleDates = expandedDates ?? defaultExpanded;
 
   const toggleDate = (date: string) => {
-    setExpandedDates(prev =>
-      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
-    );
+    setExpandedDates((prev) => {
+      const current = prev ?? defaultExpanded;
+      return current.includes(date)
+        ? current.filter((d) => d !== date)
+        : [...current, date];
+    });
   };
 
   const parseUserAgent = (ua: string) => {
@@ -122,7 +127,7 @@ export function SessionLogsModal({ isOpen, onClose }: SessionLogsModalProps) {
           <div className="space-y-4 max-h-[550px] overflow-y-auto pr-2 custom-scrollbar pb-4">
             {sortedDates.map((date) => {
               const daySessions = groupedSessions[date];
-              const isExpanded = expandedDates.includes(date);
+              const isExpanded = visibleDates.includes(date);
               const formattedDate = isSameDay(new Date(date), now)
                 ? "Today's Access"
                 : format(new Date(date), 'EEEE, MMM dd, yyyy');

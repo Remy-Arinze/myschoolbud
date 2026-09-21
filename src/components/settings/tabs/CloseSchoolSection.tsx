@@ -4,7 +4,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/lib/store/store';
-import { isPrincipalRole } from '@/lib/constants/roles';
+import { hasPrincipalAccess } from '@/lib/constants/roles';
 import {
   useGetMySchoolQuery,
   useScheduleSchoolCloseMutation,
@@ -17,7 +17,9 @@ import { Alert, AlertDescription } from '@/components/ui/Alert';
 
 export function CloseSchoolSection() {
   const user = useSelector((state: RootState) => state.auth.user);
-  const canClose = user?.role === 'SCHOOL_ADMIN' && isPrincipalRole(user.adminRole ?? null);
+  const canClose =
+    user?.role === 'SCHOOL_ADMIN' &&
+    hasPrincipalAccess({ accessTier: user.adminAccessTier });
   const { data, refetch } = useGetMySchoolQuery(undefined, { skip: !canClose });
   const [scheduleClose, { isLoading: isScheduling }] = useScheduleSchoolCloseMutation();
   const [cancelClose, { isLoading: isCancelling }] = useCancelSchoolCloseMutation();

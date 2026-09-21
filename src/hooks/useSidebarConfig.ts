@@ -129,7 +129,7 @@ export function useSidebarConfig(): {
         { label: 'Applications', href: '/dashboard/school/applications', icon: ArrowRightLeft, permission: PermissionResource.ADMISSIONS }, // Transfers/Applications use same permission as admissions
         { label: 'Subscription', href: '/dashboard/school/subscription', icon: CreditCard, permission: PermissionResource.SUBSCRIPTIONS, principalOnly: true },
         { label: 'Notifications', href: '/dashboard/school/notifications', icon: Bell, permission: PermissionResource.OVERVIEW },
-        { label: 'Settings', href: '/dashboard/school/settings/profile', icon: Settings, principalOnly: true }
+        { label: 'Settings', href: '/dashboard/school/settings/profile', icon: Settings, permission: PermissionResource.SETTINGS }
       );
 
       return [{ items: baseItems }];
@@ -217,7 +217,13 @@ export function usePermissionFilteredSidebar(): {
 } {
   const { sections, terminology, currentType } = useSidebarConfig();
   const user = useSelector((state: RootState) => state.auth.user);
-  const { canView, isLoading: isLoadingPermissions, isPrincipal } = useCurrentAdminPermissions();
+  const {
+    canView,
+    isLoading: isLoadingPermissions,
+    permissionsReady,
+    permissionsUnavailable,
+    isPrincipal,
+  } = useCurrentAdminPermissions();
 
   const filteredSections = useMemo(() => {
     // Only filter for school admins
@@ -230,9 +236,12 @@ export function usePermissionFilteredSidebar(): {
       return sections;
     }
 
-    // While loading permissions, show empty sidebar to prevent flash
-    if (isLoadingPermissions) {
-      return sections.map((section) => ({ ...section, items: [] }));
+    // While the table is unknown, show nothing — loading must not look like a permitted home
+    if (!permissionsReady) {
+      return sections.map((section) => ({
+        ...section,
+        items: [],
+      }));
     }
 
     // Filter items based on permissions
@@ -248,13 +257,18 @@ export function usePermissionFilteredSidebar(): {
         return canView(item.permission);
       }),
     }));
-  }, [sections, user?.role, isLoadingPermissions, isPrincipal, canView]);
+  }, [sections, user?.role, permissionsReady, isPrincipal, canView]);
 
   return {
     sections: filteredSections,
     terminology,
     currentType,
-    isLoadingPermissions,
+    // School admins: the nav is unknown until the table lands. Once we have given
+    // up waiting, stop the skeleton so the page can explain itself.
+    isLoadingPermissions:
+      user?.role === 'SCHOOL_ADMIN'
+        ? !permissionsUnavailable && (!permissionsReady || isLoadingPermissions)
+        : isLoadingPermissions,
   };
 }
 

@@ -142,7 +142,8 @@ export function SidebarNew({ hideMobileHeader }: { hideMobileHeader?: boolean })
 
   if (!user) return null;
 
-  const showLoadingSkeleton = user.role === 'SCHOOL_ADMIN' && isLoadingPermissions;
+  const hasNavItems = finalSections.some((section) => section.items.length > 0);
+  const showLoadingSkeleton = user.role === 'SCHOOL_ADMIN' && isLoadingPermissions && !hasNavItems;
 
   return (
     <SidebarBody className="justify-between gap-3 overflow-hidden" hideMobileHeader={hideMobileHeader}>

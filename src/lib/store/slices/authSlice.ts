@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { AdminAccessTier } from '@/lib/constants/roles';
 
 export interface AuthState {
   token: string | null;
@@ -19,7 +20,8 @@ export interface AuthState {
     publicId?: string | null;   // Public ID used for login
     schoolId?: string | null;   // Current school context
     // Admin-specific context (only for SCHOOL_ADMIN role)
-    adminRole?: string | null;       // e.g., 'principal', 'school_owner', 'headmistress'
+    adminRole?: string | null;       // Display title only, e.g. 'principal', 'bursar'. NOT authority.
+    adminAccessTier?: AdminAccessTier | null; // Authority: 'PRINCIPAL' bypasses permissions, 'STAFF' does not.
     adminSchoolType?: string | null; // e.g., 'PRIMARY', 'SECONDARY' — locks dashboard to this type
     lifecycleStatus?: string | null;
     deactivatesAt?: string | null;

@@ -21,13 +21,13 @@ import type { SchoolAdmin } from '@/lib/store/api/schoolsApi';
 import { EndTermModal, EditTermDatesModal } from '@/components/modals';
 import type { Term } from '@/lib/store/api/schoolAdminApi';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
-import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
+import { PermissionResource, PermissionType, useCurrentAdminPermissions } from '@/hooks/usePermissions';
 import toast from 'react-hot-toast';
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { getTerminology } from '@/lib/utils/terminology';
 import { useAuth } from '@/hooks/useAuth';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
-import { isPrincipalRole, isSchoolOwnerRole } from '@/lib/constants/roles';
+import { hasPrincipalAccess, isSchoolOwnerRole } from '@/lib/constants/roles';
 import { safeGet, safeArrayFind, safeGetUserName, getErrorMessage } from '@/utils/common/safety-utils';
 import { cn } from '@/lib/utils';
 
@@ -107,6 +107,8 @@ function RecentStudentRow({ student }: { student: { id: string; name: string; pr
 export default function AdminOverviewPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { canView, isPrincipal, permissionsReady } = useCurrentAdminPermissions();
+  const canSeeSchoolOverview = isPrincipal || canView(PermissionResource.OVERVIEW);
 
   // Get school type and terminology
   const { currentType, availableTypes } = useSchoolType();
@@ -117,10 +119,11 @@ export default function AdminOverviewPage() {
 
   // Wait until school type is known so we do not fetch unfiltered then refetch.
   const typeReady = !!currentType || (!isLoadingSchool && availableTypes.length === 0);
+  const skipSchoolDash = !permissionsReady || !canSeeSchoolOverview;
 
   const { data, isLoading, error, refetch } = useGetSchoolAdminDashboardQuery(
     currentType || undefined,
-    { skip: !typeReady }
+    { skip: !typeReady || skipSchoolDash }
   );
   const {
     data: chartsResponse,
@@ -129,7 +132,7 @@ export default function AdminOverviewPage() {
     refetch: refetchCharts,
   } = useGetSchoolAdminDashboardChartsQuery(
     currentType || undefined,
-    { skip: !typeReady }
+    { skip: !typeReady || skipSchoolDash }
   );
   const terminology = getTerminology(currentType);
   const isSummaryLoading = isLoadingSchool || !typeReady || isLoading;
@@ -144,7 +147,7 @@ export default function AdminOverviewPage() {
       return schoolName;
     }
     
-    if (isPrincipalRole(role)) {
+    if (hasPrincipalAccess(safeGet(school, 'currentAdmin', null))) {
       const currentAdminId = safeGet(school, 'currentAdmin.id', null);
       const admins = safeGet(school, 'admins', []);
       
@@ -172,7 +175,7 @@ export default function AdminOverviewPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { data: activeSessionResponse, refetch: refetchActiveSession, isLoading: isLoadingSession } = useGetActiveSessionQuery(
     { schoolId: schoolId!, schoolType: currentType || undefined },
-    { skip: !schoolId || !typeReady }
+    { skip: !schoolId || !typeReady || skipSchoolDash }
   );
   const activeSession = activeSessionResponse?.data;
 

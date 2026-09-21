@@ -179,7 +179,7 @@ export default function StudentTransfersPage() {
               const isTacUsed = !!transfer.tacUsedAt;
 
               return (
-                <FadeInUp delay={index * 0.05 } from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+                <FadeInUp key={transfer.id} delay={index * 0.05 } from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                   <Card>
                     <CardHeader>
                       <div className="flex items-start justify-between">

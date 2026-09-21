@@ -548,7 +548,7 @@ export default function StudentResultsPage() {
                     ) : (
                       <div className="space-y-4">
                         {currentResults.subjects.map((subject, index) => (
-                          <FadeInUp delay={index * 0.05} from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="border border-light-border dark:border-dark-border rounded-lg overflow-hidden">
+                          <FadeInUp key={subject.name} delay={index * 0.05} from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="border border-light-border dark:border-dark-border rounded-lg overflow-hidden">
                             {/* Subject Header - Clickable */}
                             <button
                               onClick={() => toggleSubjectExpanded(subject.name)}

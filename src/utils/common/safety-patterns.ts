@@ -79,7 +79,7 @@ export const PropertyPatterns = {
         return schoolName;
       }
       
-      if (isPrincipalRole(role)) {
+      if (hasPrincipalAccess(safeGet(school, 'currentAdmin', null))) {
         const currentAdminId = safeGet(school, 'currentAdmin.id', null);
         const admins = safeGet(school, 'admins', []);
         

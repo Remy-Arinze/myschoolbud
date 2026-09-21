@@ -78,7 +78,12 @@ export default function ClassesPage() {
   }, [searchParams, router]);
 
   // Get school data
-  const { data: schoolResponse, isLoading: isLoadingSchool } = useGetMySchoolQuery();
+  const {
+    data: schoolResponse,
+    isLoading: isLoadingSchool,
+    isError: isSchoolError,
+    refetch: refetchSchool,
+  } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
 
   // Get active session for the selected school type
@@ -186,6 +191,23 @@ export default function ClassesPage() {
     toast.success('Class name updated successfully');
     setEditModal({ isOpen: false, classId: '', currentName: '' });
   };
+
+  // The school payload decides which type's classes to show. If it failed, we
+  // cannot guess — say so instead of spinning on a type that will never arrive.
+  if (!isLoadingSchool && !currentType && (isSchoolError || !schoolId)) {
+    return (
+      <ProtectedRoute roles={['SCHOOL_ADMIN']}>
+        <div className="w-full">
+          <Alert variant="error" className="mb-4">
+            We couldn&apos;t load your school details, so this page has nothing to show yet.
+          </Alert>
+          <Button variant="secondary" onClick={() => refetchSchool()}>
+            Try again
+          </Button>
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   if (isLoadingSchool || !currentType || (isPrimaryOrSecondary && isLoadingClasses && !classesResponse)) {
     return (

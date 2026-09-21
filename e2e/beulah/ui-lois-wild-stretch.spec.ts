@@ -128,11 +128,11 @@ async function bootBeulah(page: Page, area: string) {
   await expect(page.getByText(/access denied/i)).toHaveCount(0);
   await expect(page.getByText(/verifying permissions/i)).toHaveCount(0, { timeout: 90_000 });
   await expect(page.getByText(/beulah/i).first()).toBeVisible({ timeout: 120_000 });
-  // Next overlays the overview compile as "Compiling…" while main still says "Loading your dashboard..."
+  // Next overlays compile as "Compiling…" / "Rendering…". Ask Lois is in the shell and does not
+  // wait on overview widgets, so do not hard-block the stretch on those spinners.
   await expect(page.getByText(/^compiling/i)).toHaveCount(0, { timeout: 300_000 });
-  await expect(page.getByText(/loading your dashboard/i)).toHaveCount(0, { timeout: 180_000 });
   await expect(page.getByRole('button', { name: /ask lois|lois briefing/i })).toBeVisible({ timeout: 60_000 });
-  // Overview widgets can spin independently of Lois — do not block the stretch on them.
+  await expect(page.getByText(/loading your dashboard/i)).toHaveCount(0, { timeout: 45_000 }).catch(() => undefined);
   await expect(page.getByText(/loading dashboard data/i)).toHaveCount(0, { timeout: 45_000 }).catch(() => undefined);
   note('pass', area, 'Logged in as Beulah school admin');
   await openLois(page);
@@ -195,7 +195,7 @@ test.describe('Lois wild stretch — Beulah High School', () => {
     await bootBeulah(page, 'Session');
     await capture(page, 'open', 'Ask Lois', 'Wild stretch — out of context plus school.');
 
-    const ident = await askWild(page, 'W0-identity', 60_000);
+    const ident = await askWild(page, 'W0-identity');
     await scoreReply(page, 'W0 identity', ident.reply, { must: [/lois|assistant|school|beulah/i] });
     await capture(page, 'identity', 'Who even are you', 'Identity stretch, not the canned what-can-you-do.');
 

@@ -30,7 +30,7 @@ export const GlobalAiAssistant: React.FC = () => {
 
   const { summary, isLoading: isLoadingSub } = useSubscription();
 
-  const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN' || (user as any)?.roleRank === 'PRINCIPAL';
+  const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
   const isAuthorized =
     isSchoolAdmin ||
     user?.role === 'SUPER_ADMIN' ||
@@ -79,7 +79,9 @@ export const GlobalAiAssistant: React.FC = () => {
   if (!isAuthorized || !user || !schoolId || isHiddenPage) return null;
 
   const hasAiAccess = !summary ? true : (summary?.tools?.find(t => t.slug === 'agora-ai')?.hasAccess ?? true);
-  if (isLoadingSub) return null;
+  // Hide only until the first answer. Once we know the plan, a later refetch
+  // must not yank Lois off the screen mid-conversation.
+  if (isLoadingSub && !summary) return null;
   if (!hasAiAccess) return null;
 
   const renderAssistant = (dataReady: boolean) => {

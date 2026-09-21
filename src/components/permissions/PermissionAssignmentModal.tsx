@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Loader2, Shield, CheckCircle2, Eye, Edit, Settings, Info, Crown, Lock } from 'lucide-react';
+import { Loader2, Shield, CheckCircle2, Info, Crown, Lock, MinusCircle, PlusCircle, AlertTriangle } from 'lucide-react';
 import {
   useGetAllPermissionsQuery,
   useGetAdminPermissionsQuery,
@@ -15,162 +15,45 @@ import {
 } from '@/lib/store/api/schoolAdminApi';
 import { useGetMySchoolQuery } from '@/lib/store/api/schoolAdminApi';
 import toast from 'react-hot-toast';
-import { isPrincipalRole } from '@/lib/constants/roles';
+import { hasPrincipalAccess, type AdminAccessTier } from '@/lib/constants/roles';
+import {
+  PERMISSION_RESOURCE_INFO,
+  PERMISSION_TYPE_INFO,
+  resourceLabel,
+} from '@/lib/constants/permission-metadata';
+import { AccessPreview } from './AccessPreview';
 
 interface PermissionAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   adminId: string;
   adminName: string;
+  /** Display title, shown in the header. Carries no authority. */
   adminRole: string;
+  /** Authority. PRINCIPAL means the rows below are not editable. */
+  accessTier?: AdminAccessTier | null;
 }
 
-// Detailed resource information
-const RESOURCE_INFO: Record<PermissionResource, { label: string; description: string; icon: string }> = {
-  OVERVIEW: {
-    label: 'Dashboard Overview',
-    description: 'Access to school dashboard, statistics, and general school information.',
-    icon: '📊',
-  },
-  ANALYTICS: {
-    label: 'Analytics & Reports',
-    description: 'View and export school performance analytics, attendance reports, and data insights.',
-    icon: '📈',
-  },
-  SUBSCRIPTIONS: {
-    label: 'Subscriptions & Billing',
-    description: 'Manage school subscription plans, view billing history, and access premium features.',
-    icon: '💳',
-  },
-  STUDENTS: {
-    label: 'Student Management',
-    description: 'Access student records, enrollment data, academic history, and student profiles.',
-    icon: '👨‍🎓',
-  },
-  STAFF: {
-    label: 'Staff Management',
-    description: 'Manage teachers, administrators, and other school staff members.',
-    icon: '👥',
-  },
-  CLASSES: {
-    label: 'Class Management',
-    description: 'Manage class structures, class arms, student-class assignments, and class resources.',
-    icon: '🏫',
-  },
-  SUBJECTS: {
-    label: 'Subject Management',
-    description: 'Manage subjects/courses, assign teachers to subjects, and configure subject settings.',
-    icon: '📚',
-  },
-  TIMETABLES: {
-    label: 'Timetable Management',
-    description: 'Create and manage school timetables, period assignments, and room allocations.',
-    icon: '📅',
-  },
-  CALENDAR: {
-    label: 'School Calendar',
-    description: 'Manage school calendar events, holidays, and important dates.',
-    icon: '🗓️',
-  },
-  ADMISSIONS: {
-    label: 'Admissions',
-    description: 'Process new student admissions, manage admission forms, and enrollment workflows.',
-    icon: '📝',
-  },
-  SESSIONS: {
-    label: 'Academic Sessions',
-    description: 'Manage academic sessions, terms, student promotions, and session transitions.',
-    icon: '🎓',
-  },
-  EVENTS: {
-    label: 'School Events',
-    description: 'Create and manage school events, announcements, and activities.',
-    icon: '🎉',
-  },
-  GRADES: {
-    label: 'Grades & Assessments',
-    description: 'View and manage student grades, assessments, report cards, and academic performance.',
-    icon: '📝',
-  },
-  CURRICULUM: {
-    label: 'Curriculum Management',
-    description: 'Create and manage curricula, lesson plans, and teaching schedules.',
-    icon: '📖',
-  },
-  SCHEME_OF_WORK: {
-    label: 'Scheme of Work',
-    description: 'Manage schemes of work.',
-    icon: '📋',
-  },
-  RESOURCES: {
-    label: 'Class Resources',
-    description: 'Upload, manage, and share educational materials and resources for classes.',
-    icon: '📁',
-  },
-  TRANSFERS: {
-    label: 'Student Transfers',
-    description: 'Process student transfers between schools, generate TACs, and manage transfer requests.',
-    icon: '🔄',
-  },
-  INTEGRATIONS: {
-    label: 'External Integrations',
-    description: 'Configure and manage third-party integrations like Google Calendar and external systems.',
-    icon: '🔗',
-  },
-  SETTINGS: {
-    label: 'School Settings',
-    description: 'Manage school profile, academic calendar, permissions, and configuration.',
-    icon: '⚙️',
-  },
-};
-
-// Detailed permission type information
-const TYPE_INFO: Record<PermissionType, { label: string; description: string; color: string; bgColor: string }> = {
-  READ: {
-    label: 'View Only',
-    description: 'Can view and read data but cannot make any changes.',
-    color: 'text-blue-700 dark:text-blue-400',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
-  },
-  WRITE: {
-    label: 'Create & Edit',
-    description: 'Can create new records and edit existing ones, but cannot delete.',
-    color: 'text-green-700 dark:text-green-400',
-    bgColor: 'bg-green-100 dark:bg-green-900/30',
-  },
-  ADMIN: {
-    label: 'Full Control',
-    description: 'Complete access including create, edit, delete, and all administrative actions.',
-    color: 'text-purple-700 dark:text-purple-400',
-    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
-  },
-};
-
-// Legacy labels for backward compatibility
-const RESOURCE_LABELS: Record<PermissionResource, string> = Object.fromEntries(
-  Object.entries(RESOURCE_INFO).map(([key, value]) => [key, value.label])
-) as Record<PermissionResource, string>;
-
-const TYPE_LABELS: Record<PermissionType, string> = {
-  READ: 'Read',
-  WRITE: 'Write',
-  ADMIN: 'Admin (Full Access)',
-};
+const RESOURCE_INFO = PERMISSION_RESOURCE_INFO;
+const TYPE_INFO = PERMISSION_TYPE_INFO;
 
 export function PermissionAssignmentModal({
   isOpen,
   onClose,
   adminId,
   adminName,
+  accessTier,
   adminRole,
 }: PermissionAssignmentModalProps) {
   const { data: schoolResponse } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
 
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
+  const [isConfirming, setIsConfirming] = useState(false);
 
-  // Check if this admin is a Principal (permanent full access, cannot edit)
-  const isPrincipal = isPrincipalRole(adminRole);
+  // Principal tier means permanent full access and nothing to edit here. The
+  // title in the header is just a label — it never decides this.
+  const isPrincipal = hasPrincipalAccess({ accessTier });
 
   // Get all available permissions
   const { data: allPermissionsResponse, isLoading: isLoadingAll } = useGetAllPermissionsQuery(
@@ -186,15 +69,31 @@ export function PermissionAssignmentModal({
 
   const [assignPermissions, { isLoading: isAssigning }] = useAssignPermissionsMutation();
 
-  const allPermissions = allPermissionsResponse?.data || [];
-  const currentPermissions = adminPermissionsResponse?.data?.permissions || [];
+  const allPermissions = useMemo(
+    () => allPermissionsResponse?.data || [],
+    [allPermissionsResponse]
+  );
+  const currentPermissions = useMemo(
+    () => adminPermissionsResponse?.data?.permissions || [],
+    [adminPermissionsResponse]
+  );
 
-  // Initialize selected permissions from current permissions
+  // Seed the ticks from what they hold today, once per admin per open. Keying
+  // on the person rather than the response means a background refetch cannot
+  // throw away ticks somebody is in the middle of making. The empty case is
+  // seeded too, or reopening on an admin with no access would show the
+  // previous admin's selection.
+  const seededFor = useRef<string | null>(null);
   useEffect(() => {
-    if (currentPermissions.length > 0) {
-      setSelectedPermissions(new Set(currentPermissions.map((p) => p.id)));
+    if (!isOpen) {
+      seededFor.current = null;
+      return;
     }
-  }, [currentPermissions]);
+    if (isLoadingAdmin || seededFor.current === adminId) return;
+    setSelectedPermissions(new Set(currentPermissions.map((p) => p.id)));
+    setIsConfirming(false);
+    seededFor.current = adminId;
+  }, [isOpen, adminId, isLoadingAdmin, currentPermissions]);
 
   // Group permissions by resource
   const permissionsByResource = allPermissions.reduce((acc, perm) => {
@@ -205,13 +104,31 @@ export function PermissionAssignmentModal({
     return acc;
   }, {} as Record<PermissionResource, Permission[]>);
 
-  const handleTogglePermission = (permissionId: string) => {
+  const handleTogglePermission = (permission: Permission) => {
+    const resourcePerms = permissionsByResource[permission.resource] || [];
+    const byType = Object.fromEntries(resourcePerms.map((p) => [p.type, p]));
     const newSelected = new Set(selectedPermissions);
-    if (newSelected.has(permissionId)) {
-      newSelected.delete(permissionId);
+    const isSelected = newSelected.has(permission.id);
+
+    if (isSelected) {
+      if (permission.type === PermissionType.READ) {
+        resourcePerms.forEach((p) => newSelected.delete(p.id));
+      } else if (permission.type === PermissionType.WRITE) {
+        if (byType[PermissionType.WRITE]) newSelected.delete(byType[PermissionType.WRITE].id);
+        if (byType[PermissionType.ADMIN]) newSelected.delete(byType[PermissionType.ADMIN].id);
+      } else {
+        newSelected.delete(permission.id);
+      }
     } else {
-      newSelected.add(permissionId);
+      newSelected.add(permission.id);
+      if (permission.type === PermissionType.WRITE || permission.type === PermissionType.ADMIN) {
+        if (byType[PermissionType.READ]) newSelected.add(byType[PermissionType.READ].id);
+      }
+      if (permission.type === PermissionType.ADMIN) {
+        if (byType[PermissionType.WRITE]) newSelected.add(byType[PermissionType.WRITE].id);
+      }
     }
+
     setSelectedPermissions(newSelected);
   };
 
@@ -233,7 +150,45 @@ export function PermissionAssignmentModal({
     setSelectedPermissions(newSelected);
   };
 
-  const handleSave = async () => {
+  // Saving replaces every row rather than merging, so anything unticked is a
+  // removal. The service has always logged that diff; the person clicking Save
+  // was the only one who never saw it.
+  const diff = useMemo(() => {
+    const before = new Set(currentPermissions.map((p) => p.id));
+    const byId = new Map(allPermissions.map((p) => [p.id, p]));
+    const describe = (id: string) => {
+      const perm = byId.get(id);
+      if (!perm) return null;
+      return {
+        id,
+        label: `${resourceLabel(perm.resource)} — ${TYPE_INFO[perm.type]?.label ?? perm.type}`,
+        type: perm.type,
+      };
+    };
+
+    const added = Array.from(selectedPermissions)
+      .filter((id) => !before.has(id))
+      .map(describe)
+      .filter((x): x is NonNullable<typeof x> => !!x);
+    const removed = Array.from(before)
+      .filter((id) => !selectedPermissions.has(id))
+      .map(describe)
+      .filter((x): x is NonNullable<typeof x> => !!x);
+
+    return { added, removed };
+  }, [selectedPermissions, currentPermissions, allPermissions]);
+
+  const selectedPairs = useMemo(() => {
+    const byId = new Map(allPermissions.map((p) => [p.id, p]));
+    return Array.from(selectedPermissions)
+      .map((id) => byId.get(id))
+      .filter((p): p is Permission => !!p)
+      .map((p) => ({ resource: p.resource as string, type: p.type as string }));
+  }, [selectedPermissions, allPermissions]);
+
+  const hasChanges = diff.added.length > 0 || diff.removed.length > 0;
+
+  const commit = async () => {
     if (!schoolId) return;
 
     try {
@@ -243,11 +198,22 @@ export function PermissionAssignmentModal({
         permissionIds: Array.from(selectedPermissions),
       }).unwrap();
 
-      toast.success('Permissions assigned successfully');
+      toast.success(`Access updated for ${adminName}`);
+      setIsConfirming(false);
       onClose();
     } catch (error: any) {
-      toast.error(error?.data?.message || 'Failed to assign permissions');
+      toast.error(error?.data?.message || 'Failed to update access');
     }
+  };
+
+  const handleSave = () => {
+    // Taking access away is the change worth pausing on: the other person can
+    // be mid-task on a screen that is about to disappear.
+    if (diff.removed.length > 0 && !isConfirming) {
+      setIsConfirming(true);
+      return;
+    }
+    void commit();
   };
 
   const isLoading = isLoadingAll || isLoadingAdmin;
@@ -326,34 +292,38 @@ export function PermissionAssignmentModal({
         ) : (
           <>
             {/* Permission Types Legend */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+        <div className="bg-light-surface dark:bg-dark-surface rounded-lg p-4 border border-light-border dark:border-dark-border">
           <div className="flex items-center gap-2 mb-3">
-            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-sm font-medium text-blue-800 dark:text-blue-300">Permission Types Explained</span>
+            <Info className="h-4 w-4 text-light-text-secondary dark:text-dark-text-secondary" />
+            <span className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
+              What each level means
+            </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {Object.entries(TYPE_INFO).map(([type, info]) => (
-              <div key={type} className={`p-3 rounded-lg ${info.bgColor}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  {type === 'READ' && <Eye className={`h-4 w-4 ${info.color}`} />}
-                  {type === 'WRITE' && <Edit className={`h-4 w-4 ${info.color}`} />}
-                  {type === 'ADMIN' && <Settings className={`h-4 w-4 ${info.color}`} />}
-                  <span className={`font-semibold text-sm ${info.color}`}>{info.label}</span>
+            {Object.entries(TYPE_INFO).map(([type, info]) => {
+              const Icon = info.icon;
+              return (
+                <div key={type} className={`p-3 rounded-lg ${info.bg}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon className={`h-4 w-4 ${info.text}`} />
+                    <span className={`font-semibold text-sm ${info.text}`}>{info.label}</span>
+                  </div>
+                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">
+                    {info.description}
+                  </p>
                 </div>
-                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">
-                  {info.description}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* Permissions List */}
+        {/* Permissions List, with the resulting dashboard beside it */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4">
           <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
             {Object.entries(permissionsByResource).map(([resource, permissions]) => {
               const resourceInfo = RESOURCE_INFO[resource as PermissionResource];
@@ -389,34 +359,33 @@ export function PermissionAssignmentModal({
                       {permissions.map((permission) => {
                         const isSelected = selectedPermissions.has(permission.id);
                         const typeInfo = TYPE_INFO[permission.type];
-                        
+                        const TypeIcon = typeInfo.icon;
+
                         return (
                           <label
                             key={permission.id}
                             className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                               isSelected
-                                ? `border-blue-500 ${typeInfo.bgColor}`
+                                ? `${typeInfo.border} ${typeInfo.bg}`
                                 : 'border-light-border dark:border-dark-border hover:bg-light-bg dark:hover:bg-dark-bg'
                             }`}
                           >
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              onChange={() => handleTogglePermission(permission.id)}
+                              onChange={() => handleTogglePermission(permission)}
                               className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                {permission.type === 'READ' && <Eye className={`h-3.5 w-3.5 ${typeInfo.color}`} />}
-                                {permission.type === 'WRITE' && <Edit className={`h-3.5 w-3.5 ${typeInfo.color}`} />}
-                                {permission.type === 'ADMIN' && <Settings className={`h-3.5 w-3.5 ${typeInfo.color}`} />}
-                                <span className={`font-medium text-sm ${isSelected ? typeInfo.color : 'text-light-text-primary dark:text-dark-text-primary'}`}>
+                                <TypeIcon className={`h-3.5 w-3.5 ${typeInfo.text}`} />
+                                <span className={`font-medium text-sm ${isSelected ? typeInfo.text : 'text-light-text-primary dark:text-dark-text-primary'}`}>
                                   {typeInfo.label}
                                 </span>
                               </div>
                             </div>
                             {isSelected && (
-                              <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                              <CheckCircle2 className={`h-4 w-4 flex-shrink-0 ${typeInfo.text}`} />
                             )}
                           </label>
                         );
@@ -427,30 +396,85 @@ export function PermissionAssignmentModal({
               );
             })}
           </div>
+
+            <AccessPreview
+              permissions={selectedPairs}
+              personName={adminName.split(' ')[0]}
+              className="lg:sticky lg:top-0 self-start"
+            />
+          </div>
         )}
 
-        {/* Summary */}
-        <div className="bg-light-surface dark:bg-dark-surface rounded-lg p-3 border border-light-border dark:border-dark-border">
-          <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-            <span className="font-medium text-light-text-primary dark:text-dark-text-primary">
-              {selectedPermissions.size}
-            </span> permission{selectedPermissions.size !== 1 ? 's' : ''} selected
-          </p>
-        </div>
+        {/* What is about to change */}
+        {hasChanges && (
+          <div
+            className={`rounded-lg p-3 border space-y-2 ${
+              isConfirming
+                ? 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20'
+                : 'border-light-border dark:border-dark-border bg-light-surface dark:bg-dark-surface'
+            }`}
+          >
+            {isConfirming && (
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800 dark:text-amber-300">
+                  {adminName.split(' ')[0]} will lose access to the following the next
+                  time the page loads. Anything they have open will stop working.
+                </p>
+              </div>
+            )}
+            {diff.removed.length > 0 && (
+              <div className="space-y-1">
+                {diff.removed.map((item) => (
+                  <p
+                    key={item.id}
+                    className="flex items-center gap-2 text-xs text-light-text-secondary dark:text-dark-text-secondary"
+                  >
+                    <MinusCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                    Removing {item.label}
+                  </p>
+                ))}
+              </div>
+            )}
+            {diff.added.length > 0 && (
+              <div className="space-y-1">
+                {diff.added.map((item) => (
+                  <p
+                    key={item.id}
+                    className="flex items-center gap-2 text-xs text-light-text-secondary dark:text-dark-text-secondary"
+                  >
+                    <PlusCircle className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                    Adding {item.label}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-light-border dark:border-dark-border">
-              <Button variant="ghost" onClick={onClose} disabled={isAssigning}>
-                Cancel
+              <Button
+                variant="ghost"
+                onClick={() => (isConfirming ? setIsConfirming(false) : onClose())}
+                disabled={isAssigning}
+              >
+                {isConfirming ? 'Back' : 'Cancel'}
               </Button>
-              <Button variant="primary" onClick={handleSave} disabled={isAssigning || isLoading}>
+              <Button
+                variant={isConfirming ? 'danger' : 'primary'}
+                onClick={handleSave}
+                disabled={isAssigning || isLoading || !hasChanges}
+              >
                 {isAssigning ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Saving...
                   </>
+                ) : isConfirming ? (
+                  `Remove and save`
                 ) : (
-                  'Save Permissions'
+                  'Save access'
                 )}
               </Button>
             </div>

@@ -151,7 +151,7 @@ export default function TeacherHistoryPage() {
             const isExpanded = expandedSchool === school.schoolId;
 
             return (
-              <FadeInUp delay={schoolIndex * 0.1} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+              <FadeInUp key={school.schoolId} delay={schoolIndex * 0.1} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                 <Card className="overflow-hidden">
                   <CardHeader
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-surface/50 transition-colors"
@@ -212,7 +212,7 @@ export default function TeacherHistoryPage() {
                           </h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {school.certificates.map((certificate) => (
-                              <FadeInUp from={{ opacity: 0, x: -20 }} to={{ opacity: 1, x: 0 }} duration={0.5} className="p-4 bg-gray-50 dark:bg-dark-surface rounded-lg">
+                              <FadeInUp key={certificate.id} from={{ opacity: 0, x: -20 }} to={{ opacity: 1, x: 0 }} duration={0.5} className="p-4 bg-gray-50 dark:bg-dark-surface rounded-lg">
                                 <div className="flex items-start justify-between">
                                   <div>
                                     <h4 className="font-semibold text-light-text-primary dark:text-dark-text-primary">
@@ -246,7 +246,7 @@ export default function TeacherHistoryPage() {
                           const isYearExpanded = expandedYear === yearKey;
 
                           return (
-                            <FadeInUp delay={yearIndex * 0.05} from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+                            <FadeInUp key={yearKey} delay={yearIndex * 0.05} from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                               <Card className="border-l-4 border-l-blue-600 dark:border-l-blue-400">
                                 <CardHeader
                                   className="cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-surface/50 transition-colors"

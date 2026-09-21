@@ -15,6 +15,7 @@ import {
   useInitializePaymentMutation,
   PricingResponse,
 } from '@/lib/store/api/paymentsApi';
+import { useCurrentAdminPermissions } from './usePermissions';
 
 export interface SubscriptionManagement {
   // Current subscription
@@ -64,10 +65,16 @@ export interface FeatureComparison {
 export function useSubscription(): SubscriptionManagement {
   const user = useSelector((state: RootState) => state.auth.user);
   const isAuthenticated = !!user;
+  const { isPrincipal } = useCurrentAdminPermissions();
+
+  // Billing belongs to the owner/principal. Everyone else reads the summary,
+  // which the API already strips for them — asking for the full record just
+  // earns a 403 on every dashboard load.
+  const canReadBilling = user?.role === 'SUPER_ADMIN' || isPrincipal;
 
   // Fetch subscription data
   const { data: subscriptionResponse, isLoading: isLoadingSubscription } = useGetMySubscriptionQuery(undefined, {
-    skip: !isAuthenticated,
+    skip: !isAuthenticated || !canReadBilling,
   });
 
   const { data: summaryResponse, isLoading: isLoadingSummary } = useGetSubscriptionSummaryQuery(undefined, {

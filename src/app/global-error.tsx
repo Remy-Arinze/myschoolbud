@@ -175,6 +175,10 @@ export default function GlobalError({
             >
               {isChunkError ? 'Refresh Now' : 'Try Again'}
             </button>
+            {/* global-error replaces the root layout, so the router this page
+                would need is part of what has already failed. A full document
+                load is the only reliable way out. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" className="btn btn-outline">
               Go Home
             </a>

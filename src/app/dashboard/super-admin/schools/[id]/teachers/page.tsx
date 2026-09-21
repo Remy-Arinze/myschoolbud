@@ -109,7 +109,7 @@ export default function AllTeachersPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {teachers.map((teacher, index) => (
-                <FadeInUp delay={index * 0.05 } from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="p-4 bg-gray-50 dark:bg-dark-surface rounded-lg hover:bg-gray-100 dark:hover:bg-dark-surface/80 transition-colors">
+                <FadeInUp key={teacher.id} delay={index * 0.05 } from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="p-4 bg-gray-50 dark:bg-dark-surface rounded-lg hover:bg-gray-100 dark:hover:bg-dark-surface/80 transition-colors">
                   <h4 className="font-semibold text-light-text-primary dark:text-dark-text-primary">
                     {teacher.firstName} {teacher.lastName}
                     {teacher.isTemporary && (

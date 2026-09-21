@@ -153,6 +153,12 @@ interface ConfirmModalProps {
   variant?: 'danger' | 'warning' | 'primary';
   isLoading?: boolean;
   children?: ReactNode;
+  /**
+   * Block confirmation while the `children` slot is incomplete — for the cases
+   * where confirming needs more than assent, such as naming the access a
+   * demoted administrator should keep.
+   */
+  confirmDisabled?: boolean;
 }
 
 export function ConfirmModal({
@@ -166,9 +172,16 @@ export function ConfirmModal({
   variant = 'danger',
   isLoading = false,
   children,
+  confirmDisabled = false,
 }: ConfirmModalProps) {
   const handleConfirm = async () => {
-    await onConfirm();
+    // Stay open if the action failed — closing would hide the error and leave
+    // the caller to guess whether anything happened.
+    try {
+      await onConfirm();
+    } catch {
+      return;
+    }
     onClose();
   };
 
@@ -193,7 +206,13 @@ export function ConfirmModal({
           <Button variant="ghost" onClick={onClose} disabled={isLoading} className="rounded-xl">
             {cancelText}
           </Button>
-          <Button variant={confirmButtonVariant} onClick={handleConfirm} isLoading={isLoading} className="rounded-xl px-6">
+          <Button
+            variant={confirmButtonVariant}
+            onClick={handleConfirm}
+            isLoading={isLoading}
+            disabled={confirmDisabled || isLoading}
+            className="rounded-xl px-6"
+          >
             {confirmText}
           </Button>
         </div>

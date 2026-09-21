@@ -232,7 +232,7 @@ export default function StudentHistoryPage() {
                 const isCurrentSchool = !schoolData.endDate;
 
                 return (
-                  <FadeInUp delay={schoolIndex * 0.1 } from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+                  <FadeInUp key={schoolData.school.id} delay={schoolIndex * 0.1 } from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                     <Card className="overflow-hidden">
                       <CardHeader
                         className="cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--dark-hover)] transition-colors"
@@ -282,7 +282,7 @@ export default function StudentHistoryPage() {
                               const isYearExpanded = expandedYear === yearKey;
 
                               return (
-                                <FadeInUp delay={yearIndex * 0.05 } from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+                                <FadeInUp key={yearKey} delay={yearIndex * 0.05 } from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                                   <Card className="border-l-4 border-l-blue-600 dark:border-l-blue-400">
                                     <CardHeader
                                       className="cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--dark-hover)] transition-colors"
@@ -423,7 +423,7 @@ export default function StudentHistoryPage() {
                       const isExpanded = expandedSchool === schoolData.school.id;
 
                       return (
-                        <FadeInUp delay={schoolIndex * 0.1 } from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+                        <FadeInUp key={schoolData.school.id} delay={schoolIndex * 0.1 } from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                           <Card className="overflow-hidden">
                             <CardHeader
                               className="cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--dark-hover)] transition-colors"
@@ -490,7 +490,7 @@ export default function StudentHistoryPage() {
                                         const averageScore = totalMaxScore > 0 ? (totalScore / totalMaxScore) * 100 : 0;
 
                                         return (
-                                          <FadeInUp delay={yearIndex * 0.05 } from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+                                          <FadeInUp key={yearKey} delay={yearIndex * 0.05 } from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                                             <Card className="border-l-4 border-l-blue-600 dark:border-l-blue-400">
                                               <CardHeader
                                                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-[var(--dark-hover)] transition-colors"

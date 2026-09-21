@@ -41,38 +41,16 @@ import { EditTeacherProfileModal } from '@/components/modals/EditTeacherProfileM
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { useTeacherSubjects } from '@/hooks/useTeacherSubjects';
 import { BackButton } from '@/components/ui/BackButton';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
 import toast from 'react-hot-toast';
-import { isPrincipalRole } from '@/lib/constants/roles';
+import { hasPrincipalAccess } from '@/lib/constants/roles';
+import {
+  PERMISSION_RESOURCE_INFO,
+  PERMISSION_TYPE_INFO,
+  resourceLabel,
+} from '@/lib/constants/permission-metadata';
 import { LoisFocus } from '@/components/ai/LoisFocus';
-
-const RESOURCE_LABELS: Record<PermissionResource, string> = {
-  OVERVIEW: 'Dashboard Overview',
-  ANALYTICS: 'Analytics',
-  SUBSCRIPTIONS: 'Subscriptions',
-  STUDENTS: 'Students',
-  STAFF: 'Staff',
-  CLASSES: 'Classes',
-  SUBJECTS: 'Subjects',
-  TIMETABLES: 'Timetables',
-  CALENDAR: 'Calendar',
-  ADMISSIONS: 'Admissions',
-  SESSIONS: 'Sessions',
-  EVENTS: 'Events',
-  GRADES: 'Grades',
-  CURRICULUM: 'Curriculum',
-  SCHEME_OF_WORK: 'Scheme of Work',
-  RESOURCES: 'Resources',
-  TRANSFERS: 'Transfers',
-  INTEGRATIONS: 'Integrations',
-  SETTINGS: 'Settings',
-};
-
-const TYPE_LABELS: Record<PermissionType, string> = {
-  READ: 'Read',
-  WRITE: 'Write',
-  ADMIN: 'Admin (Full Access)',
-};
 
 type TabType = 'profile' | 'permissions';
 
@@ -140,7 +118,12 @@ export default function StaffDetailPage() {
   const isAdmin = staff?.type === 'admin';
 
   // Get admin permissions if this is an admin
-  const { data: permissionsResponse } = useGetAdminPermissionsQuery(
+  const {
+    data: permissionsResponse,
+    isLoading: isLoadingPermissions,
+    isError: isPermissionsError,
+    refetch: refetchPermissions,
+  } = useGetAdminPermissionsQuery(
     { schoolId: schoolId!, adminId: staffId },
     { skip: !schoolId || !staffId || !isAdmin }
   );
@@ -166,7 +149,10 @@ export default function StaffDetailPage() {
   );
   const timetableClasses = timetableClassesResponse?.data;
   const permissions = permissionsResponse?.data?.permissions || [];
-  const isPrincipal = isAdmin && isPrincipalRole(staff?.role);
+  // Matches the backend rule in PermissionService: principal-tier admins have
+  // permanent full access and no editable permission rows. Read the tier, since
+  // a title like "Headteacher" carries no authority of its own.
+  const isPrincipal = isAdmin && hasPrincipalAccess(staff);
 
   // Get teacher subjects (for teachers with subject competencies - mainly SECONDARY, but can include PRIMARY/TERTIARY)
   const {
@@ -715,6 +701,23 @@ export default function StaffDetailPage() {
                       Principals have full administrative access to all resources and features.
                     </p>
                   </div>
+                ) : isLoadingPermissions ? (
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingSpinner size="md" />
+                  </div>
+                ) : isPermissionsError ? (
+                  <div className="text-center py-12">
+                    <EmptyStateIcon type="document_not_found" />
+                    <p className="text-light-text-primary dark:text-dark-text-primary font-semibold mb-2">
+                      We couldn&apos;t load this list
+                    </p>
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary mb-4">
+                      This is not the same as having no access — the list just didn&apos;t load.
+                    </p>
+                    <Button variant="secondary" size="sm" onClick={() => refetchPermissions()}>
+                      Try again
+                    </Button>
+                  </div>
                 ) : permissions.length === 0 ? (
                   <div className="text-center py-12">
                     <EmptyStateIcon type="document_not_found" />
@@ -735,24 +738,30 @@ export default function StaffDetailPage() {
                     ).map(([resource, resourcePerms]) => (
                       <div key={resource} className="border border-light-border dark:border-dark-border rounded-lg p-4">
                         <h3 className="font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">
-                          {RESOURCE_LABELS[resource as PermissionResource]}
+                          {PERMISSION_RESOURCE_INFO[resource as PermissionResource]?.icon}{' '}
+                          {resourceLabel(resource)}
                         </h3>
                         <div className="space-y-2">
-                          {resourcePerms.map((perm) => (
-                            <div
-                              key={perm.id}
-                              className="flex items-center justify-between p-2 bg-light-surface dark:bg-dark-surface rounded"
-                            >
-                              <span className="text-sm text-light-text-primary dark:text-dark-text-primary">
-                                {TYPE_LABELS[perm.type]}
-                              </span>
-                              {perm.type === PermissionType.ADMIN && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
-                                  Full Access
+                          {resourcePerms.map((perm) => {
+                            const typeInfo = PERMISSION_TYPE_INFO[perm.type];
+                            const TypeIcon = typeInfo?.icon;
+                            return (
+                              <div
+                                key={perm.id}
+                                className="flex items-center justify-between p-2 bg-light-surface dark:bg-dark-surface rounded"
+                              >
+                                <span className="flex items-center gap-2 text-sm text-light-text-primary dark:text-dark-text-primary">
+                                  {TypeIcon && <TypeIcon className={`h-3.5 w-3.5 ${typeInfo.text}`} />}
+                                  {typeInfo?.label ?? perm.type}
                                 </span>
-                              )}
-                            </div>
-                          ))}
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full ${typeInfo?.bg ?? ''} ${typeInfo?.text ?? ''}`}
+                                >
+                                  {typeInfo?.description}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -771,6 +780,7 @@ export default function StaffDetailPage() {
             adminId={staffId}
             adminName={`${staff.firstName} ${staff.lastName}`}
             adminRole={staff.role || 'Administrator'}
+            accessTier={staff.accessTier}
           />
         )}
 

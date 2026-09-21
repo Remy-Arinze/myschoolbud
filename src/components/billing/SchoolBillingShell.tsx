@@ -10,7 +10,7 @@ import {
   useGetBillingUiFlagsQuery,
 } from '@/lib/store/api/subscriptionsApi';
 import { X } from 'lucide-react';
-import { isPrincipalRole } from '@/lib/constants/roles';
+import { hasPrincipalAccess } from '@/lib/constants/roles';
 
 // Pages where the blocking modal must not appear so the user can act on their subscription
 const SUBSCRIPTION_ROUTES = [
@@ -27,7 +27,8 @@ export function SchoolBillingShell() {
   const schoolId = tenantId;
   const pathname = usePathname();
   const isPrincipalAdmin =
-    user?.role === 'SCHOOL_ADMIN' && isPrincipalRole(user?.adminRole ?? null);
+    user?.role === 'SCHOOL_ADMIN' &&
+    hasPrincipalAccess({ accessTier: user?.adminAccessTier });
 
   const onSubscriptionPage = SUBSCRIPTION_ROUTES.some((route) =>
     pathname?.startsWith(route),

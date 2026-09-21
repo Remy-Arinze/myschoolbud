@@ -16,6 +16,7 @@ import {
   HardDrive,
 } from 'lucide-react';
 import { SectionTabs, type SectionTab } from '@/components/ui/SectionTabs';
+import { useCurrentAdminPermissions } from '@/hooks/usePermissions';
 
 export type SchoolSettingsTab =
   | 'school'
@@ -62,10 +63,13 @@ interface SchoolSettingsTabsProps {
 }
 
 export function SchoolSettingsTabs({ activeTab, className }: SchoolSettingsTabsProps) {
+  const { isPrincipal } = useCurrentAdminPermissions();
+  const tabs = isPrincipal ? TABS : TABS.filter((tab) => tab.key === 'finance');
+
   return (
     <SectionTabs
       ariaLabel="Settings sections"
-      tabs={TABS}
+      tabs={tabs}
       activeTab={activeTab}
       className={className}
     />
@@ -82,7 +86,11 @@ const LEGACY_TAB_MAP: Record<string, SchoolSettingsTab> = {
 
 export function useSchoolSettingsTab(defaultTab: SchoolSettingsTab = 'school'): SchoolSettingsTab {
   const searchParams = useSearchParams();
+  const { isPrincipal, isLoading } = useCurrentAdminPermissions();
   const tab = searchParams.get('tab');
+  if (!isPrincipal && !isLoading) {
+    return 'finance';
+  }
   if (tab && VALID_TABS.has(tab)) return tab as SchoolSettingsTab;
   if (tab && LEGACY_TAB_MAP[tab]) return LEGACY_TAB_MAP[tab];
   return defaultTab;

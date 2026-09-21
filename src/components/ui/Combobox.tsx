@@ -170,7 +170,9 @@ export function Combobox({
           disabled={disabled}
           className={cn(
             'pr-10 transition-all duration-200',
-            isOpen && 'ring-2 ring-primary/20 border-primary',
+            // `primary` is not a colour in tailwind.config, so the open and
+            // selected states used to render with no styling at all.
+            isOpen && 'ring-2 ring-blue-500/20 border-blue-500',
             error && 'border-red-500 focus:ring-red-500'
           )}
           autoComplete="off"
@@ -204,8 +206,10 @@ export function Combobox({
                     onMouseEnter={() => setHighlightedIndex(index)}
                     className={cn(
                       'w-full text-left px-4 py-2.5 flex items-center justify-between transition-colors',
-                      isHighlighted ? 'bg-primary/10 dark:bg-primary/20 text-primary' : 'text-light-text-primary dark:text-dark-text-primary',
-                      isSelected && 'bg-primary/5 font-semibold'
+                      isHighlighted
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'text-light-text-primary dark:text-dark-text-primary',
+                      isSelected && 'bg-blue-50/60 dark:bg-blue-900/10 font-semibold'
                     )}
                   >
                     <div className="flex flex-col">
@@ -214,7 +218,9 @@ export function Combobox({
                         <span className="text-[10px] opacity-70">{option.subLabel}</span>
                       )}
                     </div>
-                    {isSelected && <Check className="h-4 w-4 text-primary" />}
+                    {isSelected && (
+                      <Check className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    )}
                   </button>
                 );
               })}
@@ -230,9 +236,9 @@ export function Combobox({
                     onMouseEnter={() => setHighlightedIndex(filteredOptions.length)}
                     className={cn(
                       "w-full text-left px-3 py-2 text-sm rounded flex items-center gap-2 transition-colors",
-                      highlightedIndex === filteredOptions.length 
-                        ? 'bg-primary/10 dark:bg-primary/20 text-primary' 
-                        : 'text-primary'
+                      highlightedIndex === filteredOptions.length
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'text-blue-600 dark:text-blue-400'
                     )}
                   >
                     <Plus className="h-4 w-4" />

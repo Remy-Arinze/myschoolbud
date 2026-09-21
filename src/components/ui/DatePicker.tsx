@@ -206,7 +206,10 @@ export function DatePicker({
   wrapperClassName,
   displayFormat = DISPLAY_FORMAT,
 }: DatePickerProps) {
-  const id = idProp ?? useId();
+  // Hooks cannot be called conditionally, so the fallback id is always
+  // generated and only used when the caller did not supply one.
+  const generatedId = useId();
+  const id = idProp ?? generatedId;
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);

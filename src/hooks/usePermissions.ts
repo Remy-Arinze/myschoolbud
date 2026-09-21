@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import {
@@ -10,10 +10,17 @@ import {
   PermissionType,
   Permission,
 } from '@/lib/store/api/schoolAdminApi';
-import { isPrincipalRole } from '@/lib/constants/roles';
+import { hasPrincipalAccess, isPrincipalRole } from '@/lib/constants/roles';
 
 export { PermissionResource, PermissionType };
 export { isPrincipalRole };
+
+/**
+ * Backstop only. A failed request reports itself, so this needs to sit well
+ * clear of the request timeout and its retry — otherwise a merely slow school
+ * is told its access is broken while the answer is still on the way.
+ */
+const ACCESS_SETTLE_TIMEOUT_MS = 40000;
 
 /**
  * Hook to get the current admin's permissions and check access
@@ -37,18 +44,31 @@ export function useCurrentAdminPermissions() {
   const user = auth.user;
 
   // Get school info (includes current admin's role)
-  const { data: schoolResponse, isLoading: isLoadingSchool } = useGetMySchoolQuery(undefined, {
+  const {
+    data: schoolResponse,
+    isLoading: isLoadingSchool,
+    refetch: refetchSchool,
+  } = useGetMySchoolQuery(undefined, {
     skip: user?.role !== 'SCHOOL_ADMIN',
   });
 
-  const schoolId = schoolResponse?.data?.id;
+  // School id from getMySchool, with JWT as bootstrap so /permissions/me can
+  // fire before (or if) the school payload arrives. Role bypass still comes
+  // from getMySchool.currentAdmin, not JWT.
+  const schoolId = schoolResponse?.data?.id || user?.schoolId || undefined;
+  const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
 
-  // Check if admin is a Principal EARLY based on school response
-  // This ensures Principals get full access even before permissions are fetched
+  // Principal bypass comes from getMySchool.currentAdmin when it is known.
+  // Until then the tier on the session is an optimistic hint, so owners are not
+  // stuck on Loading access while the school payload is still in flight.
+  // Both read the stored tier — never the job title.
   const currentAdmin = schoolResponse?.data?.currentAdmin;
   const isPrincipalEarly = useMemo(() => {
-    return isPrincipalRole(currentAdmin?.role);
-  }, [currentAdmin?.role]);
+    if (currentAdmin) return hasPrincipalAccess(currentAdmin);
+    return user?.adminAccessTier === 'PRINCIPAL';
+  }, [currentAdmin, user?.adminAccessTier]);
+
+  const skipMyPermissions = !schoolId || !isSchoolAdmin || isPrincipalEarly;
 
   // Get current admin's own permissions (uses /permissions/me endpoint - no STAFF:READ required)
   // Skip for Principals - they have permanent full access
@@ -56,18 +76,22 @@ export function useCurrentAdminPermissions() {
     data: permissionsResponse,
     isLoading: isLoadingPermissions,
     isFetching,
+    isSuccess: isPermissionsSuccess,
+    isError: isPermissionsError,
+    refetch: refetchPermissions,
   } = useGetMyPermissionsQuery(
     { schoolId: schoolId! },
-    { skip: !schoolId || user?.role !== 'SCHOOL_ADMIN' || isPrincipalEarly }
+    { skip: skipMyPermissions }
   );
 
   const permissions = permissionsResponse?.data?.permissions || [];
   const adminRole = permissionsResponse?.data?.role || currentAdmin?.role || '';
 
-  // Final Principal check (from either source)
+  // Final Principal check (from either source), always by tier
   const isPrincipal = useMemo(() => {
-    return isPrincipalEarly || isPrincipalRole(adminRole);
-  }, [isPrincipalEarly, adminRole]);
+    if (isPrincipalEarly) return true;
+    return hasPrincipalAccess(permissionsResponse?.data);
+  }, [isPrincipalEarly, permissionsResponse?.data]);
 
   /**
    * Check if admin has a specific permission
@@ -78,13 +102,29 @@ export function useCurrentAdminPermissions() {
       // Principals have permanent full access to everything
       if (isPrincipal) return true;
 
-      // Check for ADMIN permission on this resource (grants all access)
       const hasAdmin = permissions.some(
         (p: Permission) => p.resource === resource && p.type === PermissionType.ADMIN
       );
       if (hasAdmin) return true;
 
-      // Check for specific permission
+      if (type === PermissionType.READ) {
+        return permissions.some(
+          (p: Permission) =>
+            p.resource === resource &&
+            (p.type === PermissionType.READ ||
+              p.type === PermissionType.WRITE ||
+              p.type === PermissionType.ADMIN)
+        );
+      }
+
+      if (type === PermissionType.WRITE) {
+        return permissions.some(
+          (p: Permission) =>
+            p.resource === resource &&
+            (p.type === PermissionType.WRITE || p.type === PermissionType.ADMIN)
+        );
+      }
+
       return permissions.some(
         (p: Permission) => p.resource === resource && p.type === type
       );
@@ -128,6 +168,48 @@ export function useCurrentAdminPermissions() {
 
   const isLoading = isLoadingSchool || isLoadingPermissions;
 
+  // Principal: ready once school role is known. Staff: ready only once
+  // /permissions/me has actually answered. A failed call means we do not know
+  // this admin's access — it never means they were given none.
+  const permissionsReady = useMemo(() => {
+    if (!isSchoolAdmin) return true;
+    if (isPrincipalEarly) return true;
+    if (isLoadingSchool && !schoolId) return false;
+    if (skipMyPermissions) return !isLoadingSchool;
+    return isPermissionsSuccess;
+  }, [
+    isSchoolAdmin,
+    isPrincipalEarly,
+    isLoadingSchool,
+    schoolId,
+    skipMyPermissions,
+    isPermissionsSuccess,
+  ]);
+
+  // Still waiting on the table that decides every screen for this admin.
+  const isAwaitingPermissions = isSchoolAdmin && !permissionsReady && !isPermissionsError;
+
+  const [settleExpired, setSettleExpired] = useState(false);
+
+  useEffect(() => {
+    if (!isAwaitingPermissions) {
+      setSettleExpired(false);
+      return;
+    }
+    const timer = setTimeout(() => setSettleExpired(true), ACCESS_SETTLE_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [isAwaitingPermissions]);
+
+  // Either the call failed or it never came back. Both mean "unknown", and the
+  // shell must say so rather than quietly draw an empty dashboard.
+  const permissionsUnavailable = !permissionsReady && (isPermissionsError || settleExpired);
+
+  const retryPermissions = useCallback(() => {
+    setSettleExpired(false);
+    if (isSchoolAdmin) refetchSchool();
+    if (!skipMyPermissions) refetchPermissions();
+  }, [isSchoolAdmin, skipMyPermissions, refetchSchool, refetchPermissions]);
+
   return {
     // Permission check functions
     hasPermission,
@@ -143,9 +225,15 @@ export function useCurrentAdminPermissions() {
     isPrincipal, // Principals have permanent full access (uneditable)
     isLoading,
     isFetching,
+    permissionsReady,
+    /** The table never arrived. Not "no access" — unknown access. */
+    permissionsUnavailable,
+    retryPermissions,
     // Context
     schoolId,
+    /** Display title only. For authority use `isPrincipal` / `accessTier`. */
     adminRole,
+    accessTier: isPrincipal ? ('PRINCIPAL' as const) : ('STAFF' as const),
   };
 }
 
@@ -154,7 +242,6 @@ export function useCurrentAdminPermissions() {
  * Used for protecting routes and sidebar items
  */
 export const ROUTE_PERMISSIONS: Record<string, { resource: PermissionResource; type: PermissionType }> = {
-  // Overview is always accessible (READ by default)
   '/dashboard/school/overview': { resource: PermissionResource.OVERVIEW, type: PermissionType.READ },
 
   // Analytics
@@ -190,6 +277,7 @@ export const ROUTE_PERMISSIONS: Record<string, { resource: PermissionResource; t
 
   // Admissions
   '/dashboard/school/admission': { resource: PermissionResource.ADMISSIONS, type: PermissionType.READ },
+  '/dashboard/school/applications': { resource: PermissionResource.ADMISSIONS, type: PermissionType.READ },
 
   // Subscriptions
   '/dashboard/school/subscription': { resource: PermissionResource.SUBSCRIPTIONS, type: PermissionType.READ },
@@ -209,13 +297,21 @@ export const ROUTE_PERMISSIONS: Record<string, { resource: PermissionResource; t
   // Settings
   '/dashboard/school/settings/profile': { resource: PermissionResource.SETTINGS, type: PermissionType.READ },
   '/dashboard/school/settings/session': { resource: PermissionResource.SETTINGS, type: PermissionType.READ },
+
+  // Personal / adjacent screens
+  '/dashboard/school/notifications': { resource: PermissionResource.OVERVIEW, type: PermissionType.READ },
+  '/dashboard/school/levels': { resource: PermissionResource.CLASSES, type: PermissionType.READ },
+  '/dashboard/school/marketplace': { resource: PermissionResource.INTEGRATIONS, type: PermissionType.READ },
+  '/dashboard/school/reactivate': { resource: PermissionResource.SETTINGS, type: PermissionType.READ },
+  '/dashboard/school/subscription/callback': { resource: PermissionResource.SUBSCRIPTIONS, type: PermissionType.READ },
+  '/dashboard/school/subscription/downgrade': { resource: PermissionResource.SUBSCRIPTIONS, type: PermissionType.READ },
 };
 
 /**
  * Get the required permission for a given route
  */
 export function getRoutePermission(pathname: string): { resource: PermissionResource; type: PermissionType } | null {
-  // Allow root dashboard route to load unhindered so it can redirect the user to their first accessible link
+  // School index redirects to the first permitted page once the table is known
   if (pathname === '/dashboard/school' || pathname === '/dashboard/school/') {
     return null;
   }
@@ -234,9 +330,9 @@ export function getRoutePermission(pathname: string): { resource: PermissionReso
     }
   }
 
-  // Default to overview for unmatched school routes
+  // Unknown school routes: deny for staff (principals still bypass the guard).
   if (pathname.startsWith('/dashboard/school')) {
-    return ROUTE_PERMISSIONS['/dashboard/school/overview'];
+    return { resource: PermissionResource.OVERVIEW, type: PermissionType.ADMIN };
   }
 
   return null;

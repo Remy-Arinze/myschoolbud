@@ -7,6 +7,14 @@ import { persistStore } from 'redux-persist';
 import { makeStore, AppStore } from './store';
 import type { Persistor } from 'redux-persist';
 
+function SessionBoot() {
+  return (
+    <div className="flex min-h-[200px] items-center justify-center">
+      <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-600 dark:border-blue-400" />
+    </div>
+  );
+}
+
 export default function StoreProvider({
   children,
 }: {
@@ -29,15 +37,19 @@ export default function StoreProvider({
     persistorRef.current = persistStore(storeRef.current);
   }
 
+  if (!isClient || !persistorRef.current) {
+    return (
+      <Provider store={storeRef.current}>
+        <SessionBoot />
+      </Provider>
+    );
+  }
+
   return (
     <Provider store={storeRef.current}>
-      {isClient && persistorRef.current ? (
-        <PersistGate loading={null} persistor={persistorRef.current}>
-          {children}
-        </PersistGate>
-      ) : (
-        children
-      )}
+      <PersistGate loading={<SessionBoot />} persistor={persistorRef.current}>
+        {children}
+      </PersistGate>
     </Provider>
   );
 }

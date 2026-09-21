@@ -573,9 +573,26 @@ export async function streamAiChat(
         }
     };
 
+    // A stream that closes is handled below. A stream that simply goes quiet —
+    // no bytes, no close — would leave the turn spinning forever, so give the
+    // wait a bound. Tool calls emit thinking/tool events, so real work is never
+    // this silent.
+    const STREAM_IDLE_MS = 90_000;
+    const readNextChunk = async () => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const wentQuiet = new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error('Lois stream went quiet')), STREAM_IDLE_MS);
+        });
+        try {
+            return await Promise.race([reader.read(), wentQuiet]);
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    };
+
     try {
         while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await readNextChunk();
             if (done) {
                 buffer += decoder.decode(new Uint8Array(0), { stream: false });
                 parseSseBuffer();
@@ -591,6 +608,7 @@ export async function streamAiChat(
         }
     } catch (error: unknown) {
         const err = error as { name?: string; message?: string };
+        await reader.cancel().catch(() => undefined);
         if (err?.name === 'AbortError') {
             return;
         }

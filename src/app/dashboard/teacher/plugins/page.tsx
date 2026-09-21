@@ -117,7 +117,7 @@ export default function TeacherPluginsPage() {
             {filteredPlugins.map((plugin, index) => {
               const Icon = plugin.icon;
               return (
-                <FadeInUp delay={index * 0.1} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+                <FadeInUp key={plugin.id} delay={index * 0.1} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                   <Card className="h-full hover:shadow-lg transition-shadow border-l-4 border-l-green-500 dark:border-l-green-400">
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-4 mb-4">

@@ -349,7 +349,7 @@ export default function SchoolsPage() {
                 if (school.hasTertiary) levels.push('Tertiary');
 
                 return (
-                  <FadeInUp from={{ opacity: 0, x: -20 }} to={{ opacity: 1, x: 0 }} duration={0.5}>
+                  <FadeInUp key={school.id} from={{ opacity: 0, x: -20 }} to={{ opacity: 1, x: 0 }} duration={0.5}>
                     <Card
                       className="cursor-pointer hover:bg-light-hover dark:hover:bg-[#1f2937] transition-all duration-200"
                       onClick={() => router.push(`/dashboard/super-admin/schools/${school.id}`)}

@@ -8,6 +8,7 @@ import {
 } from '@/lib/store/api/schoolAdminApi';
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { getTerminology } from '@/lib/utils/terminology';
+import { useCurrentAdminPermissions, PermissionResource } from '@/hooks/usePermissions';
 
 export type SetupStepId =
   | 'session'
@@ -215,10 +216,18 @@ export function useSchoolSetupProgress() {
   const terminology = getTerminology(currentType);
   const { data: schoolResponse } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
+  const { canView, isPrincipal, permissionsReady } = useCurrentAdminPermissions();
+  const canSeeSchoolOverview = isPrincipal || canView(PermissionResource.OVERVIEW);
 
   const { data, isLoading, isFetching, error } = useGetSetupProgressQuery(
     currentType || undefined,
-    { skip: !schoolId || (!currentType && availableTypes.length > 0) }
+    {
+      skip:
+        !schoolId ||
+        !permissionsReady ||
+        !canSeeSchoolOverview ||
+        (!currentType && availableTypes.length > 0),
+    }
   );
 
   const progress = data?.data;

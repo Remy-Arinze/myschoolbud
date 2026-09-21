@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import { useGetMySchoolQuery, useGetMyStudentSchoolQuery, useGetMyTeacherSchoolQuery } from '@/lib/store/api/schoolAdminApi';
 import type { SchoolType } from '@/lib/store/api/schoolAdminApi';
+import { isSchoolOwnerRole } from '@/lib/constants/roles';
 
 const SCHOOL_TYPE_STORAGE_KEY = 'selectedSchoolType';
 const SCHOOL_TYPE_EVENT = 'schoolTypeChanged';
@@ -28,29 +29,6 @@ function persistSchoolType(type: SchoolType) {
   localStorage.setItem(SCHOOL_TYPE_STORAGE_KEY, type);
   window.dispatchEvent(new Event(SCHOOL_TYPE_EVENT));
 }
-
-/**
- * Roles that have unrestricted access to all school types.
- * Only school_owner can switch between types freely.
- * All other admin roles are locked to their assigned schoolType.
- */
-const UNRESTRICTED_ADMIN_ROLES = ['school_owner'] as const;
-
-/**
- * Checks if a role is a principal-level role (Principal, Head Teacher, Headmaster, Headmistress, School Owner).
- */
-export const isPrincipalRole = (role?: string | null) => {
-  if (!role) return false;
-  const r = role.toLowerCase().trim();
-  return [
-    'principal',
-    'school_principal',
-    'head_teacher',
-    'headmaster',
-    'headmistress',
-    'school_owner',
-  ].includes(r);
-};
 
 export interface SchoolTypeInfo {
   hasPrimary: boolean;
@@ -103,12 +81,11 @@ export function useSchoolType(): SchoolTypeInfo {
     getSchoolTypeServerSnapshot,
   );
 
-  // Determine if this admin is locked to a specific school type
+  // Determine if this admin is locked to a specific school type.
+  // Only the School Owner roams freely. That seat is identified by title, which
+  // is safe because nobody can type it — the system writes `school_owner`.
   const adminSchoolType = user?.adminSchoolType as SchoolType | null | undefined;
-  const adminRole = user?.adminRole;
-  const isUnrestrictedRole = adminRole
-    ? UNRESTRICTED_ADMIN_ROLES.some(r => r === adminRole.toLowerCase())
-    : false;
+  const isUnrestrictedRole = isSchoolOwnerRole(user?.adminRole);
 
   // Admin is locked if they have an assigned schoolType AND are NOT an unrestricted role
   const isLocked = !!(

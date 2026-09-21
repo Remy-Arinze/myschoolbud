@@ -82,7 +82,7 @@ export default defineConfig({
         storageState: beulahAdminAuth,
         viewport: { width: 1440, height: 900 },
         screenshot: 'on',
-        video: { mode: 'on', size: { width: 1440, height: 900 } },
+        video: 'off',
         launchOptions: {
           executablePath: bravePath,
         },

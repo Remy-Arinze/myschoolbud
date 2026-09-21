@@ -265,7 +265,7 @@ export default function FacultiesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredFaculties.map((faculty, index) => (
-              <FadeInUp delay={index * 0.05} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+              <FadeInUp key={faculty.id} delay={index * 0.05} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                 <Card className="hover:shadow-lg transition-shadow h-full flex flex-col">
                   <CardContent
                     className="pt-6 flex-1 cursor-pointer"

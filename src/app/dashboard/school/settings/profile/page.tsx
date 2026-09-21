@@ -6,7 +6,7 @@ import { FadeInUp } from '@/components/ui/FadeInUp';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
-import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
+import { PermissionResource, PermissionType, useCurrentAdminPermissions } from '@/hooks/usePermissions';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import {
@@ -31,9 +31,11 @@ function SettingsPageContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const activeTab = useSchoolSettingsTab('school');
+  const { isPrincipal } = useCurrentAdminPermissions();
 
   const user = useSelector((state: RootState) => state.auth.user);
   const schoolId = user?.schoolId;
+  const showSchoolTabs = isPrincipal || !!token;
 
   return (
     <ProtectedRoute roles={['SCHOOL_ADMIN']}>
@@ -44,32 +46,34 @@ function SettingsPageContent() {
               className="font-bold text-light-text-primary dark:text-dark-text-primary mb-1"
               style={{ fontSize: 'var(--text-page-title)' }}
             >
-              Settings
+              {showSchoolTabs ? 'Settings' : 'Fees'}
             </h1>
             <p
               className="text-light-text-secondary dark:text-dark-text-secondary"
               style={{ fontSize: 'var(--text-page-subtitle)' }}
             >
-              Configure school profile, policies, permissions, admissions, timetables, and more.
+              {showSchoolTabs
+                ? 'Configure school profile, policies, permissions, admissions, timetables, and more.'
+                : 'Fee records for your school. Taking payments is not fully built yet.'}
             </p>
           </FadeInUp>
 
           <SchoolSettingsTabs activeTab={activeTab} />
 
-          {(activeTab === 'school' || token) && (
+          {showSchoolTabs && (activeTab === 'school' || token) && (
             <SchoolSettingsTabContent token={token} router={router} />
           )}
-          {activeTab === 'calendar' && !token && <CalendarSettingsTab />}
-          {activeTab === 'grading' && !token && <GradingSettingsTab />}
-          {activeTab === 'permissions' && !token && <PermissionsSettingsTab />}
-          {activeTab === 'admissions' && !token && <AdmissionsSettingsTab />}
-          {activeTab === 'timetable' && !token && <TimetableSettingsTab />}
-          {activeTab === 'attendance' && !token && <AttendanceSettingsTab />}
-          {activeTab === 'communications' && !token && <CommunicationsSettingsTab />}
+          {showSchoolTabs && activeTab === 'calendar' && !token && <CalendarSettingsTab />}
+          {showSchoolTabs && activeTab === 'grading' && !token && <GradingSettingsTab />}
+          {showSchoolTabs && activeTab === 'permissions' && !token && <PermissionsSettingsTab />}
+          {showSchoolTabs && activeTab === 'admissions' && !token && <AdmissionsSettingsTab />}
+          {showSchoolTabs && activeTab === 'timetable' && !token && <TimetableSettingsTab />}
+          {showSchoolTabs && activeTab === 'attendance' && !token && <AttendanceSettingsTab />}
+          {showSchoolTabs && activeTab === 'communications' && !token && <CommunicationsSettingsTab />}
           {activeTab === 'finance' && !token && <FinanceSettingsTab />}
-          {activeTab === 'lois' && schoolId && !token && <CurriculumAISettingsTab schoolId={schoolId} />}
-          {activeTab === 'data' && schoolId && !token && <DataSettingsTab schoolId={schoolId} />}
-          {activeTab === 'security' && !token && <SecuritySettingsTab />}
+          {showSchoolTabs && activeTab === 'lois' && schoolId && !token && <CurriculumAISettingsTab schoolId={schoolId} />}
+          {showSchoolTabs && activeTab === 'data' && schoolId && !token && <DataSettingsTab schoolId={schoolId} />}
+          {showSchoolTabs && activeTab === 'security' && !token && <SecuritySettingsTab />}
         </div>
       </PermissionGate>
     </ProtectedRoute>

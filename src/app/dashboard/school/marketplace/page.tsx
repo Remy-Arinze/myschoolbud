@@ -195,7 +195,7 @@ export default function MarketplacePage() {
                 .map((plugin, index) => {
                   const Icon = plugin.icon;
                   return (
-                    <FadeInUp delay={index * 0.1} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+                    <FadeInUp key={plugin.id} delay={index * 0.1} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                       <Card className="h-full border-2 border-green-500 dark:border-green-400">
                         <CardHeader>
                           <div className="flex items-start justify-between mb-2">
@@ -270,7 +270,7 @@ export default function MarketplacePage() {
                 .map((plugin, index) => {
                   const Icon = plugin.icon;
                   return (
-                    <FadeInUp delay={index * 0.1} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
+                    <FadeInUp key={plugin.id} delay={index * 0.1} from={{ opacity: 0, y: 20 }} to={{ opacity: 1, y: 0 }} duration={0.5}>
                       <Card className="h-full hover:shadow-lg transition-shadow">
                         <CardHeader>
                           <div className="flex items-start justify-between mb-2">

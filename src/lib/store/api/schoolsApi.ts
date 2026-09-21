@@ -1,4 +1,5 @@
 import { apiSlice } from './apiSlice';
+import type { AdminAccessTier } from '@/lib/constants/roles';
 
 // Types (these should match backend DTOs)
 export interface SchoolAdmin {
@@ -79,7 +80,9 @@ export interface School {
   // Current admin info for permission checks (set on getMySchool)
   currentAdmin?: {
     id: string;
+    /** Display title only. For authority, read `accessTier`. */
     role: string;
+    accessTier: AdminAccessTier;
   };
   runtimePolicies?: RuntimePolicies;
 }
@@ -172,10 +175,33 @@ export interface AddAdminDto {
   profileImage?: string;
   schoolType?: string;
   /**
-   * Optional custom permissions to assign during creation.
-   * If not provided, default READ permissions for all resources will be assigned.
+   * Exactly what this admin can see. Send `[]` for an account with no dashboard
+   * access. Either this or `roleTemplateId` is required — the backend rejects a
+   * create that states neither, because access is never granted by default.
    */
   permissions?: AdminPermissionInput[];
+  /** Named access bundle to copy onto the admin, instead of listing permissions. */
+  roleTemplateId?: string;
+  /**
+   * Authority. Omitted means STAFF. PRINCIPAL bypasses permissions entirely and
+   * is School-Owner-only; a principal-sounding job title grants nothing.
+   */
+  accessTier?: AdminAccessTier;
+}
+
+/** A named access bundle: "what a Bursar here can see". */
+export interface RoleTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  /** Job title to prefill when this role is chosen. A label, not authority. */
+  suggestedRole: string | null;
+  /** Platform-provided and not editable. */
+  isBuiltIn: boolean;
+  permissions: Array<{ id: string; resource: string; type: string; description?: string }>;
+  holderCount: number;
+  /** Holders whose access was hand-edited since it was applied. */
+  customisedHolderCount: number;
 }
 
 export interface AddTeacherDto {
@@ -463,16 +489,120 @@ export const schoolsApi = apiSlice.injectEndpoints({
       ],
     }),
 
-    // Make an admin the principal
-    makePrincipal: builder.mutation<ResponseDto<void>, { schoolId: string; adminId: string }>({
-      query: ({ schoolId, adminId }) => ({
+    // Make an admin the principal. The outgoing principal needs somewhere to
+    // land, so pass the access they should keep — otherwise the backend refuses
+    // rather than leaving them with an empty dashboard.
+    makePrincipal: builder.mutation<
+      ResponseDto<void>,
+      {
+        schoolId: string;
+        adminId: string;
+        incumbentRoleTemplateId?: string;
+        incumbentPermissions?: AdminPermissionInput[];
+      }
+    >({
+      query: ({ schoolId, adminId, incumbentRoleTemplateId, incumbentPermissions }) => ({
         url: `/schools/${schoolId}/admins/${adminId}/make-principal`,
         method: 'PATCH',
+        body: { incumbentRoleTemplateId, incumbentPermissions },
       }),
       invalidatesTags: (result, error, { schoolId }) => [
         { type: 'School', id: schoolId },
         'School',
+        'Permission',
       ],
+    }),
+
+    // Move an admin between principal- and staff-level access.
+    changeAccessTier: builder.mutation<
+      ResponseDto<void>,
+      {
+        schoolId: string;
+        adminId: string;
+        accessTier: AdminAccessTier;
+        /** Required when dropping to STAFF, unless roleTemplateId is given. */
+        permissions?: AdminPermissionInput[];
+        roleTemplateId?: string;
+        role?: string;
+      }
+    >({
+      query: ({ schoolId, adminId, ...body }) => ({
+        url: `/schools/${schoolId}/admins/${adminId}/access-tier`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: (result, error, { schoolId }) => [
+        { type: 'School', id: schoolId },
+        'School',
+        'Permission',
+      ],
+    }),
+
+    // Role templates
+    getRoleTemplates: builder.query<ResponseDto<RoleTemplate[]>, { schoolId: string }>({
+      query: ({ schoolId }) => `/schools/${schoolId}/role-templates`,
+      providesTags: ['RoleTemplate'],
+    }),
+
+    createRoleTemplate: builder.mutation<
+      ResponseDto<RoleTemplate>,
+      {
+        schoolId: string;
+        name: string;
+        description?: string;
+        suggestedRole?: string;
+        permissions: AdminPermissionInput[];
+      }
+    >({
+      query: ({ schoolId, ...body }) => ({
+        url: `/schools/${schoolId}/role-templates`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['RoleTemplate'],
+    }),
+
+    updateRoleTemplate: builder.mutation<
+      ResponseDto<RoleTemplate>,
+      {
+        schoolId: string;
+        templateId: string;
+        name?: string;
+        description?: string;
+        suggestedRole?: string;
+        permissions?: AdminPermissionInput[];
+      }
+    >({
+      query: ({ schoolId, templateId, ...body }) => ({
+        url: `/schools/${schoolId}/role-templates/${templateId}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['RoleTemplate'],
+    }),
+
+    deleteRoleTemplate: builder.mutation<
+      ResponseDto<void>,
+      { schoolId: string; templateId: string }
+    >({
+      query: ({ schoolId, templateId }) => ({
+        url: `/schools/${schoolId}/role-templates/${templateId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['RoleTemplate'],
+    }),
+
+    // Push a role's current access back onto everyone who holds it.
+    reapplyRoleTemplate: builder.mutation<
+      ResponseDto<{ updated: number; skippedCustomised: number; skippedPrincipals: number }>,
+      { schoolId: string; templateId: string; includeCustomised?: boolean }
+    >({
+      query: ({ schoolId, templateId, includeCustomised }) => ({
+        url: `/schools/${schoolId}/role-templates/${templateId}/reapply`,
+        method: 'POST',
+        body: { includeCustomised },
+      }),
+      invalidatesTags: ['RoleTemplate', 'Permission', 'School'],
     }),
 
     // Convert teacher to admin
@@ -590,6 +720,12 @@ export const {
   useUpdatePrincipalMutation,
   useDeletePrincipalMutation,
   useMakePrincipalMutation,
+  useChangeAccessTierMutation,
+  useGetRoleTemplatesQuery,
+  useCreateRoleTemplateMutation,
+  useUpdateRoleTemplateMutation,
+  useDeleteRoleTemplateMutation,
+  useReapplyRoleTemplateMutation,
   useConvertTeacherToAdminMutation,
   useUploadTeacherImageMutation,
   useUploadAdminImageMutation,

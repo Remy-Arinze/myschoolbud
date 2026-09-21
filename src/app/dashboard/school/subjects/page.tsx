@@ -2043,8 +2043,9 @@ function ClassAssignmentModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [localAssignments, setLocalAssignments] = useState<Record<string, string>>({});
-  const [hasChanges, setHasChanges] = useState(false);
+  // Only the teacher picks the user has actually changed, keyed by class arm.
+  // Everything else comes from the server, so arriving data needs no state write.
+  const [edits, setEdits] = useState<Record<string, string>>({});
 
   // Fetch class assignments for this subject
   const { data: assignmentsResponse, isLoading, refetch } = useGetSubjectClassAssignmentsQuery(
@@ -2056,23 +2057,27 @@ function ClassAssignmentModal({
 
   const assignmentsData = assignmentsResponse?.data;
 
-  // Initialize local assignments when data loads
-  useMemo(() => {
+  const savedAssignments = useMemo(() => {
+    const initial: Record<string, string> = {};
     if (assignmentsData) {
-      const initial: Record<string, string> = {};
       Object.entries(assignmentsData.assignments).forEach(([classArmId, assignment]) => {
         initial[classArmId] = assignment.teacherId;
       });
-      setLocalAssignments(initial);
     }
+    return initial;
   }, [assignmentsData]);
 
+  const localAssignments = useMemo(
+    () => ({ ...savedAssignments, ...edits }),
+    [savedAssignments, edits]
+  );
+  const hasChanges = Object.keys(edits).length > 0;
+
   const handleTeacherChange = (classArmId: string, teacherId: string) => {
-    setLocalAssignments(prev => ({
+    setEdits(prev => ({
       ...prev,
       [classArmId]: teacherId,
     }));
-    setHasChanges(true);
   };
 
   const handleSave = async () => {
@@ -2092,7 +2097,7 @@ function ClassAssignmentModal({
       }).unwrap();
 
       toast.success('Class assignments saved successfully');
-      setHasChanges(false);
+      setEdits({});
       refetch();
       onSaved();
     } catch (error: any) {

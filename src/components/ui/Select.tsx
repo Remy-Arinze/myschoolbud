@@ -94,7 +94,10 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
     placeholder = 'Select...',
     disabled,
   }, ref) => {
-    const selectId = id || useId();
+    // Hooks cannot be called conditionally, so the fallback id is always
+    // generated and only used when the caller did not supply one.
+    const generatedId = useId();
+    const selectId = id || generatedId;
     const hasLeftIcon = !!leftIcon;
     const hasRightIcon = !hideChevron && (rightIcon !== undefined ? !!rightIcon : true);
     const showRightIcon = hasRightIcon && (rightIcon || <ChevronDown className="h-4 w-4 text-light-text-muted dark:text-dark-text-muted" />);

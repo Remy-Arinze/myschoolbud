@@ -3,6 +3,8 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { useCurrentAdminPermissions, PermissionResource, PermissionType } from '@/hooks/usePermissions';
+import { usePermissionFilteredSidebar } from '@/hooks/useSidebarConfig';
+import { resourceLabel, typeLabel } from '@/lib/constants/permission-metadata';
 
 interface PermissionGateProps {
   /**
@@ -57,9 +59,9 @@ export function PermissionGate({
   fallback = null,
   showLoading = false,
 }: PermissionGateProps) {
-  const { hasPermission, isLoading } = useCurrentAdminPermissions();
+  const { hasPermission, permissionsReady } = useCurrentAdminPermissions();
 
-  if (isLoading && showLoading) {
+  if (!permissionsReady && showLoading) {
     return (
       <div className="animate-pulse">
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
@@ -67,8 +69,8 @@ export function PermissionGate({
     );
   }
 
-  if (isLoading) {
-    // If not showing loading, return nothing until we know the permissions
+  if (!permissionsReady) {
+    // Hide write/gated controls until the table is known — do not flash them
     return null;
   }
 
@@ -89,9 +91,9 @@ export function withPermission<P extends object>(
   FallbackComponent?: React.ComponentType
 ) {
   return function PermissionProtectedComponent(props: P) {
-    const { hasPermission, isLoading } = useCurrentAdminPermissions();
+    const { hasPermission, permissionsReady } = useCurrentAdminPermissions();
 
-    if (isLoading) {
+    if (!permissionsReady) {
       return (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
@@ -103,7 +105,7 @@ export function withPermission<P extends object>(
       if (FallbackComponent) {
         return <FallbackComponent />;
       }
-      return <AccessDenied resource={resource} />;
+      return <AccessDenied resource={resource} type={type} />;
     }
 
     return <WrappedComponent {...props} />;
@@ -111,54 +113,72 @@ export function withPermission<P extends object>(
 }
 
 /**
- * Default access denied component
+ * Default access denied component.
+ *
+ * Worded the way Lois words the same refusal — "You need Students (read) access
+ * to look up student records" — so the admin learns what to ask for and who to
+ * ask, instead of being told only that they cannot be here.
  */
-function AccessDenied({ resource }: { resource: PermissionResource }) {
-  const resourceLabels: Record<PermissionResource, string> = {
-    [PermissionResource.OVERVIEW]: 'Dashboard Overview',
-    [PermissionResource.ANALYTICS]: 'Analytics',
-    [PermissionResource.SUBSCRIPTIONS]: 'Subscriptions',
-    [PermissionResource.STUDENTS]: 'Students',
-    [PermissionResource.STAFF]: 'Staff',
-    [PermissionResource.CLASSES]: 'Classes',
-    [PermissionResource.SUBJECTS]: 'Subjects',
-    [PermissionResource.TIMETABLES]: 'Timetables',
-    [PermissionResource.CALENDAR]: 'Calendar',
-    [PermissionResource.ADMISSIONS]: 'Admissions',
-    [PermissionResource.SESSIONS]: 'Sessions',
-    [PermissionResource.EVENTS]: 'Events',
-    [PermissionResource.GRADES]: 'Grades',
-    [PermissionResource.CURRICULUM]: 'Academics & Curriculum',
-    [PermissionResource.SCHEME_OF_WORK]: 'Scheme of Work',
-    [PermissionResource.RESOURCES]: 'Resources',
-    [PermissionResource.TRANSFERS]: 'Transfers',
-    [PermissionResource.INTEGRATIONS]: 'Integrations',
-    [PermissionResource.SETTINGS]: 'School Settings',
-  };
+function AccessDenied({
+  resource,
+  type = PermissionType.READ,
+}: {
+  resource: PermissionResource;
+  type?: PermissionType;
+}) {
+  const { sections } = usePermissionFilteredSidebar();
+  const homeHref =
+    sections.flatMap((section) => section.items)[0]?.href || '/dashboard/school';
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
-      <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-        <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      </div>
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-        Access Denied
+      <h2 className="font-heading text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        You need {resourceLabel(resource)} access
       </h2>
       <p className="text-gray-600 dark:text-gray-400 max-w-md mb-6">
-        You don&apos;t have permission to access <span className="font-medium">{resourceLabels[resource]}</span>.
-        Please contact your school administrator if you believe this is an error.
+        This page needs{' '}
+        <span className="font-medium">
+          {resourceLabel(resource)} ({typeLabel(type).toLowerCase()})
+        </span>{' '}
+        access, which your school hasn&apos;t given you. Anyone with principal-level
+        access can add it from your profile on the Staff page.
       </p>
       <Link
-        href="/dashboard/school"
-        className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white transition-colors border border-transparent rounded-lg bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+        href={homeHref}
+        className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white transition-colors border border-transparent rounded-lg bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
       >
-        Return to Dashboard
+        Go to a page you can use
       </Link>
     </div>
   );
 }
 
-export { AccessDenied };
+/**
+ * Shown when the permission table could not be loaded. This is not a denial —
+ * the admin's access is simply unknown, so we ask rather than assume.
+ */
+function AccessUnavailable({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
+      <h2 className="font-heading text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        We couldn&apos;t load your access
+      </h2>
+      <p className="text-gray-600 dark:text-gray-400 max-w-md mb-6">
+        Your pages are decided by the access your school gave you, and that list didn&apos;t load.
+        Try again — nothing about your account has changed.
+      </p>
+      {onRetry ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white transition-colors border border-transparent rounded-lg bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          Try again
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export { AccessDenied, AccessUnavailable };
 

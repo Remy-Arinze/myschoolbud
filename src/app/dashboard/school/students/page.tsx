@@ -520,7 +520,7 @@ function StudentsPageContent() {
                 const StatusIcon = statusConfig.icon;
 
                 return (
-                  <FadeInUp from={{ opacity: 0, x: -20 }} to={{ opacity: 1, x: 0 }} duration={0.5}>
+                  <FadeInUp key={student.id} from={{ opacity: 0, x: -20 }} to={{ opacity: 1, x: 0 }} duration={0.5}>
                     <Card
                       className="cursor-pointer hover:bg-light-surface dark:hover:bg-dark-bg transition-colors"
                       onClick={() => router.push(`/dashboard/school/students/${student.id}`)}

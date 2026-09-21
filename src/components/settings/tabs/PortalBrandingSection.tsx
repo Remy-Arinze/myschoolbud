@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/lib/store/store';
 import { useGetMySchoolQuery } from '@/lib/store/api/schoolAdminApi';
-import { useGetMySubscriptionQuery, SubscriptionTier } from '@/lib/store/api/subscriptionsApi';
+import { useGetSubscriptionSummaryQuery, SubscriptionTier } from '@/lib/store/api/subscriptionsApi';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 // const DEFAULT_ACCENT = '#007FFF';
@@ -18,7 +18,9 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export function PortalBrandingSection() {
   const { data: schoolRes, refetch } = useGetMySchoolQuery();
-  const { data: subRes } = useGetMySubscriptionQuery();
+  // Summary, not the billing record: a bursar with Settings access must still
+  // see the right tier here without being allowed near billing.
+  const { data: subRes } = useGetSubscriptionSummaryQuery();
   const token = useSelector((state: RootState) => state.auth.token);
   const school = schoolRes?.data;
   const tier = subRes?.data?.tier || SubscriptionTier.FREE;

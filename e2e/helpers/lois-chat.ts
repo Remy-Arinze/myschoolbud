@@ -6,7 +6,7 @@ export function loisPanel(page: Page) {
 
 export async function openLois(page: Page) {
   await expect(page.getByText(/^compiling/i)).toHaveCount(0, { timeout: 180_000 });
-  await expect(page.getByText(/loading your dashboard/i)).toHaveCount(0, { timeout: 90_000 });
+  await expect(page.getByText(/loading your dashboard/i)).toHaveCount(0, { timeout: 20_000 }).catch(() => undefined);
   const composer = page.getByPlaceholder(/ask lois anything|ask a follow-up/i);
   if (!(await composer.isVisible().catch(() => false))) {
     const cta = page.getByRole('button', { name: /ask lois|lois briefing/i }).first();

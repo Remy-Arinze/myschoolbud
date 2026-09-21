@@ -1,5 +1,6 @@
 import { apiSlice } from './apiSlice';
 import type { School } from './schoolsApi';
+import type { AdminAccessTier } from '@/lib/constants/roles';
 
 // Dashboard types (matching backend DTOs)
 export interface DashboardStats {
@@ -88,7 +89,10 @@ export interface StaffListItem {
   lastName: string;
   email: string | null;
   phone: string;
+  /** Display title only. For authority, read `accessTier`. */
   role: string | null;
+  /** Authority tier. Null for teachers, who hold no admin authority. */
+  accessTier: AdminAccessTier | null;
   subject: string | null;
   employeeId: string | null;
   isTemporary: boolean;
@@ -303,7 +307,9 @@ export interface Permission {
 export interface StaffPermissions {
   adminId: string;
   adminName: string;
+  /** Display title only. For authority, read `accessTier`. */
   role: string;
+  accessTier: AdminAccessTier;
   permissions: Permission[];
 }
 
@@ -1707,7 +1713,10 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // Get my school (for school admin)
     getMySchool: builder.query<ResponseDto<School>, void>({
-      query: () => '/school-admin/school',
+      // The shell blocks on this call. A hung socket has no deadline of its
+      // own, so bound it and fail fast rather than spinning on every screen.
+      query: () => ({ url: '/school-admin/school', timeout: 15000 }),
+      extraOptions: { maxRetries: 1 },
       providesTags: ['School'],
     }),
     uploadSchoolLogo: builder.mutation<ResponseDto<School>, { file: File }>({
@@ -1964,7 +1973,12 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         if (type) queryParams.append('type', type);
         if (teacherId) queryParams.append('teacherId', teacherId);
         const queryString = queryParams.toString();
-        return `/schools/${schoolId}/classes${queryString ? `?${queryString}` : ''}`;
+        // The classes screen renders nothing until this lands, so give it a
+        // deadline — the page has an error state, but no way out of a hang.
+        return {
+          url: `/schools/${schoolId}/classes${queryString ? `?${queryString}` : ''}`,
+          timeout: 20000,
+        };
       },
       providesTags: (result) =>
         result
@@ -3617,7 +3631,10 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
      * This endpoint does NOT require STAFF:READ permission (avoids circular dependency)
      */
     getMyPermissions: builder.query<ResponseDto<StaffPermissions>, { schoolId: string }>({
-      query: ({ schoolId }) => `/schools/${schoolId}/permissions/me`,
+      // Same reason as getMySchool: this decides every screen, so a stalled
+      // request is worse than a quick failure the shell can report.
+      query: ({ schoolId }) => ({ url: `/schools/${schoolId}/permissions/me`, timeout: 15000 }),
+      extraOptions: { maxRetries: 1 },
       providesTags: (result) => [{ type: 'Permission' as const, id: 'me' }],
     }),
     getAdminPermissions: builder.query<ResponseDto<StaffPermissions>, { schoolId: string; adminId: string }>({

@@ -12,16 +12,17 @@ import { Pagination } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { FadeInUp } from '@/components/ui/FadeInUp';
-import { Users, Plus, FileSpreadsheet, Search, Grid3x3, List, MoreVertical, BookOpen, CheckCircle, Clock, Ban, Mail, Loader2, Trash2, GraduationCap } from 'lucide-react';
+import { Users, Plus, FileSpreadsheet, Search, Grid3x3, List, BookOpen, CheckCircle, Clock, Ban, Mail, Loader2, Trash2, GraduationCap, ShieldCheck, Crown } from 'lucide-react';
 import { useGetStaffListQuery, useGetMySchoolQuery, useResendPasswordResetForStaffMutation, useDeleteAdminMutation, useDeleteTeacherMutation } from '@/lib/store/api/schoolAdminApi';
 import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/lib/store/store';
 import { Modal } from '@/components/ui/Modal';
-import { isPrincipalRole } from '@/hooks/useSchoolType'; // I'll check if it's exported there, if not I'll define it. Actually I didn't export it. I'll define it locally for now or modify useSchoolType.
+import { hasPrincipalAccess, isSchoolOwnerRole, type AdminAccessTier } from '@/lib/constants/roles';
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { getTerminology } from '@/lib/utils/terminology';
 import { PermissionAssignmentModal } from '@/components/permissions/PermissionAssignmentModal';
+import { AccessTierModal } from '@/components/permissions/AccessTierModal';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import { StaffImportModal } from '@/components/modals/StaffImportModal';
@@ -45,6 +46,11 @@ export default function StaffPage() {
     id: string;
     name: string;
     role: string;
+    accessTier: AdminAccessTier | null;
+  } | null>(null);
+  const [adminForTierChange, setAdminForTierChange] = useState<{
+    admin: { id: string; name: string; role: string; accessTier: AdminAccessTier | null };
+    target: AdminAccessTier;
   } | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<{ id: string; type: 'admin' | 'teacher'; name: string } | null>(null);
@@ -54,37 +60,69 @@ export default function StaffPage() {
 
   // Use the adminRole from the school profile as the source of truth
   const { data: schoolResponse, isLoading: isLoadingSchool } = useGetMySchoolQuery();
-  const schoolId = schoolResponse?.data?.id;
+  const schoolId = schoolResponse?.data?.id || user?.schoolId;
   const currentProfileId = schoolResponse?.data?.currentAdmin?.id;
   const currentProfileRole = schoolResponse?.data?.currentAdmin?.role;
 
-  const currentUserAdminRole = (currentProfileRole || user?.adminRole || '').toLowerCase().trim();
+  // Mirrors the backend delete hierarchy in AdminService.deleteAdmin. Owner is a
+  // seat (title the system writes); "principal level" is authority, so it reads
+  // the tier — a job title never decides who can delete whom.
+  const currentAdmin = schoolResponse?.data?.currentAdmin;
+  const currentIsOwner = isSchoolOwnerRole(currentProfileRole || user?.adminRole);
+  const currentIsPrincipal =
+    hasPrincipalAccess(currentAdmin) || user?.adminAccessTier === 'PRINCIPAL';
 
   const canDeleteStaff = (staffMember: any) => {
-    if (!currentUserAdminRole) return false;
-
-    const normalize = (r: string) => (r || '').toLowerCase().trim().replace(/[\s_-]+/g, '');
-    const currentNorm = normalize(currentUserAdminRole);
-    const targetNorm = normalize(staffMember.role || '');
-
     // 1. School owner cannot be deleted
-    if (targetNorm === 'schoolowner') return false;
+    if (isSchoolOwnerRole(staffMember.role)) return false;
 
     // 2. Cannot delete yourself
     if (staffMember.userId === user?.id || staffMember.id === currentProfileId || staffMember.id === user?.profileId) return false;
 
     // 3. School owner can delete anyone else (teachers, admins, principals)
-    if (currentNorm === 'schoolowner') return true;
+    if (currentIsOwner) return true;
 
-    // 4. Principals can delete teachers and regular admins (non-principals)
-    const principalRoles = ['principal', 'schoolprincipal', 'headteacher', 'headmaster', 'headmistress', 'schoolowner'];
-    const targetIsPrincipal = principalRoles.includes(targetNorm);
-    const currentUserIsPrincipal = principalRoles.includes(currentNorm);
-
-    if (currentUserIsPrincipal && !targetIsPrincipal) return true;
+    // 4. Principal-tier admins can delete teachers and STAFF-tier admins.
+    //    Teachers have no tier, so they read as STAFF here, which is correct.
+    if (currentIsPrincipal && !hasPrincipalAccess(staffMember)) return true;
 
     return false;
   };
+
+  // Editing someone's permission rows. Principal-tier admins may do it, which
+  // matches PermissionService.assignPermissions — teachers have no rows to edit.
+  const canManageAccess = (staffMember: any) =>
+    staffMember.type === 'admin' &&
+    currentIsPrincipal &&
+    staffMember.id !== currentProfileId;
+
+  // Moving someone between tiers is owner-only, both directions, matching
+  // assertCanGrantPrincipalTier. A principal must not be able to unseat a peer,
+  // and the owner seat itself cannot be moved.
+  const canChangeTier = (staffMember: any) =>
+    staffMember.type === 'admin' &&
+    currentIsOwner &&
+    !isSchoolOwnerRole(staffMember.role) &&
+    staffMember.id !== currentProfileId;
+
+  const openAccessFor = (staffMember: any) =>
+    setSelectedAdminForPermissions({
+      id: staffMember.id,
+      name: `${staffMember.firstName} ${staffMember.lastName}`,
+      role: staffMember.role || 'Administrator',
+      accessTier: staffMember.accessTier ?? null,
+    });
+
+  const openTierChangeFor = (staffMember: any) =>
+    setAdminForTierChange({
+      admin: {
+        id: staffMember.id,
+        name: `${staffMember.firstName} ${staffMember.lastName}`,
+        role: staffMember.role || 'Administrator',
+        accessTier: staffMember.accessTier ?? null,
+      },
+      target: hasPrincipalAccess(staffMember) ? 'STAFF' : 'PRINCIPAL',
+    });
 
 
   // Get school type and terminology
@@ -570,26 +608,48 @@ export default function StaffPage() {
                                   <Trash2 className="h-4 w-4" />
                                 </button>
                               )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Additional menu options could go here
-                                }}
-                                className="text-light-text-secondary dark:text-[#9ca3af] hover:text-light-text-primary dark:hover:text-white p-1"
-                              >
-                                <MoreVertical className="h-5 w-5" />
-                              </button>
+                              {canManageAccess(staffMember) && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openAccessFor(staffMember);
+                                  }}
+                                  title="Manage access"
+                                  className="text-light-text-secondary dark:text-[#9ca3af] hover:text-blue-500 p-1"
+                                >
+                                  <ShieldCheck className="h-4 w-4" />
+                                </button>
+                              )}
+                              {canChangeTier(staffMember) && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openTierChangeFor(staffMember);
+                                  }}
+                                  title={
+                                    hasPrincipalAccess(staffMember)
+                                      ? 'Remove principal-level access'
+                                      : 'Give principal-level access'
+                                  }
+                                  className="text-light-text-secondary dark:text-[#9ca3af] hover:text-amber-500 p-1"
+                                >
+                                  <Crown className="h-4 w-4" />
+                                </button>
+                              )}
                             </PermissionGate>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-4 text-light-text-secondary dark:text-[#9ca3af] mt-auto" style={{ fontSize: 'var(--text-body)' }}>
                           <div className="flex items-center gap-1">
+                            {/* Colour follows authority, not the spelling of the
+                                title — "Principal" and "principal" used to land
+                                in different buckets. */}
                             <span className={cn(
                               'px-2 py-0.5 rounded font-medium',
-                              staffMember.role === 'Principal'
+                              hasPrincipalAccess(staffMember)
                                 ? 'bg-purple-500/20 text-purple-400'
-                                : staffMember.role === 'Teacher'
+                                : staffMember.type === 'teacher'
                                   ? 'bg-green-500/20 text-green-400'
                                   : 'bg-blue-500/20 text-blue-400'
                             )} style={{ fontSize: 'var(--text-small)' }}>
@@ -628,7 +688,7 @@ export default function StaffPage() {
                 const StatusIcon = statusConfig.icon;
 
                 return (
-                  <FadeInUp from={{ opacity: 0, x: -20 }} to={{ opacity: 1, x: 0 }} duration={0.5}>
+                  <FadeInUp key={staffMember.id} from={{ opacity: 0, x: -20 }} to={{ opacity: 1, x: 0 }} duration={0.5}>
                     <Card
                       className="cursor-pointer hover:bg-light-surface dark:hover:bg-dark-bg transition-colors"
                       onClick={() => router.push(`/dashboard/school/staff/${staffMember.id}`)}
@@ -682,6 +742,34 @@ export default function StaffPage() {
                                     className="text-light-text-secondary dark:text-[#9ca3af] hover:text-blue-500 p-1"
                                   >
                                     <Mail className="h-4 w-4" />
+                                  </button>
+                                )}
+                                {canManageAccess(staffMember) && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openAccessFor(staffMember);
+                                    }}
+                                    className="text-light-text-secondary dark:text-[#9ca3af] hover:text-blue-500 p-2"
+                                    title="Manage access"
+                                  >
+                                    <ShieldCheck className="h-4 w-4" />
+                                  </button>
+                                )}
+                                {canChangeTier(staffMember) && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openTierChangeFor(staffMember);
+                                    }}
+                                    className="text-light-text-secondary dark:text-[#9ca3af] hover:text-amber-500 p-2"
+                                    title={
+                                      hasPrincipalAccess(staffMember)
+                                        ? 'Remove principal-level access'
+                                        : 'Give principal-level access'
+                                    }
+                                  >
+                                    <Crown className="h-4 w-4" />
                                   </button>
                                 )}
                                 {canDeleteStaff(staffMember) && (
@@ -755,6 +843,19 @@ export default function StaffPage() {
             adminId={selectedAdminForPermissions.id}
             adminName={selectedAdminForPermissions.name}
             adminRole={selectedAdminForPermissions.role}
+            accessTier={selectedAdminForPermissions.accessTier}
+          />
+        )}
+
+        {/* Principal-level access, given or taken away */}
+        {adminForTierChange && schoolId && (
+          <AccessTierModal
+            isOpen={!!adminForTierChange}
+            onClose={() => setAdminForTierChange(null)}
+            schoolId={schoolId}
+            admin={adminForTierChange.admin}
+            target={adminForTierChange.target}
+            onChanged={refetch}
           />
         )}
         {/* Delete Confirmation Modal */}
