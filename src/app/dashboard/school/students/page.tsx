@@ -131,7 +131,14 @@ function StudentsPageContent() {
   }, [searchQuery]);
 
   const { data: studentsResponse, isLoading, error } = useGetStudentsQuery(
-    { schoolId: schoolId!, page, limit, schoolType: currentType || undefined },
+    {
+      schoolId: schoolId!,
+      page,
+      limit,
+      schoolType: currentType || undefined,
+      search: debouncedSearch || undefined,
+      status: filter !== 'all' ? filter : undefined,
+    },
     { skip: !schoolId }
   );
   const students = studentsResponse?.data?.items || [];
@@ -141,43 +148,20 @@ function StudentsPageContent() {
   const hasNext = pagination ? pagination.page < pagination.totalPages : false;
   const hasPrev = pagination ? pagination.page > 1 : false;
 
-  // Calculate stats
+  // Status cards cover the whole school (and the current search). The status pill only filters the list.
   const stats = useMemo(() => {
-    const total = pagination?.total || 0;
-    const active = students.filter(s => s.user?.accountStatus === 'ACTIVE').length;
-    const pending = students.filter(s => s.user?.accountStatus === 'SHADOW').length;
-    const suspended = students.filter(s => s.user?.accountStatus === 'SUSPENDED').length;
-
-    return { total, active, pending, suspended };
-  }, [students, pagination]);
-
-  // Filter students by status and search
-  const filteredStudents = useMemo(() => {
-    let filtered = students;
-
-    // Apply status filter
-    if (filter !== 'all') {
-      filtered = filtered.filter(s => {
-        if (filter === 'active') return s.user?.accountStatus === 'ACTIVE';
-        if (filter === 'pending') return s.user?.accountStatus === 'SHADOW';
-        if (filter === 'suspended') return s.user?.accountStatus === 'SUSPENDED';
-        return true;
-      });
-    }
-
-    // Apply search filter
-    if (debouncedSearch) {
-      const query = debouncedSearch.toLowerCase();
-      filtered = filtered.filter(
-        (student) =>
-          student.firstName.toLowerCase().includes(query) ||
-          student.lastName.toLowerCase().includes(query) ||
-          student.uid.toLowerCase().includes(query)
-      );
-    }
-
-    return filtered;
-  }, [students, filter, debouncedSearch]);
+    const counts = pagination?.statusCounts;
+    const active = counts?.active ?? 0;
+    const pending = counts?.pending ?? 0;
+    const suspended = counts?.suspended ?? 0;
+    const archived = counts?.archived ?? 0;
+    return {
+      total: counts ? active + pending + suspended + archived : pagination?.total || 0,
+      active,
+      pending,
+      suspended,
+    };
+  }, [pagination]);
 
   // Handle resend invitation
   const handleResendInvitation = async (studentId: string, studentName: string, e: React.MouseEvent) => {
@@ -447,7 +431,7 @@ function StudentsPageContent() {
             All Students
           </p>
 
-          {filteredStudents.length === 0 ? (
+          {students.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <EmptyStateIcon type="person_outline" />
@@ -458,7 +442,7 @@ function StudentsPageContent() {
             </Card>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredStudents.map((student) => {
+              {students.map((student) => {
 
                 const statusConfig = getStatusBadge(student.user?.accountStatus);
                 const StatusIcon = statusConfig.icon;
@@ -515,7 +499,7 @@ function StudentsPageContent() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredStudents.map((student) => {
+              {students.map((student) => {
                 const statusConfig = getStatusBadge(student.user?.accountStatus);
                 const StatusIcon = statusConfig.icon;
 

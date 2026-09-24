@@ -59,6 +59,7 @@ export function useSchools(params?: {
         totalPages: data.data.totalPages,
         hasNext: data.data.hasNext,
         hasPrev: data.data.hasPrev,
+        statusCounts: data.data.statusCounts,
       }
       : null,
     isLoading,

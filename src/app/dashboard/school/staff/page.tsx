@@ -158,6 +158,7 @@ export default function StaffPage() {
     search: debouncedSearch || undefined,
     role: roleFilter !== 'All' ? roleFilter : undefined,
     schoolType: currentType || undefined,
+    status: filter !== 'all' ? filter : undefined,
   });
 
   const staffList = staffResponse?.data;
@@ -178,34 +179,28 @@ export default function StaffPage() {
     });
   }, [staffList?.availableRoles]);
 
-  // Calculate stats
+  // Status cards cover the whole school (and the current search/role). The status pill only filters the list.
   const stats = useMemo(() => {
-    const total = meta?.total || 0;
-    const active = staff.filter(s => s.accountStatus === 'ACTIVE').length;
-    const pending = staff.filter(s => s.accountStatus === 'SHADOW').length;
-    const suspended = staff.filter(s => s.accountStatus === 'SUSPENDED').length;
+    const counts = meta?.statusCounts;
+    const active = counts?.active ?? 0;
+    const pending = counts?.pending ?? 0;
+    const suspended = counts?.suspended ?? 0;
+    const archived = counts?.archived ?? 0;
+    return {
+      total: counts ? active + pending + suspended + archived : meta?.total || 0,
+      active,
+      pending,
+      suspended,
+    };
+  }, [meta]);
 
-    return { total, active, pending, suspended };
-  }, [staff, meta]);
-
-  // Filter staff by status
+  // School owner is a seat, not a staff row in this list.
   const filteredStaff = useMemo(() => {
-    let result = staff;
-
-    // Filter out School Owner role
-    result = result.filter(s => {
+    return staff.filter(s => {
       const role = (s.role || '').toLowerCase().trim().replace(/[\s_-]+/g, '');
       return role !== 'schoolowner';
     });
-
-    if (filter === 'all') return result;
-    return result.filter(s => {
-      if (filter === 'active') return s.accountStatus === 'ACTIVE';
-      if (filter === 'pending') return s.accountStatus === 'SHADOW';
-      if (filter === 'suspended') return s.accountStatus === 'SUSPENDED';
-      return true;
-    });
-  }, [staff, filter]);
+  }, [staff]);
 
   // Get initials from name
   const getInitials = (firstName?: string, lastName?: string) => {

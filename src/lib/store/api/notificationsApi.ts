@@ -7,6 +7,7 @@ export interface InAppNotification {
   role: string | null;
   type: string;
   title: string;
+  subtitle?: string | null;
   body: string;
   link: string | null;
   metadata?: unknown;

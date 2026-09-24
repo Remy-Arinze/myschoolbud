@@ -158,7 +158,16 @@ export function useSidebarConfig(): {
           items.push({ label: 'Classes', href: '/dashboard/teacher/classes', icon: BookOpen });
         }
       } else {
-        // SECONDARY / TERTIARY: multi-class subject teachers — Classes list only (no separate My Form nav)
+        // Secondary form teachers keep the full class list and get a direct link to each form arm.
+        if (currentType === 'SECONDARY' && formClasses && formClasses.length > 0) {
+          formClasses.forEach((fc) => {
+            items.push({
+              label: formClasses.length > 1 ? `My Form (${fc.name})` : 'My Form',
+              href: `/dashboard/teacher/classes/${fc.id}`,
+              icon: Users,
+            });
+          });
+        }
         items.push({ label: 'Classes', href: '/dashboard/teacher/classes', icon: BookOpen });
       }
 

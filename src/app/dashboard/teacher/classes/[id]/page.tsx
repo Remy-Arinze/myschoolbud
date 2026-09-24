@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import Link from 'next/link';
@@ -38,7 +38,9 @@ import {
   ChevronRight,
   Edit,
   X,
-  GraduationCap
+  GraduationCap,
+  ClipboardList,
+  History,
 } from 'lucide-react';
 import {
   useGetClassByIdQuery,
@@ -68,15 +70,14 @@ import { BulkGradeEntryModal } from '@/components/modals/BulkGradeEntryModal';
 import { GradeEntryModal } from '@/components/modals/GradeEntryModal';
 import { TeacherTimetableGrid } from '@/components/timetable/TeacherTimetableGrid';
 import { SchemeOfWorkView } from '@/components/scheme-of-work/SchemeOfWorkView';
+import { FormClassReports } from '@/components/teacher/FormClassReports';
 import toast from 'react-hot-toast';
 import { safeDownload } from '@/lib/utils/download';
 import { cn } from '@/lib/utils';
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { useRuntimePolicies } from '@/hooks/useRuntimePolicies';
 import { getTerminology } from '@/lib/utils/terminology';
-import { AgoraAiTools } from '@/components/ai/AgoraAiTools';
-import { FloatingAiCta } from '@/components/ai/FloatingAiCta';
-import { AiChatDrawer } from '@/components/ai/AiChatDrawer';
+import { LoisFocus } from '@/components/ai/LoisFocus';
 import { Sparkles } from 'lucide-react';
 import { LiveStatusBadge } from '@/components/ui/LiveStatusBadge';
 import { ConfirmModal } from '@/components/ui/Modal';
@@ -85,7 +86,7 @@ import { ActivityLog } from '@/components/dashboard/ActivityLog';
 import { useTeacherDashboard } from '@/hooks/useTeacherDashboard';
 import { SectionTabs } from '@/components/ui/SectionTabs';
 
-type TabType = 'overview' | 'curriculum' | 'students' | 'grades' | 'timetable' | 'resources' | 'assessments' | 'roll-call' | 'scheme-of-work';
+type TabType = 'overview' | 'curriculum' | 'students' | 'grades' | 'timetable' | 'resources' | 'assessments' | 'roll-call' | 'scheme-of-work' | 'reports';
 
 export default function ClassDetailPage() {
   const params = useParams();
@@ -114,14 +115,9 @@ export default function ClassDetailPage() {
   const [showUploadResourceModal, setShowUploadResourceModal] = useState(false);
   const [assessmentToDelete, setAssessmentToDelete] = useState<Assessment | null>(null);
   const [assessmentTermFilter, setAssessmentTermFilter] = useState<string>('');
+  const [showTermHistory, setShowTermHistory] = useState(false);
+  const termHistoryRef = React.useRef<HTMLDivElement>(null);
   const [showDeleteAssessmentModal, setShowDeleteAssessmentModal] = useState(false);
-  const [showAiChat, setShowAiChat] = useState(false);
-  const [aiChatMounted, setAiChatMounted] = useState(false);
-  const [aiChatEpoch, setAiChatEpoch] = useState(0);
-
-  useEffect(() => {
-    if (showAiChat) setAiChatMounted(true);
-  }, [showAiChat]);
 
   const { currentType } = useSchoolType();
   const terminology = getTerminology(currentType) || {
@@ -151,20 +147,33 @@ export default function ClassDetailPage() {
   const classType = classData?.type as 'PRIMARY' | 'SECONDARY' | 'TERTIARY' | undefined;
 
   // Get active session - use the class type to get the correct session for this school type
-  const { data: activeSessionResponse, isLoading: isLoadingActiveSession } = useGetActiveSessionQuery(
+  const {
+    data: activeSessionResponse,
+    isLoading: isLoadingActiveSession,
+    isFetching: isFetchingActiveSession,
+    isUninitialized: isActiveSessionUninitialized,
+    isError: isActiveSessionError,
+  } = useGetActiveSessionQuery(
     { schoolId: schoolId!, schoolType: classType || currentType || undefined },
     { skip: !schoolId }
   );
   const activeSession = activeSessionResponse?.data;
 
   // Use teacher dashboard hook to determine if this is the teacher's form class
-  const { formClass, teacher: teacherProfile } = useTeacherDashboard();
-  const isFormTeacher = formClass?.id === classId;
+  const { formClasses, teacher: teacherProfile } = useTeacherDashboard();
+  const isFormTeacher = formClasses.some((form) => form.id === classId);
 
-  // Get all sessions for timetable term selector
-  const { data: sessionsResponse } = useGetSessionsQuery(
+  const sessionSchoolType = classType || currentType || undefined;
+
+  // Legacy sessions (null school type) feed the timetable selector.
+  // Typed sessions are what the assessments history list needs for this class.
+  const { data: sessionsResponse, isFetching: isFetchingSessions } = useGetSessionsQuery(
     { schoolId: schoolId! },
-    { skip: !schoolId || activeTab !== 'timetable' }
+    { skip: !schoolId }
+  );
+  const { data: typedSessionsResponse, isFetching: isFetchingTypedSessions } = useGetSessionsQuery(
+    { schoolId: schoolId!, schoolType: sessionSchoolType },
+    { skip: !schoolId || !sessionSchoolType }
   );
 
   // Get students in class (always fetch so they're available for grade entry modal)
@@ -219,17 +228,37 @@ export default function ClassDetailPage() {
   // State for expanded student card
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
 
-  // Get assessments for class
-  const { data: assessmentsResponse, isLoading: isLoadingAssessments } = useGetClassAssessmentsQuery(
+  // Overview always stays on the active term. The assessments tab can
+  // switch to a previous term without changing those overview counts.
+  const currentTermId = activeSession?.term?.id || '';
+  const viewingHistoryTermId =
+    assessmentTermFilter && assessmentTermFilter !== currentTermId ? assessmentTermFilter : '';
+  const assessmentsTabTermId = viewingHistoryTermId || currentTermId;
+
+  const { data: assessmentsResponse } = useGetClassAssessmentsQuery(
     {
       schoolId: schoolId!,
       classId,
-      termId: assessmentTermFilter || activeSession?.term?.id || undefined,
+      termId: currentTermId,
     },
-    { skip: !schoolId || !classId || (activeTab !== 'assessments' && activeTab !== 'overview') }
+    { skip: !schoolId || !classId || activeTab !== 'overview' || !currentTermId }
   );
 
-  const assessments = assessmentsResponse?.data || []; // Use data from ResponseDto
+  const {
+    data: tabAssessmentsResponse,
+    isLoading: isLoadingAssessments,
+    isFetching: isFetchingAssessments,
+  } = useGetClassAssessmentsQuery(
+    {
+      schoolId: schoolId!,
+      classId,
+      termId: assessmentsTabTermId,
+    },
+    { skip: !schoolId || !classId || activeTab !== 'assessments' || !assessmentsTabTermId }
+  );
+
+  const assessments = assessmentsResponse?.data || [];
+  const tabAssessments = tabAssessmentsResponse?.data || [];
 
   const [deleteGrade, { isLoading: isDeleting }] = useDeleteGradeMutation();
   const [deleteAssessment, { isLoading: isDeletingAssessment }] = useDeleteAssessmentMutation();
@@ -339,8 +368,109 @@ export default function ClassDetailPage() {
     return terms;
   }, [sessionsResponse, effectiveSchoolType]);
 
+  const previousAssessmentTerms = useMemo(() => {
+    const sessions = [
+      ...(typedSessionsResponse?.data || []),
+      ...(sessionsResponse?.data || []),
+    ];
+    const activeTerm = activeSession?.term;
+    const activeStart = activeTerm?.startDate ? new Date(activeTerm.startDate).getTime() : NaN;
+    const seenSessions = new Set<string>();
+    const seenTerms = new Set<string>();
+    const terms: Array<{ id: string; name: string; sessionName: string; startDate?: string; number: number }> = [];
+
+    const startTime = (value?: string) => {
+      const parsed = value ? new Date(value).getTime() : 0;
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    sessions.forEach((session: any) => {
+      if (!session?.id || seenSessions.has(session.id)) return;
+      seenSessions.add(session.id);
+      if (sessionSchoolType && session.schoolType && session.schoolType !== sessionSchoolType) return;
+      if (!sessionSchoolType && session.schoolType) return;
+      if (!Array.isArray(session.terms)) return;
+
+      session.terms.forEach((term: any) => {
+        if (!term?.id || seenTerms.has(term.id)) return;
+        if (activeTerm?.id && term.id === activeTerm.id) return;
+        if (term.status === 'DRAFT') return;
+        if (activeTerm && term.academicSessionId === activeTerm.academicSessionId && term.number > activeTerm.number) return;
+        const termStart = startTime(term.startDate);
+        if (Number.isFinite(activeStart) && termStart > activeStart) return;
+
+        seenTerms.add(term.id);
+        terms.push({
+          id: term.id,
+          name: term.name,
+          sessionName: session.name,
+          startDate: term.startDate,
+          number: term.number ?? 0,
+        });
+      });
+    });
+
+    terms.sort((a, b) => {
+      const byDate = startTime(b.startDate) - startTime(a.startDate);
+      if (byDate !== 0) return byDate;
+      return b.number - a.number;
+    });
+    return terms;
+  }, [typedSessionsResponse, sessionsResponse, sessionSchoolType, activeSession?.term]);
+
+  const selectedHistoryTerm = previousAssessmentTerms.find((term) => term.id === viewingHistoryTermId) || null;
+  const viewingPastTerm = Boolean(viewingHistoryTermId);
+  const activeTermPending =
+    !assessmentsTabTermId &&
+    !isActiveSessionError &&
+    (isActiveSessionUninitialized || isLoadingActiveSession || isFetchingActiveSession);
+  const isLoadingTermHistory = (isFetchingSessions || isFetchingTypedSessions) && previousAssessmentTerms.length === 0;
+
+  React.useEffect(() => {
+    if (activeTab !== 'assessments') setShowTermHistory(false);
+  }, [activeTab]);
+
+  React.useEffect(() => {
+    if (!showTermHistory) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!termHistoryRef.current?.contains(event.target as Node)) {
+        setShowTermHistory(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowTermHistory(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showTermHistory]);
+
+  React.useEffect(() => {
+    if (!assessmentTermFilter) return;
+    if (currentTermId && assessmentTermFilter === currentTermId) {
+      setAssessmentTermFilter('');
+      return;
+    }
+    // Wait until both session lists have settled. A typed-session refetch can
+    // briefly drop terms that are still valid, and clearing here would snap
+    // the teacher back to the current term mid-click.
+    if (isFetchingSessions || isFetchingTypedSessions) return;
+    if (!previousAssessmentTerms.some((term) => term.id === assessmentTermFilter)) {
+      setAssessmentTermFilter('');
+    }
+  }, [assessmentTermFilter, currentTermId, isFetchingSessions, isFetchingTypedSessions, previousAssessmentTerms]);
+
   // Determine which term to use for timetable
   const timetableTermId = selectedTimetableTermId || activeSession?.term?.id || '';
+
+  // Warm the timetable cache before the Timetable tab is opened.
+  useGetTimetableForClassQuery(
+    { schoolId: schoolId!, classId, termId: timetableTermId },
+    { skip: !schoolId || !classId || !timetableTermId },
+  );
 
   const filteredStudents = useMemo(() => {
     if (!searchQuery) return students;
@@ -443,6 +573,7 @@ export default function ClassDetailPage() {
     // Curriculum tab hidden — Scheme of Work is the teacher-facing source of truth
     // { id: 'curriculum', label: 'Curriculum', icon: <BookMarked className="h-4 w-4" />, available: true },
     { id: 'resources', label: 'Resources', icon: <FileText className="h-4 w-4" />, available: true },
+    { id: 'reports', label: 'Reports', icon: <ClipboardList className="h-4 w-4" />, available: isFormTeacher },
   ];
 
   if (isLoading) {
@@ -732,6 +863,11 @@ export default function ClassDetailPage() {
                               ? "As the form teacher, you manage the overall welfare, attendance, and pastoral care for this class."
                               : "As the primary class teacher, you manage all activities and attendance for this class."}
                           </p>
+                          {classType === 'SECONDARY' && (
+                            <p className="text-sm text-light-text-primary dark:text-gray-200">
+                              {classData?.studentsCount || 0} students · {assessments.length} assessments · {gradesResponse?.data?.length || 0} grades
+                            </p>
+                          )}
                           <div className="grid grid-cols-1 gap-2">
                             <Button 
                               variant={classType === 'SECONDARY' ? "secondary" : "ghost"} 
@@ -1154,41 +1290,140 @@ export default function ClassDetailPage() {
           {/* Assessments Tab */}
           {(activeTab as TabType) === 'assessments' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">
-                    Assessments
-                  </h2>
-                  <select
-                    value={assessmentTermFilter || activeSession?.term?.id || ''}
-                    onChange={(e) => setAssessmentTermFilter(e.target.value)}
-                    className="text-xs px-2 py-1.5 border border-light-border dark:border-dark-border rounded-md bg-transparent"
-                  >
-                    <option value="">Select Term</option>
-                    {timetableTerms.map((term: any) => (
-                      <option key={term.id} value={term.id}>{term.name} ({term.sessionName})</option>
-                    ))}
-                  </select>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">
+                  Assessments
+                </h2>
+                <div className="flex items-center gap-2">
+                  {!isReadOnly && (
+                    <Button onClick={() => router.push(`/dashboard/teacher/assessments/new?source=manual&classId=${classId}`)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Assessment
+                    </Button>
+                  )}
+                  <div className="relative" ref={termHistoryRef}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="Previous terms"
+                      aria-haspopup="menu"
+                      aria-expanded={showTermHistory}
+                      className={cn(
+                        'h-9 w-9 shrink-0',
+                        (showTermHistory || viewingPastTerm) && 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      )}
+                      onClick={() => setShowTermHistory((open) => !open)}
+                    >
+                      <History className="h-4 w-4" />
+                    </Button>
+                    {showTermHistory && (
+                      <div
+                        role="menu"
+                        aria-label="Previous terms"
+                        className="absolute right-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-surface shadow-lg"
+                      >
+                        <div className="border-b border-light-border dark:border-dark-border px-3 py-2">
+                          <p className="text-xs font-bold uppercase tracking-widest text-light-text-muted">Previous terms</p>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto py-1">
+                          {isLoadingTermHistory ? (
+                            <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-light-text-muted">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading terms
+                            </div>
+                          ) : previousAssessmentTerms.length === 0 ? (
+                            <p className="px-3 py-6 text-sm text-light-text-muted">No previous terms yet.</p>
+                          ) : (
+                            previousAssessmentTerms.map((term) => {
+                              const isSelected = term.id === viewingHistoryTermId;
+                              return (
+                                <button
+                                  key={term.id}
+                                  type="button"
+                                  role="menuitem"
+                                  className={cn(
+                                    'flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-black/5 dark:hover:bg-white/5',
+                                    isSelected && 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                                  )}
+                                  onClick={() => {
+                                    setAssessmentTermFilter(term.id);
+                                    setShowTermHistory(false);
+                                  }}
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block truncate font-medium">{term.name}</span>
+                                    <span className="block truncate text-xs text-light-text-muted">{term.sessionName}</span>
+                                  </span>
+                                  {isSelected && <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                        {viewingPastTerm && (
+                          <div className="border-t border-light-border dark:border-dark-border p-2">
+                            <button
+                              type="button"
+                              className="w-full rounded-md px-2 py-1.5 text-left text-sm font-medium text-light-text-secondary hover:bg-black/5 dark:text-dark-text-secondary dark:hover:bg-white/5"
+                              onClick={() => {
+                                setAssessmentTermFilter('');
+                                setShowTermHistory(false);
+                              }}
+                            >
+                              {currentTermId
+                                ? `Back to ${activeSession?.term?.name || 'current term'}`
+                                : 'Clear selection'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {!isReadOnly && (
-                  <Button onClick={() => router.push(`/dashboard/teacher/assessments/new?source=manual&classId=${classId}`)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Assessment
-                  </Button>
-                )}
               </div>
 
-              {isLoadingAssessments ? (
+              {viewingPastTerm && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-light-border dark:border-dark-border bg-light-card dark:bg-dark-surface px-3 py-2">
+                  <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                    Showing assessments from <span className="font-semibold text-light-text-primary dark:text-dark-text-primary">{selectedHistoryTerm?.name || 'a previous term'}</span>
+                    {selectedHistoryTerm?.sessionName ? ` · ${selectedHistoryTerm.sessionName}` : ''}
+                  </p>
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                    onClick={() => setAssessmentTermFilter('')}
+                  >
+                    {currentTermId ? 'Back to current term' : 'Clear selection'}
+                  </button>
+                </div>
+              )}
+
+              {(activeTermPending || isLoadingAssessments || (isFetchingAssessments && !tabAssessmentsResponse)) ? (
                 <div className="flex justify-center py-20">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                 </div>
-              ) : assessments.length === 0 ? (
+              ) : !assessmentsTabTermId ? (
                 <Card>
                   <CardContent className="py-20 text-center">
                     <FileText className="h-16 w-16 mx-auto mb-4 text-light-text-muted opacity-20" />
-                    <p className="text-light-text-secondary dark:text-dark-text-secondary text-lg font-medium">No assessments found for this term.</p>
-                    <p className="text-sm text-light-text-muted mt-2 mb-6">Create your first assessment or use AI to generate one.</p>
-                    {!isReadOnly && (
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary text-lg font-medium">No active term right now.</p>
+                    <p className="text-sm text-light-text-muted mt-2">Open term history to view assessments from a previous term.</p>
+                  </CardContent>
+                </Card>
+              ) : tabAssessments.length === 0 ? (
+                <Card>
+                  <CardContent className="py-20 text-center">
+                    <FileText className="h-16 w-16 mx-auto mb-4 text-light-text-muted opacity-20" />
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary text-lg font-medium">
+                      {viewingPastTerm
+                        ? `No assessments were created for ${selectedHistoryTerm?.name || 'this term'}.`
+                        : 'No assessments found for this term.'}
+                    </p>
+                    {!viewingPastTerm && (
+                      <p className="text-sm text-light-text-muted mt-2 mb-6">Create your first assessment or use AI to generate one.</p>
+                    )}
+                    {!viewingPastTerm && !isReadOnly && (
                       <Button variant="outline" onClick={() => router.push(`/dashboard/teacher/assessments/new?source=manual&classId=${classId}`)}>
                         <Plus className="h-4 w-4 mr-2" /> Create First Assessment
                       </Button>
@@ -1198,7 +1433,7 @@ export default function ClassDetailPage() {
               ) : (
                 <div className="space-y-8">
                   {Object.entries(
-                    assessments.reduce((groups: any, assessment) => {
+                    tabAssessments.reduce((groups: any, assessment) => {
                       const date = new Date(assessment.createdAt);
                       const month = date.toLocaleString('default', { month: 'long', year: 'numeric' });
                       if (!groups[month]) groups[month] = [];
@@ -1419,6 +1654,15 @@ export default function ClassDetailPage() {
               classId={classId}
               classType={classData?.type === 'TERTIARY' ? 'CLASS' : 'CLASS_ARM'}
               students={students}
+            />
+          )}
+
+          {(activeTab as TabType) === 'reports' && isFormTeacher && schoolId && (
+            <FormClassReports
+              schoolId={schoolId}
+              classId={classId}
+              termId={activeSession?.term?.id}
+              termName={activeSession?.term?.name}
             />
           )}
 
@@ -1717,25 +1961,17 @@ export default function ClassDetailPage() {
         </div>
       )}
 
-      {!aiChatMounted && (
-        <FloatingAiCta onClick={() => setShowAiChat(true)} />
-      )}
-
-      {/* AI Chat Drawer */}
-      {schoolId && aiChatMounted && (
-        <AiChatDrawer
-          key={aiChatEpoch}
-          schoolId={schoolId}
-          isOpen={showAiChat}
-          onHide={() => setShowAiChat(false)}
-          onExpand={() => setShowAiChat(true)}
-          onClose={() => {
-            setShowAiChat(false);
-            setAiChatMounted(false);
-            setAiChatEpoch((n) => n + 1);
+      {schoolId && classData ? (
+        <LoisFocus
+          context={{
+            type: 'class',
+            schoolId,
+            classArmId: classId,
+            classId,
+            label: classData.name,
           }}
         />
-      )}
+      ) : null}
       </div>
     </ProtectedRoute>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Bell, CheckCheck, Loader2, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -32,15 +32,27 @@ function formatWhen(iso: string) {
   }
 }
 
-function loisAskPrompt(n: InAppNotification): string | null {
-  if (n.type !== 'LOIS_INSIGHT') return null;
-  const meta = n.metadata;
-  if (meta && typeof meta === 'object' && 'askPrompt' in meta) {
-    const prompt = (meta as { askPrompt?: unknown }).askPrompt;
-    if (typeof prompt === 'string' && prompt.trim()) return prompt;
-  }
-  if (n.title?.trim()) return `Explain this insight: ${n.title}`;
-  return null;
+function rowSubtitle(n: InAppNotification): string {
+  const subtitle = n.subtitle?.trim();
+  return subtitle || n.body;
+}
+
+function inAppPath(link: string | null | undefined): string | null {
+  if (!link || !link.startsWith('/') || link.startsWith('//')) return null;
+  return link;
+}
+
+function openLabel(link: string): string {
+  if (/\/classes(\/|$|\?)/.test(link)) return 'Open class';
+  if (link.includes('assessment')) return 'Open assessments';
+  if (link.includes('timetable')) return 'Open timetable';
+  if (link.includes('calendar')) return 'Open calendar';
+  if (link.includes('staff')) return 'Open staff';
+  if (link.includes('application') || link.includes('admission')) return 'Open applications';
+  if (link.includes('subscription')) return 'Open subscription';
+  if (link.includes('bud')) return 'Open Bud';
+  if (link.includes('result')) return 'Open results';
+  return 'Open';
 }
 
 function loisInsightId(n: InAppNotification): string | null {
@@ -58,7 +70,7 @@ export function NotificationCenter({
 }: {
   title?: string;
 }) {
-  const router = useRouter();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const schoolId = useSelector(
     (state: RootState) => state.auth.tenantId || state.auth.user?.schoolId,
@@ -173,102 +185,92 @@ export function NotificationCenter({
         <ul className="rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-card)] dark:bg-[var(--dark-surface)] divide-y divide-[var(--light-border)] dark:divide-[var(--dark-border)] overflow-hidden">
           {items.map((n) => {
             const unread = !n.readAt;
+            const expanded = expandedId === n.id;
             const insightId = loisInsightId(n);
-            const openLois = !!(insightId && workspace) || !!(loisAskPrompt(n) && workspace);
-            const content = (
-              <div
-                className={cn(
-                  'flex gap-3 px-4 py-3.5 transition-colors',
-                  unread
-                    ? 'bg-[var(--agora-blue)]/[0.04]'
-                    : 'hover:bg-gray-50 dark:hover:bg-white/[0.03]',
-                )}
-              >
-                <span
-                  className={cn(
-                    'mt-1.5 h-2 w-2 rounded-full shrink-0',
-                    unread ? 'bg-[var(--agora-blue)]' : 'bg-transparent',
-                  )}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p
-                      className={cn(
-                        'truncate',
-                        unread
-                          ? 'font-semibold text-light-text-primary dark:text-dark-text-primary'
-                          : 'font-medium text-light-text-secondary dark:text-dark-text-secondary',
-                      )}
-                      style={{ fontSize: 'var(--text-body)' }}
-                    >
-                      {n.title}
-                    </p>
-                    <time
-                      className="shrink-0 text-light-text-muted tabular-nums"
-                      style={{ fontSize: 'var(--text-small)' }}
-                    >
-                      {formatWhen(n.createdAt)}
-                    </time>
-                  </div>
-                  <p
-                    className="mt-0.5 text-light-text-secondary dark:text-dark-text-secondary leading-snug"
-                    style={{ fontSize: 'var(--text-small)' }}
-                  >
-                    {n.body}
-                  </p>
-                </div>
-              </div>
-            );
-
-            if (openLois) {
-              return (
-                <li key={n.id}>
-                  <button
-                    type="button"
-                    className="w-full text-left"
-                    onClick={() => {
-                      void markRead({ id: n.id });
-                      if (insightId) workspace?.openBriefing(insightId);
-                      else {
-                        const prompt = loisAskPrompt(n);
-                        if (prompt) workspace?.askLois(prompt);
-                      }
-                    }}
-                  >
-                    {content}
-                  </button>
-                </li>
-              );
-            }
-
-            if (n.link) {
-              return (
-                <li key={n.id}>
-                  <Link
-                    href={n.link}
-                    onClick={() => {
-                      void markRead({ id: n.id });
-                    }}
-                    className="block"
-                  >
-                    {content}
-                  </Link>
-                </li>
-              );
-            }
-
+            const href = inAppPath(n.link);
+            const subtitle = rowSubtitle(n);
             return (
               <li key={n.id}>
-                <button
-                  type="button"
-                  className="w-full text-left"
-                  onClick={() => {
-                    void markRead({ id: n.id });
-                    router.refresh();
-                  }}
+                <div
+                  className={cn(
+                    'px-4 py-3.5 transition-colors',
+                    unread
+                      ? 'bg-[var(--agora-blue)]/[0.04]'
+                      : 'hover:bg-gray-50 dark:hover:bg-white/[0.03]',
+                  )}
                 >
-                  {content}
-                </button>
+                  <button
+                    type="button"
+                    className="flex w-full gap-3 text-left"
+                    aria-expanded={expanded}
+                    onClick={() => {
+                      setExpandedId(expanded ? null : n.id);
+                      if (unread) void markRead({ id: n.id });
+                    }}
+                  >
+                    <span
+                      className={cn(
+                        'mt-1.5 h-2 w-2 rounded-full shrink-0',
+                        unread ? 'bg-[var(--agora-blue)]' : 'bg-transparent',
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p
+                          className={cn(
+                            'truncate',
+                            unread
+                              ? 'font-semibold text-light-text-primary dark:text-dark-text-primary'
+                              : 'font-medium text-light-text-secondary dark:text-dark-text-secondary',
+                          )}
+                          style={{ fontSize: 'var(--text-body)' }}
+                        >
+                          {n.title}
+                        </p>
+                        <time
+                          className="shrink-0 text-light-text-muted tabular-nums"
+                          style={{ fontSize: 'var(--text-small)' }}
+                        >
+                          {formatWhen(n.createdAt)}
+                        </time>
+                      </div>
+                      <p
+                        className="mt-0.5 truncate text-light-text-secondary dark:text-dark-text-secondary leading-snug"
+                        style={{ fontSize: 'var(--text-small)' }}
+                      >
+                        {subtitle}
+                      </p>
+                    </div>
+                  </button>
+                  {expanded && (
+                    <div className="mt-2 pl-5">
+                      <p
+                        className="text-light-text-primary dark:text-dark-text-primary leading-snug"
+                        style={{ fontSize: 'var(--text-body)' }}
+                      >
+                        {n.body}
+                      </p>
+                      {insightId && workspace ? (
+                        <button
+                          type="button"
+                          className="mt-2 font-medium text-[var(--agora-blue)] hover:underline"
+                          style={{ fontSize: 'var(--text-small)' }}
+                          onClick={() => workspace.openBriefing(insightId)}
+                        >
+                          Open briefing
+                        </button>
+                      ) : href ? (
+                        <Link
+                          href={href}
+                          className="mt-2 inline-block font-medium text-[var(--agora-blue)] hover:underline"
+                          style={{ fontSize: 'var(--text-small)' }}
+                        >
+                          {n.type === 'LOIS_INSIGHT' ? 'Open briefing' : openLabel(href)}
+                        </Link>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
               </li>
             );
           })}

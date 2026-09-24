@@ -11,7 +11,9 @@ import {
   useGetTermsQuery,
   useGetMyTeacherProfileQuery,
   useGetTeacherSubjectsForClassQuery,
+  useGetPublishedExamTimetableQuery,
   type AssessmentType,
+  type ExamTimetableSlot,
 } from '@/lib/store/api/schoolAdminApi';
 import { useTeacherDashboard } from '@/hooks/useTeacherDashboard';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -20,6 +22,34 @@ import { Modal } from '@/components/ui/Modal';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+
+function defaultAiDueDate(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function compactClassLabel(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function matchTeacherClassName(
+  classes: Array<{ id: string; name?: string }>,
+  label?: string,
+) {
+  const needle = compactClassLabel(label || '');
+  if (!needle) return null;
+  const named = classes.filter((c) => c.name);
+  const exact = named.filter((c) => compactClassLabel(c.name || '') === needle);
+  if (exact.length === 1) return exact[0];
+  const partial = named.filter((c) => {
+    const name = compactClassLabel(c.name || '');
+    return name.includes(needle) || needle.includes(name);
+  });
+  return partial.length === 1 ? partial[0] : null;
+}
 
 export default function CreateAssessmentPage() {
   const router = useRouter();
@@ -144,6 +174,7 @@ export default function CreateAssessmentPage() {
           type: (data.type?.toUpperCase() === 'QUIZ' ? 'QUIZ' : data.type?.toUpperCase() === 'EXAM' ? 'EXAM' : 'ASSIGNMENT') as AssessmentType,
           subjectId: data.subjectId || prev.subjectId,
           classId: data.classId || prev.classId,
+          dueDate: data.dueDate || prev.dueDate || defaultAiDueDate(),
           maxScore: newMaxScore
         }));
         setLocalMaxScore(newMaxScore.toString());
@@ -198,12 +229,42 @@ export default function CreateAssessmentPage() {
     }
   }, [activeTerm]);
 
-  // Auto-select class if teacher only has one
+  const examTermId = formData.termId || activeTerm?.id || '';
+  const { data: publishedExamRes, isFetching: examSlotsLoading } = useGetPublishedExamTimetableQuery(
+    { schoolId: schoolId || '', termId: examTermId },
+    { skip: !schoolId || !examTermId || formData.type !== 'EXAM' },
+  );
+  const examSlot = ((publishedExamRes?.data || []) as ExamTimetableSlot[]).find((slot) => {
+    const sameClass = slot.classArmId === formData.classId || slot.classId === formData.classId;
+    return sameClass && slot.subjectId === formData.subjectId;
+  });
+  const examTimetableMissing =
+    formData.type === 'EXAM' && !!formData.classId && !!formData.subjectId && !examSlotsLoading && !examSlot;
+
   useEffect(() => {
-    if (classes?.length === 1 && !formData.classId) {
+    if (formData.type !== 'EXAM' || !examSlot?.examDate) return;
+    const examDate = examSlot.examDate.slice(0, 10);
+    setFormData((prev) => (prev.dueDate === examDate ? prev : { ...prev, dueDate: examDate }));
+  }, [formData.type, examSlot?.id, examSlot?.examDate]);
+
+  // Auto-select class if teacher only has one, or Lois named a single arm
+  useEffect(() => {
+    if (formData.classId || !classes?.length) return;
+    if (classes.length === 1) {
       setFormData(prev => ({ ...prev, classId: classes[0].id }));
+      return;
     }
-  }, [classes, formData.classId]);
+    if (!isAiSource) return;
+    const aiContext = localStorage.getItem('agora_ai_assessment_context');
+    if (!aiContext) return;
+    try {
+      const data = JSON.parse(aiContext);
+      const matched = matchTeacherClassName(classes, data.className || data.gradeLevel);
+      if (matched) setFormData(prev => ({ ...prev, classId: matched.id }));
+    } catch {
+      // Ignore a bad Lois payload and leave the class picker empty.
+    }
+  }, [classes, formData.classId, isAiSource]);
 
   // Attempt to match subject ID if coming from AI
   useEffect(() => {
@@ -396,12 +457,12 @@ export default function CreateAssessmentPage() {
                   }
                   setShowConfirmModal('PUBLISH');
                 }}
-                disabled={!isValidToSave || isSaving}
+                disabled={!isValidToSave || isSaving || examTimetableMissing}
                 isFlat
                 size="md"
                 className={cn(
                   "h-11 px-8 rounded-xl font-bold transition-all",
-                  isValidToPublish ? "bg-[var(--agora-blue)] hover:bg-[#1a7ae6] text-white shadow-sm dark:hover:bg-[#1565c0]" : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500"
+                  isValidToPublish && !examTimetableMissing ? "bg-[var(--agora-blue)] hover:bg-[#1a7ae6] text-white shadow-sm dark:hover:bg-[#1565c0]" : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500"
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -437,6 +498,28 @@ export default function CreateAssessmentPage() {
                     className="h-12 text-lg font-semibold"
                     placeholder="e.g. Chemistry Quiz"
                   />
+                </div>
+
+                <div>
+                  <label htmlFor="assessment-type" className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                    Assessment type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="assessment-type"
+                    aria-label="Assessment type"
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value as AssessmentType })}
+                    className="w-full h-12 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="QUIZ">Quiz</option>
+                    <option value="ASSIGNMENT">Assignment</option>
+                    <option value="EXAM">Exam</option>
+                  </select>
+                  {examTimetableMissing ? (
+                    <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                      The exam timetable is not published yet.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { LoisInsightBadge, useUnreadLoisInsightCount } from './LoisInboxCard';
@@ -48,10 +47,6 @@ export const FloatingAiCta: React.FC<FloatingAiCtaProps> = ({
           {unread > 0 ? 'Lois briefing' : 'Ask Lois'}
         </span>
         {schoolId ? <LoisInsightBadge schoolId={schoolId} /> : null}
-
-        <div className="ml-0.5 p-1 rounded-md bg-white/5 border border-white/10 group-hover:bg-indigo-500/10 group-hover:border-indigo-500/20 transition-all">
-            <BrainCircuit size={10} className="text-white/40 group-hover:text-indigo-400" />
-        </div>
       </div>
 
       {/* External Glow Pulse */}

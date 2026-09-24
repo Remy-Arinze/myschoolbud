@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -45,17 +45,12 @@ export default function SchoolsPage() {
     filter: filter !== 'all' ? filter : undefined,
   });
 
-  // Calculate stats from current page data and pagination
-  const activeSchoolsOnPage = schools.filter(s => s.isActive).length;
-  const inactiveSchoolsOnPage = schools.filter(s => !s.isActive && s.registrationStatus === 'VERIFIED').length;
-  const unapprovedSchoolsOnPage = schools.filter(s => s.registrationStatus === 'UNAPPROVED' || s.registrationStatus === 'PENDING').length;
-
-  // For stats, we show totals from pagination when available
-  const totalSchools = pagination?.total ?? 0;
-  const showingCount = schools.length;
-
-  const activeCount = filter === 'active' ? totalSchools : activeSchoolsOnPage;
-  const inactiveCount = filter === 'inactive' ? totalSchools : inactiveSchoolsOnPage;
+  // KPI cards use the full search result. The status pill only filters the list.
+  const counts = pagination?.statusCounts;
+  const totalSchools = counts?.total ?? pagination?.total ?? 0;
+  const activeCount = counts?.active ?? 0;
+  const inactiveCount = counts?.inactive ?? 0;
+  const unapprovedCount = counts?.unapproved ?? 0;
 
 
   if (isLoading && !schools.length) {
@@ -144,7 +139,7 @@ export default function SchoolsPage() {
           />
           <StatCard
             title="Unapproved"
-            value={unapprovedSchoolsOnPage}
+            value={unapprovedCount}
             icon={
               <Clock className="text-red-600 dark:text-red-500" style={{ width: 'var(--stat-icon-size)', height: 'var(--stat-icon-size)' }} />
             }

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import { BookOpen, Search, Users, Clock, MapPin, Loader2, AlertCircle } from 'lucide-react';
-import { useGetMyClassesQuery, useGetMyTeacherSchoolQuery, useGetMyTeacherProfileQuery, type SchoolType } from '@/lib/store/api/schoolAdminApi';
+import { useGetMyClassesQuery, useGetMyTeacherSchoolQuery, useGetMyTeacherProfileQuery } from '@/lib/store/api/schoolAdminApi';
 import { useSchoolType } from '@/hooks/useSchoolType';
 import { getTerminology } from '@/lib/utils/terminology';
 import { cn } from '@/lib/utils';
@@ -42,16 +42,14 @@ export default function TeacherClassesPage() {
   const school = schoolResponse?.data;
   const teacher = teacherResponse?.data;
 
-  // Get teacher's classes (pass school type for proper filtering)
+  // Load every class this teacher leads. The switcher must not hide a primary form class.
   const { data: classesResponse, isLoading: isLoadingClasses, error } = useGetMyClassesQuery(
     {
       schoolId: school?.id || '',
       teacherId: teacher?.id || '',
-      type: currentType || undefined,
     },
     {
       skip: !school?.id || !teacher?.id,
-      // Refetch when school or teacher data changes
       refetchOnMountOrArgChange: true,
     }
   );
@@ -60,20 +58,23 @@ export default function TeacherClassesPage() {
 
   const classes = classesResponse?.data || [];
 
-  // Primary teachers use My Class in the sidebar — send them straight to their form class
+  const primaryFormClass = classes.find(
+    (classItem) => classItem.type === 'PRIMARY' && isFormTeacherOfClass(classItem, teacher?.id),
+  );
+
   useEffect(() => {
-    if (isLoading || currentType !== 'PRIMARY' || !teacher?.id) return;
-    const formClass = classes.find((c: any) => isFormTeacherOfClass(c, teacher.id));
-    if (formClass?.id) {
-      router.replace(`/dashboard/teacher/classes/${formClass.id}`);
-    }
-  }, [isLoading, currentType, classes, teacher?.id, router]);
+    if (isLoading || !primaryFormClass?.id) return;
+    router.replace(`/dashboard/teacher/classes/${primaryFormClass.id}`);
+  }, [isLoading, primaryFormClass?.id, router]);
 
   const filteredClasses = useMemo(() => {
-    if (!searchQuery) return classes;
+    const scoped = currentType
+      ? classes.filter((classItem) => classItem.type === currentType)
+      : classes;
+    if (!searchQuery) return scoped;
 
     const query = searchQuery.toLowerCase();
-    return classes.filter(
+    return scoped.filter(
       (classItem) =>
         classItem.name?.toLowerCase().includes(query) ||
         classItem.code?.toLowerCase().includes(query) ||
@@ -82,9 +83,9 @@ export default function TeacherClassesPage() {
           t.subject?.toLowerCase().includes(query)
         )
     );
-  }, [classes, searchQuery]);
+  }, [classes, currentType, searchQuery]);
 
-  if (isLoading || (currentType === 'PRIMARY' && classes.some((c: any) => isFormTeacherOfClass(c, teacher?.id)))) {
+  if (isLoading || primaryFormClass) {
     return (
       <ProtectedRoute roles={['TEACHER']}>
         <div className="flex items-center justify-center min-h-[400px]">

@@ -253,6 +253,13 @@ export interface PaginationParams {
   filter?: 'all' | 'active' | 'inactive';
 }
 
+export interface SchoolStatusCounts {
+  total: number;
+  active: number;
+  inactive: number;
+  unapproved: number;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -261,6 +268,7 @@ export interface PaginatedResponse<T> {
   totalPages: number;
   hasNext: boolean;
   hasPrev: boolean;
+  statusCounts?: SchoolStatusCounts;
 }
 
 // RTK Query endpoints for schools

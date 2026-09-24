@@ -671,8 +671,6 @@ export default function AdminOverviewPage() {
           />
         )}
 
-        {!isSummaryLoading && !error && schoolId && <LoisInboxCard schoolId={schoolId} />}
-
         {/* Loading State */}
         {
           isSummaryLoading && (
@@ -730,6 +728,8 @@ export default function AdminOverviewPage() {
                   }
                 />
               </div>
+
+              {schoolId && <LoisInboxCard schoolId={schoolId} />}
 
               {/* Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

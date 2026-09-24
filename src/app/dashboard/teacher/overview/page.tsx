@@ -336,7 +336,8 @@ export default function TeacherOverviewPage() {
                         return (
                           <div
                             key={period.id}
-                            className={`p-3 rounded-lg border ${colors.bg} ${colors.border} ${colors.text}`}
+                            title={period.hasConflict ? period.conflictMessage : undefined}
+                            className={`p-3 rounded-lg border ${period.hasConflict ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-800 text-red-800 dark:text-red-200' : `${colors.bg} ${colors.border} ${colors.text}`}`}
                           >
                             <div className="flex items-center justify-between mb-1">
                               <span className="font-semibold" style={{ fontSize: 'var(--text-body)' }}>
@@ -349,6 +350,11 @@ export default function TeacherOverviewPage() {
                             {period.type === 'LESSON' && (
                               <p className="text-xs opacity-80">
                                 {period.classArmName || period.className || ''}
+                              </p>
+                            )}
+                            {period.hasConflict && (
+                              <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mt-1">
+                                Overlaps another class
                               </p>
                             )}
                           </div>
@@ -372,7 +378,10 @@ export default function TeacherOverviewPage() {
                             return (
                               <div
                                 key={period.id}
-                                className={`p-2 rounded text-xs ${isCurrent
+                                title={period.hasConflict ? period.conflictMessage : undefined}
+                                className={`p-2 rounded text-xs ${period.hasConflict
+                                  ? 'bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800'
+                                  : isCurrent
                                   ? 'bg-green-100 dark:bg-green-900/30'
                                   : isPast
                                     ? 'bg-gray-100 dark:bg-gray-800'
@@ -395,7 +404,9 @@ export default function TeacherOverviewPage() {
                                     {period.startTime} - {period.endTime}
                                   </span>
                                 </div>
-                                <div className={`truncate font-medium ${isCurrent
+                                <div className={`truncate font-medium ${period.hasConflict
+                                  ? 'text-red-700 dark:text-red-300'
+                                  : isCurrent
                                   ? 'text-green-700 dark:text-green-300'
                                   : isPast
                                     ? 'text-gray-400 dark:text-gray-500 line-through'
@@ -403,6 +414,11 @@ export default function TeacherOverviewPage() {
                                   }`}>
                                   {period.classArmName || period.className}
                                 </div>
+                                {period.hasConflict && (
+                                  <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mt-1">
+                                    Overlaps another class
+                                  </p>
+                                )}
                               </div>
                             );
                           })}
@@ -461,19 +477,29 @@ export default function TeacherOverviewPage() {
                             periods.slice(0, 4).map((period) => (
                               <div
                                 key={period.id}
-                                className="text-xs p-2 rounded-md bg-white dark:bg-[var(--dark-bg)] border border-gray-200 dark:border-gray-700"
+                                title={period.hasConflict ? period.conflictMessage : undefined}
+                                className={`text-xs p-2 rounded-md border ${
+                                  period.hasConflict
+                                    ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-800'
+                                    : 'bg-white dark:bg-[var(--dark-bg)] border-gray-200 dark:border-gray-700'
+                                }`}
                               >
                                 <div className="flex items-center justify-between gap-1 mb-0.5">
-                                  <span className="font-medium truncate text-gray-900 dark:text-gray-100">
+                                  <span className={`font-medium truncate ${period.hasConflict ? 'text-red-800 dark:text-red-200' : 'text-gray-900 dark:text-gray-100'}`}>
                                     {period.subjectName}
                                   </span>
-                                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium flex-shrink-0">
+                                  <span className={`text-[10px] font-medium flex-shrink-0 ${period.hasConflict ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
                                     {period.startTime}
                                   </span>
                                 </div>
-                                <div className="text-purple-600 dark:text-purple-400 truncate font-medium">
+                                <div className={`truncate font-medium ${period.hasConflict ? 'text-red-700 dark:text-red-300' : 'text-purple-600 dark:text-purple-400'}`}>
                                   {period.classArmName || period.className}
                                 </div>
+                                {period.hasConflict && (
+                                  <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mt-1">
+                                    Overlaps another class
+                                  </p>
+                                )}
                               </div>
                             ))
                           )}

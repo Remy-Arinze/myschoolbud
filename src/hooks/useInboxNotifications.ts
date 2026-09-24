@@ -51,7 +51,7 @@ export function useInboxNotifications() {
         const data = JSON.parse(event.data) as {
           type: string;
           title?: string;
-          body?: string;
+          subtitle?: string;
           studentName?: string;
           assessmentTitle?: string;
           subjectName?: string;
@@ -62,8 +62,9 @@ export function useInboxNotifications() {
         if (data.type === 'INBOX_CREATED') {
           dispatch(apiSlice.util.invalidateTags(['Notification', 'LoisInsights']));
           playNotificationSound();
-          if (data.title) {
-            toast(data.title, {
+          const line = [data.title, data.subtitle].filter((part) => !!part?.trim()).join(' — ');
+          if (line) {
+            toast(line, {
               duration: 5000,
               icon: '🔔',
               style: {

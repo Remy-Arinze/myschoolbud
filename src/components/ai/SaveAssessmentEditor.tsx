@@ -77,15 +77,24 @@ export const SaveAssessmentEditor = ({
     };
 
     const questionsList = findQuestions(rawData);
+    const chosenType = String(rawData?.type || '').toUpperCase();
+    const type = chosenType === 'EXAM' || chosenType === 'QUIZ' || chosenType === 'ASSIGNMENT'
+      ? chosenType
+      : toolName === 'generate_quiz'
+        ? 'QUIZ'
+        : 'ASSIGNMENT';
     
     // Save AI context to localStorage
     const context = {
       questions: questionsList,
-      title: formData.title || rawData.title || (toolName === 'generate_quiz' ? 'New Quiz' : 'New Assessment'),
+      title: formData.title || rawData.title || (type === 'QUIZ' ? 'New Quiz' : type === 'EXAM' ? 'New Exam' : 'New Assessment'),
       description: rawData.description || '',
-      classId: formData.classId,
-      type: toolName === 'generate_quiz' ? 'QUIZ' : 'ASSIGNMENT',
-      subject: rawData.subject || '',
+      classId: formData.classId || rawData.classId || '',
+      className: rawData.className || '',
+      gradeLevel: rawData.gradeLevel || '',
+      type,
+      dueDate: rawData.dueDate || '',
+      subject: rawData.subject || rawData.subjectName || '',
       subjectId: rawData.subjectId || '',
       toolName,
       conversationId
@@ -98,7 +107,15 @@ export const SaveAssessmentEditor = ({
   };
 
   if (!assessmentData) return <div className="p-4 text-xs text-emerald-600">Loading editor...</div>;
-  const questionsList = Array.isArray(assessmentData) ? assessmentData : assessmentData.questions || [];
+  const payload = assessmentData?.data && !Array.isArray(assessmentData.data) ? assessmentData.data : assessmentData;
+  if (payload?.blocked || payload?.needsScope || payload?.error) return null;
+  const questionsList = Array.isArray(assessmentData) ? assessmentData : assessmentData.questions || payload?.questions || [];
+  if (!questionsList.length) return null;
+  const typeLabel = String(payload?.type || '').toUpperCase() === 'EXAM'
+    ? 'Exam'
+    : String(payload?.type || '').toUpperCase() === 'QUIZ' || toolName === 'generate_quiz'
+      ? 'Quiz'
+      : 'Assignment';
 
   return (
     <div className="bg-white dark:bg-black/30 w-full rounded-2xl border border-emerald-200 dark:border-emerald-500/20 overflow-hidden shadow-sm mt-2 transition-all duration-300">
@@ -109,7 +126,7 @@ export const SaveAssessmentEditor = ({
           </div>
           <div>
             <h3 className="font-bold text-[#111827] dark:text-emerald-300 text-sm md:text-base">{formData.title || 'Generated Assessment'}</h3>
-            <p className="text-[10px] uppercase font-black text-emerald-600 dark:text-emerald-400/70 tracking-widest">{questionsList?.length || 0} Questions Total</p>
+            <p className="text-[10px] uppercase font-black text-emerald-600 dark:text-emerald-400/70 tracking-widest">{typeLabel} · {questionsList?.length || 0} questions</p>
           </div>
         </div>
         <div className="flex gap-2 items-center">

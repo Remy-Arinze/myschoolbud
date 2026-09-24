@@ -113,6 +113,13 @@ export interface StaffListItem {
   userId?: string; // For backward compatibility
 }
 
+export interface AccountStatusCounts {
+  active: number;
+  pending: number;
+  suspended: number;
+  archived: number;
+}
+
 export interface StaffListMeta {
   total: number;
   page: number;
@@ -120,6 +127,7 @@ export interface StaffListMeta {
   totalPages: number;
   hasNext: boolean;
   hasPrev: boolean;
+  statusCounts?: AccountStatusCounts;
 }
 
 export interface StaffListResponse {
@@ -319,6 +327,7 @@ export interface GetStaffListParams {
   search?: string;
   role?: string;
   schoolType?: string;
+  status?: 'active' | 'pending' | 'suspended';
 }
 
 export interface ResponseDto<T> {
@@ -367,6 +376,7 @@ export interface ClassTeacher {
   email: string | null;
   subject: string | null;
   isPrimary: boolean;
+  isFormTeacher?: boolean;
   createdAt: string;
 }
 
@@ -835,6 +845,7 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+  statusCounts?: AccountStatusCounts;
 }
 
 // Session types
@@ -1860,6 +1871,7 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
         if (params.search) queryParams.append('search', params.search);
         if (params.role) queryParams.append('role', params.role);
         if (params.schoolType) queryParams.append('schoolType', params.schoolType);
+        if (params.status) queryParams.append('status', params.status);
         const queryString = queryParams.toString();
         return `/school-admin/staff${queryString ? `?${queryString}` : ''}`;
       },
@@ -3218,13 +3230,14 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       invalidatesTags: (result, error, { schoolId }) => [{ type: 'School', id: schoolId }],
     }),
     // Get students list
-    getStudents: builder.query<ResponseDto<PaginatedResponse<StudentWithEnrollment>>, { schoolId: string; page?: number; limit?: number; schoolType?: string; search?: string }>({
+    getStudents: builder.query<ResponseDto<PaginatedResponse<StudentWithEnrollment>>, { schoolId: string; page?: number; limit?: number; schoolType?: string; search?: string; status?: 'active' | 'pending' | 'suspended' }>({
       query: ({ schoolId, ...params }) => {
         const queryParams = new URLSearchParams();
         if (params.page) queryParams.append('page', params.page.toString());
         if (params.limit) queryParams.append('limit', params.limit.toString());
         if (params.schoolType) queryParams.append('schoolType', params.schoolType);
         if (params.search) queryParams.append('search', params.search);
+        if (params.status) queryParams.append('status', params.status);
         const queryString = queryParams.toString();
         return `/schools/${schoolId}/students${queryString ? `?${queryString}` : ''}`;
       },
@@ -3238,6 +3251,7 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
           totalPages: number;
           hasNext?: boolean;
           hasPrev?: boolean;
+          statusCounts?: AccountStatusCounts;
         }>
       ): ResponseDto<PaginatedResponse<StudentWithEnrollment>> => ({
         ...response,
@@ -3247,6 +3261,7 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
           page: response.data?.page ?? 1,
           limit: response.data?.limit ?? 10,
           totalPages: response.data?.totalPages ?? 0,
+          statusCounts: response.data?.statusCounts,
         },
       }),
       providesTags: ['Student'],
@@ -3542,13 +3557,14 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
     }),
     getClassGradesGroupedByStudents: builder.query<
       ResponseDto<any[]>,
-      { schoolId: string; classId: string; subject?: string; termId?: string; gradeType?: 'CA' | 'ASSIGNMENT' | 'EXAM' }
+      { schoolId: string; classId: string; subject?: string; termId?: string; gradeType?: 'CA' | 'ASSIGNMENT' | 'EXAM'; report?: boolean }
     >({
-      query: ({ schoolId, classId, subject, termId, gradeType }) => {
+      query: ({ schoolId, classId, subject, termId, gradeType, report }) => {
         const queryParams = new URLSearchParams();
         if (subject) queryParams.append('subject', subject);
         if (termId) queryParams.append('termId', termId);
         if (gradeType) queryParams.append('gradeType', gradeType);
+        if (report) queryParams.append('report', '1');
         const queryString = queryParams.toString();
         return `/schools/${schoolId}/grades/classes/${classId}/students${queryString ? `?${queryString}` : ''}`;
       },

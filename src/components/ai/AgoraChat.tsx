@@ -17,6 +17,9 @@ import {
   ChevronRight,
   StopCircle,
   Plus,
+  PanelRightClose,
+  PanelRightOpen,
+  Trash2,
   ArrowUp,
   ChevronUp,
   Clock,
@@ -62,6 +65,7 @@ import {
 import { LoisOrb } from './LoisOrb';
 import { LoisBriefingPanel } from './LoisBriefingPanel';
 import { LoisMarkdown } from './LoisMarkdown';
+import type { TeacherLoisWorkspace } from './teacherLoisWorkspace';
 import Link from 'next/link';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -425,7 +429,7 @@ function openPlansFromEvents(events: ToolEvent[]) {
     }));
 }
 
-const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { event: ToolEvent; schoolId: string; conversationId?: string | null; variant?: 'default' | 'minimal' }) => {
+const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { event: ToolEvent; schoolId: string; conversationId?: string | null; variant?: 'default' | 'minimal' | 'page' }) => {
   const toolName = event.toolName || '';
   const isQuiet = QUIET_TOOLS.has(toolName);
   const isPlan = PLAN_TOOLS.has(toolName);
@@ -610,10 +614,12 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className={`px-4 pb-4 overflow-y-auto scrollbar-thin ${
-                isGenerate ? 'max-h-[420px]' : 'max-h-[320px]'
-              }`}>
-                <ToolResultContent toolName={toolName} result={event.result} schoolId={schoolId} variant={variant} conversationId={conversationId} />
+              <div className={cn(
+                'overflow-y-auto scrollbar-thin',
+                variant === 'page' ? 'px-5 pb-5' : 'px-4 pb-4',
+                isGenerate ? (variant === 'page' ? 'max-h-[32rem]' : 'max-h-[420px]') : 'max-h-[320px]',
+              )}>
+                <ToolResultContent toolName={toolName} result={event.result} schoolId={schoolId} variant={variant === 'page' ? 'default' : variant} conversationId={conversationId} />
               </div>
             </motion.div>
           )}
@@ -624,6 +630,55 @@ const ToolCard = ({ event, schoolId, conversationId, variant = 'default' }: { ev
 
   return null;
 };
+
+function teacherAssessmentHref(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  if (!value.startsWith('/dashboard/teacher/')) return null;
+  if (value.includes('://') || value.startsWith('//')) return null;
+  return value;
+}
+
+function SchemeManualReferral({
+  message,
+  assessmentsPath,
+  manualPath,
+}: {
+  message?: string;
+  assessmentsPath?: unknown;
+  manualPath?: unknown;
+}) {
+  const assessments = teacherAssessmentHref(assessmentsPath);
+  const manual = teacherAssessmentHref(manualPath);
+  return (
+    <div data-testid="lois-scheme-manual" className="rounded-xl border border-amber-200/80 bg-amber-50/80 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+      <p className="text-sm text-amber-950 dark:text-amber-100">
+        {message || 'The scheme of work is not published, so this has to be created manually.'}
+      </p>
+      {(assessments || manual) && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {assessments && (
+            <Link
+              href={assessments}
+              data-testid="lois-class-assessments-link"
+              className="inline-flex items-center rounded-lg bg-[var(--agora-blue)] px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              Open class assessments
+            </Link>
+          )}
+          {manual && (
+            <Link
+              href={manual}
+              data-testid="lois-manual-assessment-link"
+              className="inline-flex items-center rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-950 dark:border-amber-500/30 dark:bg-transparent dark:text-amber-100"
+            >
+              Create manually
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const ToolResultContent = ({
   toolName,
@@ -769,6 +824,10 @@ const ToolResultContent = ({
   }
 
   if (toolName === 'generate_quiz' || toolName === 'generate_assessment') {
+    const payload = result?.data && !Array.isArray(result.data) ? result.data : result;
+    if (payload?.reason === 'scheme_unpublished') {
+      return <SchemeManualReferral message={payload.message} assessmentsPath={payload.assessmentsPath} manualPath={payload.manualPath} />;
+    }
     return <SaveAssessmentEditor toolName={toolName} initialData={result} schoolId={schoolId} variant={variant} conversationId={conversationId} />;
   }
 
@@ -1036,13 +1095,15 @@ function LookupToolSummary({ toolName, result }: { toolName: string; result: any
 interface AgoraChatProps {
   schoolId: string;
   initialConversationId?: string;
-  variant?: 'default' | 'minimal';
+  variant?: 'default' | 'minimal' | 'page';
   /** When false, keep the conversation mounted but do not steal focus. */
   isActive?: boolean;
   /** Slim header-only chrome while the session is docked. */
   collapsed?: boolean;
   pageContext?: string | LoisPageContext;
   headerActions?: React.ReactNode;
+  /** Teacher fullscreen empty state. Ignored by the drawer and admin chat. */
+  workspace?: TeacherLoisWorkspace;
 }
 
 export const AgoraChat: React.FC<AgoraChatProps> = ({
@@ -1053,6 +1114,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   collapsed = false,
   pageContext,
   headerActions,
+  workspace: teacherWorkspace,
 }) => {
   const user = useSelector((state: RootState) => state.auth.user);
   const token = useSelector((state: RootState) => state.auth.token);
@@ -1078,6 +1140,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyRailOpen, setHistoryRailOpen] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
 
   const { data: historyData } = useGetChatHistoryQuery({ schoolId });
@@ -1158,6 +1221,17 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   useEffect(() => {
     if (collapsed) setIsHistoryOpen(false);
   }, [collapsed]);
+
+  useEffect(() => {
+    if (variant !== 'page') return;
+    const media = window.matchMedia('(min-width: 1024px)');
+    const closeOverlay = () => {
+      if (media.matches) setIsHistoryOpen(false);
+    };
+    closeOverlay();
+    media.addEventListener('change', closeOverlay);
+    return () => media.removeEventListener('change', closeOverlay);
+  }, [variant]);
 
   // ─── SSE Streaming Send ─────────────────────────────────────────────────
 
@@ -1439,6 +1513,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   };
 
   const isMinimal = variant === 'minimal';
+  const isPage = variant === 'page';
   const typeScale = {
     title: isMinimal ? 'var(--lois-title)' : 'var(--text-section-title)',
     greeting: isMinimal ? 'var(--lois-greeting)' : '1.5rem',
@@ -1449,7 +1524,12 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   const briefingOpen = isMinimal && Boolean(workspace?.briefingOpen);
   const showEmpty = messages.length <= 1 && !briefingOpen && !isHistoryLoading;
   const showThread = messages.length > 1 && !isHistoryLoading;
-  const columnClass = isMinimal ? 'w-full' : 'lois-chat-column';
+  // 250px sidebar + 2rem main padding. Below ~1240px this would collide with the sidebar, so the thread stays centered in the content pane.
+  const columnClass = isPage
+    ? 'w-[min(100%,42rem)] mx-auto min-[1240px]:mx-0 min-[1240px]:ml-[calc(50vw-21rem-282px)]'
+    : isMinimal
+      ? 'w-full'
+      : 'lois-chat-column';
 
   const composerField = (
     <div className="lois-composer">
@@ -1461,7 +1541,13 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       >
         <input
           ref={inputRef}
-          placeholder={workspace?.briefingOpen ? 'Ask a follow-up…' : 'Ask Lois anything…'}
+          placeholder={
+            workspace?.briefingOpen
+              ? 'Ask a follow-up…'
+              : isPage
+                ? 'Ask about a class, a lesson, or a quiz…'
+                : 'Ask Lois anything…'
+          }
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => {
@@ -1502,26 +1588,35 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
     </p>
   );
 
+  const historyChats = historyData ?? [];
+
   return (
     <LoisPlanApplySession conversationId={currentConversationId}>
     <div
       className={cn(
-        'lois-panel flex flex-col h-full w-full bg-transparent overflow-hidden relative',
+        'lois-panel flex h-full w-full bg-transparent overflow-hidden relative',
+        isPage ? 'flex-row' : 'flex-col',
       )}
       style={{ fontFamily: 'var(--font-sans)' }}
     >
+      <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col', isPage && 'relative')}>
       <div
         className={cn(
           'relative z-10 shrink-0 flex items-center justify-between gap-2',
           collapsed
             ? 'px-2.5 py-1.5'
-            : isMinimal
+              : isPage
+              ? cn(
+                  'z-30 px-4 py-3 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]',
+                  historyRailOpen && 'lg:pr-60 xl:pr-[17rem]',
+                )
+              : isMinimal
               ? 'px-3 py-2.5 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]'
               : 'px-4 py-3 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]',
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <LoisOrb size={collapsed ? 'sm' : isMinimal ? 'md' : 'lg'} pulse />
+          <LoisOrb size={collapsed || isPage ? 'sm' : isMinimal ? 'md' : 'lg'} pulse />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h2
@@ -1538,12 +1633,18 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               )}
             </div>
             {!collapsed && (
+            isPage && teacherWorkspace?.loading ? (
+              <span className="mt-1 block h-3 w-28 animate-pulse rounded bg-black/5 dark:bg-white/10" />
+            ) : (
             <p
               className="mt-1 text-light-text-secondary dark:text-dark-text-secondary truncate leading-none"
               style={{ fontSize: typeScale.tiny }}
             >
-              {structuredFocus?.label || (workspace?.briefingOpen ? 'Briefing ready' : 'School assistant')}
+              {isPage
+                ? (teacherWorkspace?.subtitle || 'Teaching assistant')
+                : (structuredFocus?.label || (workspace?.briefingOpen ? 'Briefing ready' : 'School assistant'))}
             </p>
+            )
             )}
           </div>
         </div>
@@ -1562,10 +1663,24 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
+              {isPage && (
+                <span className="hidden lg:inline-flex">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryRailOpen((open) => !open)}
+                    className="lois-icon-btn"
+                    title={historyRailOpen ? 'Hide chats' : 'Show chats'}
+                    aria-label={historyRailOpen ? 'Hide chats' : 'Show chats'}
+                    aria-expanded={historyRailOpen}
+                  >
+                    {historyRailOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+                  </button>
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setIsHistoryOpen(true)}
-                className="lois-icon-btn"
+                className={cn('lois-icon-btn', isPage && 'lg:hidden')}
                 title="History"
                 aria-label="Chat history"
               >
@@ -1600,6 +1715,72 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               />
             ) : null}
             {showEmpty ? (
+          isPage ? (
+          <div className="px-4 py-8">
+            <div className={cn(columnClass, 'flex flex-col items-start gap-8 text-left')}>
+              <div>
+                <h3
+                  className="font-semibold text-light-text-primary dark:text-dark-text-primary tracking-tight leading-snug"
+                  style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem' }}
+                >
+                  {teacherWorkspace?.greetingTitle || 'What should we work on?'}
+                </h3>
+                <p
+                  className="mt-1.5 max-w-xl text-light-text-secondary dark:text-dark-text-secondary leading-relaxed"
+                  style={{ fontSize: typeScale.small }}
+                >
+                  {teacherWorkspace?.greetingBody || 'Ask for a lesson plan, a quiz, or what’s next on the timetable.'}
+                </p>
+              </div>
+              {teacherWorkspace?.loading ? (
+                <section className="w-full" aria-hidden>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-light-text-muted dark:text-dark-text-muted">
+                    Teaching
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="h-[3.25rem] animate-pulse rounded-xl border border-[var(--light-border)] bg-black/[0.03] dark:border-[var(--dark-border)] dark:bg-white/[0.04]"
+                      />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+              {(teacherWorkspace?.groups || []).map((group) => (
+                <section key={group.label} className="w-full">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-light-text-muted dark:text-dark-text-muted">
+                      {group.label}
+                    </p>
+                    {group.href ? (
+                      <Link href={group.href} className="text-sm font-medium text-[var(--agora-blue)] hover:underline">
+                        {group.hrefLabel || 'Open'}
+                      </Link>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {group.cards.map((card) => (
+                      <button
+                        key={card.title}
+                        type="button"
+                        onClick={() => void handleSendMessage(card.prompt)}
+                        className="rounded-xl border border-[var(--light-border)] dark:border-[var(--dark-border)] px-3 py-2.5 text-left transition-colors hover:border-[var(--agora-blue)]/40"
+                      >
+                        <span className="block text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
+                          {card.title}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-light-text-muted dark:text-dark-text-muted">
+                          {card.description}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+          ) : (
           <div
             className={cn(
               'flex-1 flex flex-col justify-center min-h-0',
@@ -1637,6 +1818,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               {disclaimer}
             </div>
           </div>
+          )
         ) : showThread ? (
           <div className={cn('space-y-4', columnClass, isMinimal ? 'px-3 py-4' : 'px-4 py-5')}>
             {messages.map((msg, idx) => (
@@ -1656,7 +1838,8 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
                     </div>
 
                     <div className={cn(
-                      "flex flex-col max-w-[85%] gap-1",
+                      "flex flex-col gap-1",
+                      isPage && msg.role === 'assistant' ? "w-full max-w-full" : "max-w-[85%]",
                       msg.role === 'user' ? "items-end text-right" : "items-start text-left"
                     )}>
                       {msg.role === 'assistant' && msg.toolEvents && msg.toolEvents.length > 0 && (
@@ -1766,8 +1949,8 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
         )}
       </div>
 
-      {!showEmpty && (
-        <div className={cn('z-20 shrink-0', isMinimal ? 'px-3 pb-3 pt-1' : 'px-4 pb-5 pt-2')}>
+      {(isPage || !showEmpty) && (
+        <div className={cn('z-20 shrink-0', isPage ? 'px-4 pb-4 pt-2' : isMinimal ? 'px-3 pb-3 pt-1' : 'px-4 pb-5 pt-2')}>
           <div className={columnClass}>
             {composerField}
             {disclaimer}
@@ -1781,13 +1964,62 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       <LoisChatHistory
         isOpen={!collapsed && isHistoryOpen}
         contained={isMinimal}
-        chats={historyData ?? []}
+        chats={historyChats}
         activeId={currentConversationId}
         onClose={() => setIsHistoryOpen(false)}
         onSelect={(id, title) => void handleSelectConversation(id, title)}
         onDelete={(e, id) => void handleDeleteConversation(e, id)}
         onNewChat={handleNewChat}
       />
+      </div>
+      {isPage && historyRailOpen && (
+        <aside className="absolute bottom-0 right-0 top-0 z-20 hidden w-56 flex-col border-l border-[var(--light-border)] bg-[var(--light-bg)] dark:border-[var(--dark-border)] dark:bg-[var(--dark-bg)] lg:flex xl:w-64">
+          <div className="p-3">
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] px-3 py-2 text-sm font-medium text-light-text-primary dark:text-dark-text-primary hover:bg-black/5 dark:hover:bg-white/5"
+            >
+              <Plus className="h-4 w-4" />
+              New chat
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+            {historyChats.length === 0 ? (
+              <p className="px-2 py-3 text-xs text-light-text-muted dark:text-dark-text-muted">No chats yet</p>
+            ) : (
+              historyChats.map((chat) => {
+                const label = (chat.title || '').replace(/\s+/g, ' ').trim() || 'New chat';
+                const selected = chat.id === currentConversationId;
+                return (
+                  <div key={chat.id} className="group relative">
+                    <button
+                      type="button"
+                      onClick={() => void handleSelectConversation(chat.id, label)}
+                      className={cn(
+                        'w-full truncate rounded-lg px-2.5 py-2 pr-8 text-left text-sm',
+                        selected
+                          ? 'bg-[var(--agora-blue)]/10 font-medium text-[var(--agora-blue)]'
+                          : 'text-light-text-secondary hover:bg-black/5 dark:text-dark-text-secondary dark:hover:bg-white/5',
+                      )}
+                    >
+                      {label}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${label}`}
+                      onClick={(event) => void handleDeleteConversation(event, chat.id)}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-light-text-muted opacity-0 hover:text-red-600 group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </aside>
+      )}
     </div>
     </LoisPlanApplySession>
   );
