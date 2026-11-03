@@ -1,5 +1,6 @@
 'use client';
 
+import { HelpVideoButton } from '@/components/ui/HelpVideoButton';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -416,9 +417,12 @@ export default function SubjectsPage() {
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-8">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
-                {currentType === 'TERTIARY' ? 'Courses' : 'Subjects'}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
+                  {currentType === 'TERTIARY' ? 'Courses' : 'Subjects'}
+                </h1>
+                <HelpVideoButton tutorial="subjects" />
+              </div>
               <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1" style={{ fontSize: 'var(--text-page-subtitle)' }}>
                 Manage {currentType === 'TERTIARY' ? 'courses' : 'subjects'} for {currentType || 'your school'}
               </p>
@@ -450,9 +454,9 @@ export default function SubjectsPage() {
 
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="flex-1">
+          <div className="w-full md:w-72 md:flex-none">
             <SearchInput
-              placeholder={`Search ${currentType === 'TERTIARY' ? 'courses' : 'subjects'} by name or code...`}
+              placeholder={`Search ${currentType === 'TERTIARY' ? 'courses' : 'subjects'}...`}
               value={searchQuery}
               onChange={setSearchQuery}
             />

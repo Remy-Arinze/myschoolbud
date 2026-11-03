@@ -1,5 +1,6 @@
 'use client';
 
+import { HelpVideoButton } from '@/components/ui/HelpVideoButton';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -13,9 +14,12 @@ import { PermissionGate } from '@/components/permissions/PermissionGate';
 import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import { FadeInUp } from '@/components/ui/FadeInUp';
 import { EmptyStateIcon } from '@/components/ui/EmptyStateIcon';
+import { SectionTabs, TabPanel } from '@/components/ui/SectionTabs';
+import { MinimalEmptyState } from '@/components/ui/MinimalEmptyState';
 import { ShareRegistrationLinkModal } from '@/components/modals/ShareRegistrationLinkModal';
 import {
   CheckCircle2,
+  Inbox,
   XCircle,
   Clock,
   Eye,
@@ -756,9 +760,12 @@ export default function ApplicationsPage() {
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
-                Student Applications
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
+                  Student Applications
+                </h1>
+                <HelpVideoButton tutorial="applications" />
+              </div>
               <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1" style={{ fontSize: 'var(--text-page-subtitle)' }}>
                 Manage student applications, incoming transfers and outgoing transfers
               </p>
@@ -779,33 +786,18 @@ export default function ApplicationsPage() {
         </FadeInUp>
 
         {/* Tabs */}
-        <div className="mb-6 border-b border-light-border dark:border-dark-border">
-          <div className="flex space-x-1">
-            <button
-              onClick={() => setActiveTab('incoming')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'incoming'
-                  ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                  : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
-                }`}
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              Incoming Applications
-            </button>
-            <button
-              onClick={() => setActiveTab('outgoing')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'outgoing'
-                  ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                  : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
-                }`}
-            >
-              <ArrowUp className="h-4 w-4" />
-              Outgoing Transfers
-            </button>
-          </div>
-        </div>
+        <SectionTabs
+          ariaLabel="Applications sections"
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabs={[
+            { key: 'incoming', label: 'Incoming Applications', icon: <CheckCircle2 className="h-4 w-4" /> },
+            { key: 'outgoing', label: 'Outgoing Transfers', icon: <ArrowUp className="h-4 w-4" /> },
+          ]}
+        />
 
         {/* Tab Content */}
-        <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.2}>
+        <TabPanel tabKey={activeTab}>
           {activeTab === 'incoming' && (
             <div className="space-y-6">
               {/* Accept new transfer + Incoming list */}
@@ -832,7 +824,7 @@ export default function ApplicationsPage() {
                           className="h-9 whitespace-nowrap"
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Accept transfer
+                          Accept Incoming
                         </Button>
                       </PermissionGate>
                     </div>
@@ -845,15 +837,15 @@ export default function ApplicationsPage() {
                       <span className="ml-3 text-light-text-secondary dark:text-dark-text-secondary">Loading...</span>
                     </div>
                   ) : filteredIncoming.length === 0 ? (
-                    <div className="text-center py-12">
-                      <EmptyStateIcon type="person_outline" />
-                      <p className="text-light-text-secondary dark:text-dark-text-secondary mt-2">
-                        No recently accepted transfers or pending applications yet.
-                      </p>
-                      <p className="text-sm text-light-text-muted dark:text-dark-text-muted mt-1 max-w-md mx-auto">
-                        Use &quot;Accept new transfer&quot; to complete an incoming transfer with a TAC from the student&apos;s previous school. New applications from your public admission link will also appear here.
-                      </p>
-                    </div>
+                    <MinimalEmptyState
+                      icon={<Inbox className="h-5 w-5" />}
+                      title={searchQuery ? 'No matches found' : 'No incoming applications yet'}
+                      description={
+                        searchQuery
+                          ? 'Try a different name or clear the search.'
+                          : 'Accepted transfers and new applications from your admission link will appear here.'
+                      }
+                    />
                   ) : (
                     <div className="space-y-3">
                       {filteredIncoming.map((item: any) => {
@@ -1071,12 +1063,15 @@ export default function ApplicationsPage() {
                 </CardHeader>
                 <CardContent>
                   {filteredOutgoing.length === 0 ? (
-                    <div className="text-center py-12">
-                      <EmptyStateIcon type="statistics" />
-                      <p className="text-light-text-secondary dark:text-dark-text-secondary">
-                        No outgoing transfers. Generate a TAC for a student to initiate a transfer.
-                      </p>
-                    </div>
+                    <MinimalEmptyState
+                      icon={<ArrowUp className="h-5 w-5" />}
+                      title={searchQuery ? 'No matches found' : 'No outgoing transfers'}
+                      description={
+                        searchQuery
+                          ? 'Try a different name or clear the search.'
+                          : 'Generate a TAC for a student to start a transfer.'
+                      }
+                    />
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full">
@@ -1211,7 +1206,7 @@ export default function ApplicationsPage() {
               </Card>
             </div>
           )}
-        </FadeInUp>
+        </TabPanel>
 
         {/* Accept new transfer modal (TAC + Student ID) */}
         {showAcceptTransferModal && (
@@ -1221,7 +1216,7 @@ export default function ApplicationsPage() {
               setShowAcceptTransferModal(false);
               setTacFormData({ tac: '', studentId: '' });
             }}
-            title="Accept new transfer"
+            title="Accept Incoming student Transfer"
             size="md"
           >
             <form onSubmit={handleInitiateTransfer} className="space-y-4">

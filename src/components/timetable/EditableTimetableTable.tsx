@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { TimeInput, parseTimeInput } from '@/components/ui/TimeInput';
 import { X, Save, Loader2, Plus, ChevronDown, Trash2 } from 'lucide-react';
 import { FadeInUp } from '@/components/ui/FadeInUp';
+import { AnimatedList } from '@/components/ui/AnimatedList';
 import { LoisOrb } from '@/components/ai/LoisOrb';
 import {
   type TimetablePeriod,
@@ -633,7 +634,7 @@ export function EditableTimetableTable({
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <AnimatedList as="tbody" stagger={0.04}>
                 {rows.map((row, rowIndex) => {
                   const mins = durationOf(row.startTime, row.endTime);
                   const next = rows[rowIndex + 1];
@@ -757,7 +758,7 @@ export function EditableTimetableTable({
                     </tr>
                   );
                 })}
-              </tbody>
+              </AnimatedList>
             </table>
             <div className="mt-3 flex justify-start">
               <button

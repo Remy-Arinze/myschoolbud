@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { StatCard } from '@/components/dashboard/StatCard';
+import { OverviewStatTile, ProgressRing, Reveal, RevealStagger } from '@/components/dashboard/OverviewBlocks';
 import { AnalyticsChart } from '@/components/dashboard/AnalyticsChart';
 import { SchoolSetupChecklist } from '@/components/dashboard/SchoolSetupChecklist';
 import { LoisInboxCard } from '@/components/ai/LoisInboxCard';
@@ -13,7 +13,7 @@ import { useSchoolSetupProgress } from '@/hooks/useSchoolSetupProgress';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { FadeInUp } from '@/components/ui/FadeInUp';
-import { GraduationCap, Users, BookOpen, UserPlus, Loader2, AlertCircle, Calendar, XCircle, Upload, Settings } from 'lucide-react';
+import { GraduationCap, Users, BookOpen, UserPlus, Loader2, AlertCircle, Calendar, XCircle, Upload, Settings, ArrowRight } from 'lucide-react';
 import { ImageCropModal } from '@/components/ui/ImageCropModal';
 import { useRouter } from 'next/navigation';
 import { useGetSchoolAdminDashboardQuery, useGetSchoolAdminDashboardChartsQuery, useGetActiveSessionQuery, useGetMySchoolQuery, useEndTermMutation, useUploadSchoolLogoMutation } from '@/lib/store/api/schoolAdminApi';
@@ -86,7 +86,7 @@ function RecentStudentRow({ student }: { student: { id: string; name: string; pr
           <h4 className="font-semibold text-light-text-primary dark:text-dark-text-primary">
             {student.name}
           </h4>
-          <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1" style={{ fontSize: 'var(--text-body)' }}>
+          <p className="text-slate-800 dark:text-slate-200 mt-1" style={{ fontSize: 'var(--text-body)' }}>
             {student.classLevel} • {student.admissionNumber}
           </p>
         </div>
@@ -182,7 +182,20 @@ export default function AdminOverviewPage() {
   const [endTerm, { isLoading: isEndingTerm }] = useEndTermMutation();
   const [showEndTermModal, setShowEndTermModal] = useState(false);
   const [editingTerm, setEditingTerm] = useState<Term | null>(null);
-  const { steps: setupSteps, isLoading: isLoadingSetup } = useSchoolSetupProgress();
+  const { steps: setupSteps, isLoading: isLoadingSetup, completedCount, totalCount, isComplete: setupComplete, nextStep: nextSetupStep } = useSchoolSetupProgress();
+  const setupIncomplete = !setupComplete && totalCount > 0;
+  const activeTermWeek = activeSession?.term?.currentWeek ?? 0;
+  const activeTermWeeks = activeSession?.term?.totalWeeks ?? 0;
+  const ringPercent = setupIncomplete
+    ? (completedCount / totalCount) * 100
+    : activeTermWeeks > 0
+      ? (activeTermWeek / activeTermWeeks) * 100
+      : 100;
+  const ringLabel = setupIncomplete
+    ? `${completedCount} of ${totalCount} done`
+    : activeTermWeeks > 0
+      ? `Week ${activeTermWeek} of ${activeTermWeeks}`
+      : 'All set';
 
   // Create preview URL when file is selected
   useEffect(() => {
@@ -316,7 +329,7 @@ export default function AdminOverviewPage() {
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-4 w-full">
             <div className="order-1 flex-1 min-w-[200px]">
-              <h1 className="font-medium lg:font-semibold text-xl lg:text-2xl text-light-text-primary dark:text-white leading-tight">
+              <h1 className="font-semibold text-2xl lg:text-3xl tracking-tight text-light-text-primary dark:text-white leading-tight">
                 Welcome, {userName}
               </h1>
 
@@ -324,11 +337,11 @@ export default function AdminOverviewPage() {
                 <div className="mt-2 space-y-1">
                   {/* Session / term identity */}
                   <p
-                    className="text-light-text-secondary dark:text-dark-text-secondary leading-snug"
-                    style={{ fontSize: 'var(--text-body)' }}
+                    className="text-sm text-slate-800 dark:text-slate-200 leading-snug"
+                    style={{ fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}
                   >
                     {currentType && (
-                      <span className="capitalize text-light-text-muted dark:text-dark-text-muted">
+                      <span className="capitalize text-slate-700 dark:text-slate-300">
                         {currentType.toLowerCase()}
                         <span className="mx-1.5">·</span>
                       </span>
@@ -338,7 +351,7 @@ export default function AdminOverviewPage() {
                         <span className="font-medium text-light-text-primary dark:text-dark-text-primary">
                           {activeSession.session.name}
                         </span>
-                        <span className="mx-1.5 text-light-text-muted dark:text-dark-text-muted">·</span>
+                        <span className="mx-1.5 text-slate-700 dark:text-slate-300">·</span>
                       </>
                     )}
                     <span className="font-semibold text-blue-600 dark:text-blue-400">
@@ -346,7 +359,7 @@ export default function AdminOverviewPage() {
                     </span>
                     {typeof activeSession.term.currentWeek === 'number' &&
                       activeSession.term.currentWeek > 0 && (
-                        <span className="ml-1.5 text-light-text-muted dark:text-dark-text-muted">
+                        <span className="ml-1.5 text-slate-700 dark:text-slate-300">
                           (Week {activeSession.term.currentWeek}
                           {activeSession.term.totalWeeks
                             ? ` of ${activeSession.term.totalWeeks}`
@@ -371,13 +384,13 @@ export default function AdminOverviewPage() {
                       );
                       return (
                         <div
-                          className="flex items-center gap-1.5 text-light-text-muted dark:text-dark-text-muted"
-                          style={{ fontSize: 'var(--text-small)' }}
+                          className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"
+                          style={{ fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}
                         >
                           <Calendar className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" />
                           <span>
                             Starts{' '}
-                            <span className="font-medium text-light-text-secondary dark:text-dark-text-secondary">
+                            <span className="font-medium text-slate-800 dark:text-slate-200">
                               {startDate.toLocaleDateString('en-US', {
                                 weekday: 'short',
                                 month: 'short',
@@ -411,13 +424,13 @@ export default function AdminOverviewPage() {
 
                     return (
                       <div
-                        className="flex items-center gap-1.5 text-light-text-muted dark:text-dark-text-muted"
-                        style={{ fontSize: 'var(--text-small)' }}
+                        className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300"
+                        style={{ fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}
                       >
                         <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
                         <span>
                           Ends{' '}
-                          <span className="font-medium text-light-text-secondary dark:text-dark-text-secondary">
+                          <span className="font-medium text-slate-800 dark:text-slate-200">
                             {endDate.toLocaleDateString('en-US', {
                               weekday: 'short',
                               month: 'short',
@@ -455,7 +468,7 @@ export default function AdminOverviewPage() {
                 </div>
               ) : !hasActiveTerm && hasActiveSession && activeSession?.session ? (
                 <p
-                  className="mt-2 text-light-text-secondary dark:text-dark-text-secondary"
+                  className="mt-2 text-slate-800 dark:text-slate-200"
                   style={{ fontSize: 'var(--text-body)' }}
                 >
                   Session{' '}
@@ -560,7 +573,7 @@ export default function AdminOverviewPage() {
                     }}
                     title="Click to upload school logo"
                   >
-                    <Upload className="h-4 w-4 text-light-text-muted dark:text-dark-text-muted group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
+                    <Upload className="h-4 w-4 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
                     {/* Tooltip */}
                     <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-800 text-white px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10" style={{ fontSize: 'var(--text-small)' }}>
                       Click to upload logo
@@ -570,7 +583,7 @@ export default function AdminOverviewPage() {
                 )}
               </div>
               {!school?.logo && !logoPreview && (
-                <p className="text-light-text-muted dark:text-dark-text-muted text-center whitespace-nowrap" style={{ fontSize: 'var(--text-small)' }}>
+                <p className="text-slate-700 dark:text-slate-300 text-center whitespace-nowrap" style={{ fontSize: 'var(--text-small)' }}>
                   Upload logo
                 </p>
               )}
@@ -657,9 +670,6 @@ export default function AdminOverviewPage() {
           )
         }
 
-        {/* Setup guide — quiet, dismissible; does not replace existing dashboard */}
-        {!isSummaryLoading && !error && <SchoolSetupChecklist />}
-
         {schoolId && (
           <LoisFocus
             context={{
@@ -670,8 +680,6 @@ export default function AdminOverviewPage() {
             }}
           />
         )}
-
-        {!isSummaryLoading && !error && schoolId && <LoisInboxCard schoolId={schoolId} />}
 
         {/* Loading State */}
         {
@@ -691,83 +699,135 @@ export default function AdminOverviewPage() {
         {
           !isSummaryLoading && !error && stats && (
             <>
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6">
-                <StatCard
-                  title="Total Students"
-                  value={formatNumber(stats.totalStudents)}
-                  change={formatChange(stats.studentsChange)}
-                  changeType={getChangeType(stats.studentsChange)}
-                  icon={
-                    <GraduationCap className="text-blue-600 dark:text-blue-400" style={{ width: 'var(--stat-icon-size)', height: 'var(--stat-icon-size)' }} />
-                  }
-                />
-                <StatCard
-                  title={`Total ${terminology.staff}`}
-                  value={formatNumber(stats.totalTeachers)}
-                  change={formatChange(stats.teachersChange)}
-                  changeType={getChangeType(stats.teachersChange)}
-                  icon={
-                    <Users className="text-green-600 dark:text-green-400" style={{ width: 'var(--stat-icon-size)', height: 'var(--stat-icon-size)' }} />
-                  }
-                />
-                <StatCard
-                  title={`Active ${terminology.courses}`}
-                  value={formatNumber(stats.activeCourses)}
-                  change={formatChange(stats.coursesChange)}
-                  changeType={getChangeType(stats.coursesChange)}
-                  icon={
-                    <BookOpen className="text-purple-600 dark:text-purple-400" style={{ width: 'var(--stat-icon-size)', height: 'var(--stat-icon-size)' }} />
-                  }
-                />
-                <StatCard
-                  title="Pending Admissions"
-                  value={formatNumber(stats.pendingAdmissions)}
-                  change={formatChange(stats.pendingAdmissionsChange, false)}
-                  changeType={getChangeType(stats.pendingAdmissionsChange)}
-                  icon={
-                    <UserPlus className="text-orange-600 dark:text-orange-400" style={{ width: 'var(--stat-icon-size)', height: 'var(--stat-icon-size)' }} />
-                  }
-                />
+              {/* Hero row: stat tiles + readiness ring */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 mb-6">
+                <RevealStagger className="lg:col-span-7 grid grid-cols-2 gap-4 md:gap-6">
+                  <OverviewStatTile
+                    title="Total Students"
+                    value={formatNumber(stats.totalStudents)}
+                    change={formatChange(stats.studentsChange)}
+                    changeType={getChangeType(stats.studentsChange)}
+                    icon={<GraduationCap className="h-4 w-4" />}
+                    tone="sky"
+                  />
+                  <OverviewStatTile
+                    title={`Total ${terminology.staff}`}
+                    value={formatNumber(stats.totalTeachers)}
+                    change={formatChange(stats.teachersChange)}
+                    changeType={getChangeType(stats.teachersChange)}
+                    icon={<Users className="h-4 w-4" />}
+                    tone="peach"
+                  />
+                  <OverviewStatTile
+                    title={`Active ${terminology.courses}`}
+                    value={formatNumber(stats.activeCourses)}
+                    change={formatChange(stats.coursesChange)}
+                    changeType={getChangeType(stats.coursesChange)}
+                    icon={<BookOpen className="h-4 w-4" />}
+                    tone="peach"
+                  />
+                  <OverviewStatTile
+                    title="Pending Admissions"
+                    value={formatNumber(stats.pendingAdmissions)}
+                    change={formatChange(stats.pendingAdmissionsChange, false)}
+                    changeType={getChangeType(stats.pendingAdmissionsChange)}
+                    icon={<UserPlus className="h-4 w-4" />}
+                    tone="sky"
+                  />
+                </RevealStagger>
+
+                <Reveal className="lg:col-span-5" delay={0.1} from="right">
+                  <div className="h-full relative overflow-hidden rounded-3xl p-6 bg-gradient-to-br from-[var(--agora-blue)] to-[#0057d9] text-white dark:from-white/5 dark:to-white/5 dark:bg-white/5 flex flex-col justify-between gap-5">
+                    <div>
+                      <p className="text-xs font-medium text-white/75">
+                        {setupIncomplete ? 'School readiness' : 'Term progress'}
+                      </p>
+                      <h2 className="text-base font-semibold leading-tight mt-0.5">
+                        {setupIncomplete ? 'Getting your school ready' : activeSession?.term?.name || 'No active term'}
+                      </h2>
+                    </div>
+                    <div className="flex items-center gap-5">
+                      <ProgressRing percent={ringPercent} label={ringLabel} onDark />
+                      <div className="min-w-0 text-xs">
+                        {setupIncomplete && nextSetupStep ? (
+                          <>
+                            <p className="text-white/75">Up next</p>
+                            <p className="font-semibold leading-snug">{nextSetupStep.title}</p>
+                            <Link
+                              href={nextSetupStep.href}
+                              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[var(--agora-blue)] hover:bg-white/90 dark:bg-[var(--agora-blue)] dark:text-white dark:hover:opacity-90 transition-opacity"
+                            >
+                              Continue setup <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                          </>
+                        ) : (
+                          <p className="opacity-80 leading-relaxed">
+                            {setupIncomplete ? 'Setup details are loading.' : ringLabel}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
               </div>
 
-              {/* Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Lois insights + Getting ready */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 mb-6 items-stretch">
+                <Reveal className="lg:col-span-7" from="left">
+                  {schoolId && <LoisInboxCard schoolId={schoolId} variant="panel" />}
+                </Reveal>
+                <div className="lg:col-span-5 [&_*:where(.rounded-lg)]:rounded-3xl">
+                  <Reveal delay={0.1} from="right">
+                    <SchoolSetupChecklist />
+                  </Reveal>
+                </div>
+              </div>
+
+              {/* Distribution + weekly activity */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 mb-6">
+                <Reveal className="lg:col-span-5" from="left">
+                  <AnalyticsChart
+                    className="!rounded-3xl"
+                    title="Student Distribution"
+                    description="Distribution of students across different categories or levels."
+                    data={studentDistribution}
+                    type="donut"
+                    dataKeys={['students']}
+                    colors={['#007FFF', '#3d9aff', '#80bdff', '#bfdeff']}
+                    isLoading={chartsPending}
+                  />
+                </Reveal>
+                <Reveal className="lg:col-span-7" delay={0.1} from="right">
+                  <AnalyticsChart
+                    className="!rounded-3xl"
+                    title="Weekly Activity Trends"
+                    description="Tracking admissions and transfers to monitor school engagement and activity patterns."
+                    data={weeklyActivity}
+                    type="area"
+                    dataKeys={['admissions', 'transfers']}
+                    colors={['#007FFF', '#80bdff']}
+                    isLoading={chartsPending}
+                  />
+                </Reveal>
+              </div>
+
+              {/* Growth trends — grouped bars, lower on the page */}
+              <Reveal className="mb-6">
                 <AnalyticsChart
+                  className="!rounded-3xl"
                   title="Growth Trends"
-                  description="Overall enhancement in student, teacher, and course growth over time."
+                  description="Students, teachers, and courses over time."
                   data={growthTrends}
-                  type="area"
+                  type="bar"
                   dataKeys={['students', 'teachers', 'courses']}
-                  colors={['#3b82f6', '#10b981', '#a855f7']}
+                  colors={['#007FFF', '#4da3ff', '#99c9ff']}
                   isLoading={chartsPending}
                 />
-                <AnalyticsChart
-                  title="Student Distribution"
-                  description="Distribution of students across different categories or levels."
-                  data={studentDistribution}
-                  type="donut"
-                  dataKeys={['students']}
-                  colors={['#3b82f6', '#10b981', '#f59e0b', '#ef4444']}
-                  isLoading={chartsPending}
-                />
-              </div>
-
-              {/* Weekly Activity Trends */}
-              <div className="mb-6">
-                <AnalyticsChart
-                  title="Weekly Activity Trends"
-                  description="Tracking admissions and transfers to monitor school engagement and activity patterns."
-                  data={weeklyActivity}
-                  type="area"
-                  dataKeys={['admissions', 'transfers']}
-                  colors={['#3b82f6', '#10b981']}
-                  isLoading={chartsPending}
-                />
-              </div>
+              </Reveal>
 
               {/* Recent Students */}
-              <Card>
+              <Reveal>
+              <Card className="!rounded-3xl">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="font-bold text-light-text-primary dark:text-dark-text-primary">
@@ -795,6 +855,7 @@ export default function AdminOverviewPage() {
                   )}
                 </CardContent>
               </Card>
+              </Reveal>
             </>
           )
         }

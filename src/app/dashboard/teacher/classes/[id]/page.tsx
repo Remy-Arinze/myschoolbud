@@ -83,7 +83,7 @@ import { ConfirmModal } from '@/components/ui/Modal';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ActivityLog } from '@/components/dashboard/ActivityLog';
 import { useTeacherDashboard } from '@/hooks/useTeacherDashboard';
-import { SectionTabs } from '@/components/ui/SectionTabs';
+import { SectionTabs, TabPanel } from '@/components/ui/SectionTabs';
 
 type TabType = 'overview' | 'curriculum' | 'students' | 'grades' | 'timetable' | 'resources' | 'assessments' | 'roll-call' | 'scheme-of-work';
 
@@ -538,7 +538,7 @@ export default function ClassDetailPage() {
         />
 
         {/* Tab Content */}
-        <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.2}>
+        <TabPanel tabKey={activeTab}>
           <div className="mt-6">
             {activeTab === 'overview' && (
               <div className="space-y-8 pb-10">
@@ -1523,7 +1523,7 @@ export default function ClassDetailPage() {
           )} */}
 
           </div>
-        </FadeInUp>
+        </TabPanel>
 
       {/* Modals */}
       <BulkGradeEntryModal

@@ -10,8 +10,8 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   useGetSchoolSettingsQuery,
   useUpdateSettingsSectionMutation,
-  useCreateRoleTemplateMutation,
-  useDeleteRoleTemplateMutation,
+  useCreateSettingsRoleTemplateMutation,
+  useDeleteSettingsRoleTemplateMutation,
 } from '@/lib/store/api/schoolSettingsApi';
 import { useGetStaffListQuery } from '@/lib/store/api/schoolAdminApi';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
@@ -22,8 +22,8 @@ export function PermissionsSettingsTab() {
   const { data, isLoading, refetch } = useGetSchoolSettingsQuery();
   const { data: staffData } = useGetStaffListQuery({ page: 1, limit: 100 });
   const [updateSection, { isLoading: isSaving }] = useUpdateSettingsSectionMutation();
-  const [createTemplate] = useCreateRoleTemplateMutation();
-  const [deleteTemplate] = useDeleteRoleTemplateMutation();
+  const [createTemplate] = useCreateSettingsRoleTemplateMutation();
+  const [deleteTemplate] = useDeleteSettingsRoleTemplateMutation();
 
   const [customRoles, setCustomRoles] = useState('');
   const [teacherScope, setTeacherScope] = useState('ASSIGNED_ONLY');

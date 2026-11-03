@@ -3218,7 +3218,7 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
       invalidatesTags: (result, error, { schoolId }) => [{ type: 'School', id: schoolId }],
     }),
     // Get students list
-    getStudents: builder.query<ResponseDto<PaginatedResponse<StudentWithEnrollment>>, { schoolId: string; page?: number; limit?: number; schoolType?: string; search?: string }>({
+    getStudents: builder.query<ResponseDto<PaginatedResponse<StudentWithEnrollment> & { statusCounts?: Record<string, number> }>, { schoolId: string; page?: number; limit?: number; schoolType?: string; search?: string }>({
       query: ({ schoolId, ...params }) => {
         const queryParams = new URLSearchParams();
         if (params.page) queryParams.append('page', params.page.toString());
@@ -3238,8 +3238,9 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
           totalPages: number;
           hasNext?: boolean;
           hasPrev?: boolean;
+          statusCounts?: Record<string, number>;
         }>
-      ): ResponseDto<PaginatedResponse<StudentWithEnrollment>> => ({
+      ): ResponseDto<PaginatedResponse<StudentWithEnrollment> & { statusCounts?: Record<string, number> }> => ({
         ...response,
         data: {
           items: response.data?.data ?? response.data?.items ?? [],
@@ -3247,6 +3248,7 @@ export const schoolAdminApi = apiSlice.injectEndpoints({
           page: response.data?.page ?? 1,
           limit: response.data?.limit ?? 10,
           totalPages: response.data?.totalPages ?? 0,
+          statusCounts: response.data?.statusCounts,
         },
       }),
       providesTags: ['Student'],

@@ -21,6 +21,8 @@ const isTokenExpired = (token: string | null) => {
   }
 };
 
+let hasHydratedOnce = false;
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   roles?: string[];
@@ -36,10 +38,12 @@ export function ProtectedRoute({
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useDispatch();
-  const [isHydrated, setIsHydrated] = useState(false);
+  // After the first hydration, later page mounts skip the spinner frame so route transitions animate real content.
+  const [isHydrated, setIsHydrated] = useState(() => hasHydratedOnce);
 
   // Wait for client-side hydration
   useEffect(() => {
+    hasHydratedOnce = true;
     setIsHydrated(true);
   }, []);
 

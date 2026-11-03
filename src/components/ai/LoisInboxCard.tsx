@@ -32,7 +32,8 @@ function readDismissed(schoolId: string): Set<string> {
   }
 }
 
-export function LoisInboxCard({ schoolId }: { schoolId: string }) {
+export function LoisInboxCard({ schoolId, variant = 'inline' }: { schoolId: string; variant?: 'inline' | 'panel' }) {
+  const panel = variant === 'panel';
   const workspace = useLoisWorkspaceOptional();
   const { data, isLoading, isError } = useGetLoisInsightsQuery(
     { schoolId, limit: 5 },
@@ -50,8 +51,8 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
     [dismissed, insights],
   );
 
-  if (isLoading || isError) return null;
-  if (visible.length === 0) return null;
+  if (!panel && (isLoading || isError)) return null;
+  if (!panel && visible.length === 0) return null;
 
   const dismissCard = () => {
     const next = new Set(dismissed);
@@ -66,7 +67,7 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
 
   return (
     <section
-      className="mb-6 rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-card)] dark:bg-[var(--dark-surface)] p-5"
+      className={cn(panel ? 'h-full rounded-3xl bg-[var(--light-card)] dark:bg-[var(--dark-surface)] p-6' : 'mb-6 rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-card)] dark:bg-[var(--dark-surface)] p-5')}
       aria-label="Lois noticed"
     >
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -91,6 +92,12 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
           </button>
         </div>
       </div>
+      {panel && visible.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-light-text-muted dark:text-dark-text-muted">
+          <LoisOrb size="xs" />
+          <p className="text-sm">{isLoading ? 'Lois is looking through your school...' : 'Nothing new right now. Lois will flag anything worth your attention.'}</p>
+        </div>
+      ) : (
       <ul className="space-y-3">
         {visible.map((insight) => {
           const listHref = insightListHref(insight);
@@ -98,7 +105,7 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
             <li
               key={insight.id}
               className={cn(
-                'rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] px-3 py-3',
+                panel ? 'rounded-2xl bg-black/[0.03] dark:bg-white/5 px-4 py-3.5' : 'rounded-md border border-[var(--light-border)] dark:border-[var(--dark-border)] px-3 py-3',
                 insight.unread && 'bg-[var(--agora-blue)]/[0.04]',
               )}
             >
@@ -146,6 +153,7 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
           );
         })}
       </ul>
+      )}
     </section>
   );
 }
@@ -164,3 +172,4 @@ export function LoisInsightBadge({ schoolId, className }: { schoolId?: string; c
     </span>
   );
 }
+

@@ -7,6 +7,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { FadeInUp } from '@/components/ui/FadeInUp';
+import { SectionTabs, TabPanel } from '@/components/ui/SectionTabs';
 import { 
   BookOpen, 
   Users, 
@@ -321,27 +322,15 @@ export default function StudentClassDetailPage() {
         </FadeInUp>
 
         {/* Tabs */}
-        <div className="mb-6 border-b border-light-border dark:border-dark-border">
-          <div className="flex space-x-1 overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'border-b-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <SectionTabs
+          ariaLabel="Class sections"
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabs={tabs.map((tab) => ({ key: tab.id, label: tab.label, icon: tab.icon }))}
+        />
 
         {/* Tab Content */}
-        <FadeInUp from={{ opacity: 0, y: 10 }} to={{ opacity: 1, y: 0 }} duration={0.2}>
+        <TabPanel tabKey={activeTab} className="mt-6">
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
@@ -678,7 +667,7 @@ export default function StudentClassDetailPage() {
               )}
             </div>
           )}
-        </FadeInUp>
+        </TabPanel>
       </div>
     </ProtectedRoute>
   );

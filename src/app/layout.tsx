@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Montserrat } from 'next/font/google';
+import { Montserrat, Geist } from 'next/font/google';
 import './globals.css';
 import StoreProvider from '@/lib/store/StoreProvider';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -14,6 +14,12 @@ const montserrat = Montserrat({
   weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
   style: ['normal', 'italic'],
   variable: '--font-montserrat',
+  display: 'swap',
+});
+
+const geistSans = Geist({
+  subsets: ['latin'],
+  variable: '--font-geist-sans',
   display: 'swap',
 });
 
@@ -94,7 +100,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${geistSans.variable} ${montserrat.variable}`} suppressHydrationWarning>
       <head>
         {/* Initial Theme Script to avoid FOUC */}
         <InlineScript
@@ -148,7 +154,7 @@ export default function RootLayout({
             }).replace(/</g, '\\u003c')}
         />
       </head>
-      <body className={montserrat.className} suppressHydrationWarning={true}>
+      <body className={geistSans.className} suppressHydrationWarning={true}>
         <ThemeProvider>
           <StoreProvider>
             <PortalProvider>

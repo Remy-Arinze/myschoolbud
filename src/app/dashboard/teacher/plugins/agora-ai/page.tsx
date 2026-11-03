@@ -14,12 +14,13 @@ export default function AgoraAIPage() {
 
     return (
         <ProtectedRoute roles={['TEACHER']}>
-            <div className="relative flex min-h-[calc(100vh-8.5rem)] flex-col">
-                <FadeInUp duration={0.8} className="flex min-h-0 flex-1 flex-col items-center justify-center py-2 md:py-3">
+            <div className="relative flex h-[calc(100vh-6.5rem)] min-h-[32rem] flex-col">
+                <FadeInUp duration={0.6} className="flex min-h-0 flex-1 flex-col">
                     {schoolId ? (
-                        <div className="lois-shell lois-stage flex min-h-0 w-full max-w-[44rem] flex-1 flex-col overflow-hidden">
+                        <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-[var(--light-bg)] dark:border-white/10 dark:bg-[var(--dark-bg)]">
                             <AgoraChat
                                 schoolId={schoolId}
+                                fullPage
                                 initialConversationId={conversationId || undefined}
                                 pageContext="The user is currently on the main Myschoolbud AI fullscreen chat interface."
                             />

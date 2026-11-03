@@ -374,13 +374,8 @@ function LoisPromptSuggestions({
           transition={{ duration: 0.28, delay: 0.05 * i, ease: 'easeOut' }}
           onClick={() => onSelect(card.prompt)}
           title={card.description}
-          className="lois-prompt-chip group inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1.5 text-left"
+          className="lois-prompt-chip group inline-flex max-w-full items-center rounded-full px-3 py-1.5 text-left"
         >
-          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[var(--agora-blue)] bg-[var(--agora-blue)]/10">
-            {React.cloneElement(card.icon as React.ReactElement<{ className?: string }>, {
-              className: 'h-3 w-3',
-            })}
-          </span>
           <span
             className="min-w-0 font-semibold text-light-text-primary dark:text-dark-text-primary leading-tight transition-colors group-hover:text-[var(--agora-blue)]"
             style={{ fontSize: typeScale.body }}
@@ -1043,6 +1038,8 @@ interface AgoraChatProps {
   collapsed?: boolean;
   pageContext?: string | LoisPageContext;
   headerActions?: React.ReactNode;
+  /** Full-page layout: chat history is a persistent sidebar and the thread fills the space. */
+  fullPage?: boolean;
 }
 
 export const AgoraChat: React.FC<AgoraChatProps> = ({
@@ -1053,6 +1050,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
   collapsed = false,
   pageContext,
   headerActions,
+  fullPage = false,
 }) => {
   const user = useSelector((state: RootState) => state.auth.user);
   const token = useSelector((state: RootState) => state.auth.token);
@@ -1506,17 +1504,19 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
     <LoisPlanApplySession conversationId={currentConversationId}>
     <div
       className={cn(
-        'lois-panel flex flex-col h-full w-full bg-transparent overflow-hidden relative',
+        'lois-panel flex h-full w-full bg-transparent overflow-hidden relative',
+        fullPage ? 'flex-row' : 'flex-col',
       )}
       style={{ fontFamily: 'var(--font-sans)' }}
     >
+      <div className={fullPage ? 'flex min-h-0 min-w-0 flex-1 flex-col relative' : 'contents'}>
       <div
         className={cn(
           'relative z-10 shrink-0 flex items-center justify-between gap-2',
           collapsed
             ? 'px-2.5 py-1.5'
             : isMinimal
-              ? 'px-3 py-2.5 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]'
+              ? 'px-3 py-2.5'
               : 'px-4 py-3 border-b border-[var(--light-border)] dark:border-[var(--dark-border)]',
         )}
       >
@@ -1530,12 +1530,6 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               >
                 Lois
               </h2>
-              {isMinimal && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--agora-blue)]/10 px-1.5 py-0.5 text-[var(--agora-blue)]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--agora-blue)] shadow-[0_0_8px_var(--agora-blue)]" />
-                  <span className="font-medium leading-none" style={{ fontSize: typeScale.tiny }}>Live</span>
-                </span>
-              )}
             </div>
             {!collapsed && (
             <p
@@ -1562,6 +1556,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
+              {!fullPage && (
               <button
                 type="button"
                 onClick={() => setIsHistoryOpen(true)}
@@ -1571,6 +1566,7 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               >
                 <History className="w-3.5 h-3.5" />
               </button>
+              )}
             </>
           )}
           {headerActions}
@@ -1776,10 +1772,11 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       )}
       </>
       )}
-
+      </div>
 
       <LoisChatHistory
-        isOpen={!collapsed && isHistoryOpen}
+        isOpen={fullPage || (!collapsed && isHistoryOpen)}
+        docked={fullPage}
         contained={isMinimal}
         chats={historyData ?? []}
         activeId={currentConversationId}

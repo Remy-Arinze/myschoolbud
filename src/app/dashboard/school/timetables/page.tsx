@@ -1,5 +1,6 @@
 'use client';
 
+import { HelpVideoButton } from '@/components/ui/HelpVideoButton';
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -64,7 +65,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ExamTimetablesTab } from '@/components/timetable/ExamTimetablesTab';
 import { buildTermOptions } from '@/lib/academic/buildTermOptions';
-import { SectionTabs } from '@/components/ui/SectionTabs';
+import { SectionTabs, TabPanel } from '@/components/ui/SectionTabs';
+import { AnimatedList } from '@/components/ui/AnimatedList';
 import { classStreamFromClass } from '@/hooks/useStreamMismatchConfirm';
 import { streamChipLabel, subjectOfferedInStream, subjectStreamFromSchoolSubject } from '@/lib/utils/subject-level-stream';
 
@@ -694,9 +696,12 @@ export default function TimetablesPage() {
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
-                Timetables
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
+                  Timetables
+                </h1>
+                <HelpVideoButton tutorial="timetables" />
+              </div>
               <p className="text-light-text-secondary dark:text-dark-text-secondary mt-1" style={{ fontSize: 'var(--text-page-subtitle)' }}>
                 Manage class schedules and exam timetables for {currentType || 'your school'}
               </p>
@@ -747,6 +752,7 @@ export default function TimetablesPage() {
           ]}
         />
 
+        <TabPanel tabKey={activeTab}>
         {activeTab === 'class' && (
           <>
         {isClassTabLoading ? (
@@ -775,7 +781,7 @@ export default function TimetablesPage() {
                 </Select>
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <AnimatedList className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {classesWithTimetables.map((cls) => {
                 const classTimetable = timetablesByClass[cls.id] || [];
                 return (
@@ -848,7 +854,7 @@ export default function TimetablesPage() {
                   </Card>
                 </div>
               )}
-            </div>
+            </AnimatedList>
           </>
         )}
 
@@ -1207,6 +1213,7 @@ export default function TimetablesPage() {
         )}
 
         {activeTab === 'exam' && <ExamTimetablesTab />}
+        </TabPanel>
       </div>
     </ProtectedRoute>
   );

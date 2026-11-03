@@ -172,9 +172,9 @@ export function useSidebarConfig(): {
       return [
         {
           items: [
+            { label: 'Notifications', href: '/dashboard/student/notifications', icon: Bell },
             { label: 'Overview', href: '/dashboard/student/overview', icon: LayoutDashboard },
             { label: 'Bud', href: '/dashboard/student/bud', icon: Sparkles },
-            { label: 'Notifications', href: '/dashboard/student/notifications', icon: Bell },
             { label: 'Classes', href: '/dashboard/student/classes', icon: BookOpen },
             { label: 'Timetables', href: '/dashboard/student/timetables', icon: Clock },
             { label: 'Results', href: '/dashboard/student/results', icon: FileText },
