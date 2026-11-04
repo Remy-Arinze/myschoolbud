@@ -1,5 +1,6 @@
 'use client';
 
+import { HelpVideoButton } from '@/components/ui/HelpVideoButton';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -65,7 +66,7 @@ import { PermissionResource, PermissionType } from '@/hooks/usePermissions';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { ViewToggle } from '@/components/ui/ViewToggle';
-import { SectionTabs } from '@/components/ui/SectionTabs';
+import { SectionTabs, TabPanel } from '@/components/ui/SectionTabs';
 
 type TabType = 'students' | 'teachers' | 'timetable' | 'resources' | 'curriculum';
 
@@ -550,6 +551,7 @@ export default function ClassDetailPage() {
                   <h1 className="font-bold text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-card-title)' }}>
                     {classData.name}
                   </h1>
+                  <HelpVideoButton tutorial="class-detail" />
                   <span className={`px-2.5 py-1 rounded-full font-medium ${classData.isActive
                     ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                     : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
@@ -701,7 +703,7 @@ export default function ClassDetailPage() {
         />
 
         {/* Tab Content */}
-        <div className="min-h-[400px]">
+        <TabPanel tabKey={activeTab} className="min-h-[400px]">
           {/* Students Tab */}
           {activeTab === 'students' && (
             <div className="space-y-4">
@@ -1308,7 +1310,7 @@ export default function ClassDetailPage() {
               </CardContent>
             </Card>
           )}
-        </div>
+        </TabPanel>
 
         {/* Modals */}
         {showAssignModal && schoolId && classData?.type && (

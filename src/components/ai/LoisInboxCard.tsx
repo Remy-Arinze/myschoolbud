@@ -37,7 +37,8 @@ function readDismissed(schoolId: string): Set<string> {
   }
 }
 
-export function LoisInboxCard({ schoolId }: { schoolId: string }) {
+export function LoisInboxCard({ schoolId, variant = 'inline' }: { schoolId: string; variant?: 'inline' | 'panel' }) {
+  const panel = variant === 'panel';
   const workspace = useLoisWorkspaceOptional();
   const { data, isLoading, isError } = useGetLoisInsightsQuery(
     { schoolId, limit: 12 },
@@ -59,8 +60,8 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
     [visible],
   );
 
-  if (isLoading || isError) return null;
-  if (visible.length === 0) return null;
+  if (!panel && (isLoading || isError)) return null;
+  if (!panel && visible.length === 0) return null;
 
   const dismissCard = () => {
     const next = new Set(dismissed);
@@ -75,7 +76,7 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
 
   return (
     <section
-      className="mb-6 rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-card)] dark:bg-[var(--dark-surface)] p-4"
+      className={cn(panel ? 'h-full rounded-3xl bg-[var(--light-card)] dark:bg-[var(--dark-surface)] p-6' : 'mb-6 rounded-lg border border-[var(--light-border)] dark:border-[var(--dark-border)] bg-[var(--light-card)] dark:bg-[var(--dark-surface)] p-4')}
       aria-label="Lois noticed"
     >
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -100,6 +101,13 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
           </button>
         </div>
       </div>
+      {panel && visible.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-light-text-muted dark:text-dark-text-muted">
+          <LoisOrb size="xs" />
+          <p className="text-sm">{isLoading ? 'Lois is looking through your school...' : 'Nothing new right now. Lois will flag anything worth your attention.'}</p>
+        </div>
+      ) : (
+      <>
       <ul className="divide-y divide-[var(--light-border)] dark:divide-[var(--dark-border)]">
         {preview.visible.map((row) => (
           <li key={row.key} className="py-3 first:pt-0 last:pb-0">
@@ -161,6 +169,8 @@ export function LoisInboxCard({ schoolId }: { schoolId: string }) {
           +{preview.hidden} more
         </button>
       ) : null}
+      </>
+      )}
     </section>
   );
 }
@@ -179,3 +189,4 @@ export function LoisInsightBadge({ schoolId, className }: { schoolId?: string; c
     </span>
   );
 }
+

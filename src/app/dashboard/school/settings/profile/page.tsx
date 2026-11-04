@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FadeInUp } from '@/components/ui/FadeInUp';
+import { TabPanel } from '@/components/ui/SectionTabs';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PermissionGate } from '@/components/permissions/PermissionGate';
@@ -60,6 +61,7 @@ function SettingsPageContent() {
 
           <SchoolSettingsTabs activeTab={activeTab} />
 
+          <TabPanel tabKey={activeTab}>
           {showSchoolTabs && (activeTab === 'school' || token) && (
             <SchoolSettingsTabContent token={token} router={router} />
           )}
@@ -74,7 +76,7 @@ function SettingsPageContent() {
           {showSchoolTabs && activeTab === 'lois' && schoolId && !token && <CurriculumAISettingsTab schoolId={schoolId} />}
           {showSchoolTabs && activeTab === 'data' && schoolId && !token && <DataSettingsTab schoolId={schoolId} />}
           {showSchoolTabs && activeTab === 'security' && !token && <SecuritySettingsTab />}
-        </div>
+                    </TabPanel>        </div>
       </PermissionGate>
     </ProtectedRoute>
   );

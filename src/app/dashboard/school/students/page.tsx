@@ -1,5 +1,6 @@
 'use client';
 
+import { HelpVideoButton } from '@/components/ui/HelpVideoButton';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -260,9 +261,12 @@ function StudentsPageContent() {
         {/* Header Section */}
         <FadeInUp from={{ opacity: 0, y: -20 }} to={{ opacity: 1, y: 0 }} duration={0.5} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="font-bold text-light-text-primary dark:text-white mb-2" style={{ fontSize: 'var(--text-page-title)' }}>
-              Students
-            </h1>
+            <div className="mb-2 flex items-center gap-2">
+              <h1 className="font-bold text-light-text-primary dark:text-white" style={{ fontSize: 'var(--text-page-title)' }}>
+                Students
+              </h1>
+              <HelpVideoButton tutorial="students" />
+            </div>
             <p className="text-light-text-secondary dark:text-[#9ca3af]" style={{ fontSize: 'var(--text-page-subtitle)' }}>
               Manage all students in your school
             </p>

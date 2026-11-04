@@ -34,6 +34,7 @@ interface AnalyticsChartProps {
   dataKeys: string[];
   colors?: string[];
   isLoading?: boolean;
+  className?: string;
 }
 
 export function AnalyticsChart({
@@ -44,6 +45,7 @@ export function AnalyticsChart({
   dataKeys,
   colors = ['#3b82f6', '#10b981', '#f59e0b'],
   isLoading = false,
+  className,
 }: AnalyticsChartProps) {
   const chartConfig = {
     text: {
@@ -277,7 +279,7 @@ export function AnalyticsChart({
   };
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle className="font-semibold text-[var(--light-text-primary)] dark:text-[var(--dark-text-primary)] mb-1" style={{ fontSize: 'var(--text-section-title)' }}>
           {title}

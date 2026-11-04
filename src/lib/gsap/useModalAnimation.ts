@@ -20,7 +20,7 @@ export function useModalAnimation(isOpen: boolean) {
       const backdrop = backdropRef.current;
       const panel = panelRef.current;
       if (backdrop) gsap.fromTo(backdrop, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power2.out' });
-      if (panel) gsap.fromTo(panel, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.22, ease: 'power2.out', clearProps: 'all' });
+      if (panel) gsap.fromTo(panel, { opacity: 0, scale: 0.94, y: 24 }, { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: 'back.out(1.4)', clearProps: 'all' });
     } else if (shouldRender && !isExitingRef.current) {
       isExitingRef.current = true;
       const backdrop = backdropRef.current;
@@ -31,7 +31,7 @@ export function useModalAnimation(isOpen: boolean) {
       };
       gsap.killTweensOf([backdrop, panel].filter(Boolean));
       const tl = gsap.timeline({ onComplete: complete });
-      if (panel) tl.to(panel, { opacity: 0, scale: 0.95, duration: 0.18, ease: 'power2.in' }, 0);
+      if (panel) tl.to(panel, { opacity: 0, scale: 0.96, y: 12, duration: 0.2, ease: 'power2.in' }, 0);
       if (backdrop) tl.to(backdrop, { opacity: 0, duration: 0.18, ease: 'power2.in' }, 0);
     }
   }, [isOpen, shouldRender]);

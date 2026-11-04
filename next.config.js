@@ -49,6 +49,7 @@ const nextConfig = {
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https: blob:",
               "media-src 'self' blob: https://res.cloudinary.com",
+              "frame-src https://www.youtube-nocookie.com https://www.youtube.com",
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self'",

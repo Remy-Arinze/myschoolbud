@@ -36,7 +36,7 @@
 
   :root {
     --font-heading: 'Bricolage Grotesque', system-ui, sans-serif;
-    --font-sans: 'Poppins', system-ui, sans-serif;
+    --font-sans: var(--font-geist-sans), 'Poppins', system-ui, sans-serif;
     /* Agora Brand Colors */
     --agora-blue: #007FFF;
     --school-accent: var(--agora-blue);
@@ -84,12 +84,12 @@
     /* 24px - Large card padding */
 
     /* Light Mode Colors */
-    --light-bg: #f3fbff;
-    --light-card: #e8f3f8;
+    --light-bg: #f0f4f7;
+    --light-card: #e3ebee;
     --light-surface: #f8fafc;
     --light-text-primary: #000000;
     --light-text-secondary: #000000;
-    --light-text-muted: #9ca3af;
+    --light-text-muted: #4b5563;
     --light-border: #dde8ec;
     --light-hover: #e5e7eb;
     /* Selected sidebar item — agora-blue tint so the active route reads on pale dashboards */
@@ -459,6 +459,39 @@
     display: none;
   }
 
+  /* Sliding active pill (positioned by gsap in SectionTabs) */
+  .section-tabs.has-pill {
+    position: relative;
+  }
+
+  .section-tab-pill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 0.5rem;
+    border: 1px solid var(--dashboard-sidebar-active-border);
+    background-color: var(--light-sidebar-active);
+    opacity: 0;
+  }
+
+  .dark .section-tab-pill {
+    border-color: var(--dark-sidebar-active-border);
+    background-color: var(--dark-sidebar-active);
+  }
+
+  .section-tabs.has-pill .section-tab {
+    position: relative;
+    z-index: 1;
+  }
+
+  .section-tabs.has-pill .section-tab[aria-current='page'],
+  .dark .section-tabs.has-pill .section-tab[aria-current='page'] {
+    background-color: transparent;
+    border-color: transparent;
+  }
+
   .section-tab,
   .settings-section-tab {
     display: inline-flex;
@@ -604,7 +637,7 @@
   }
 
   .dark body.student-dashboard-active {
-    background-color: var(--dark-bg) !important;
+    background-color: #0e0e10 !important;
   }
 
   .dark body.student-dashboard-active .sidebar-link-active {
@@ -653,16 +686,30 @@
   .dark .student-glass-content .border-b,
   .dark .student-glass-content .border,
   .dark .student-glass-content [class*="bg-"] {
-    background-color: rgba(20, 20, 25, 0.6) !important;
+    background-color: rgba(8, 8, 11, 0.78) !important;
     backdrop-filter: blur(24px) !important;
     -webkit-backdrop-filter: blur(24px) !important;
     border-color: rgba(255, 255, 255, 0.08) !important;
     border-top-color: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+    box-shadow: none !important;
   }
 
   .dark .student-glass-content {
     background-color: transparent !important;
+  }
+
+  /* Light-theme-only text classes would stay dark on dark surfaces */
+  .dark .student-glass-content .text-light-text-primary,
+  .dark .student-glass-content .text-black {
+    color: #ffffff;
+  }
+
+  .dark .student-glass-content .text-light-text-secondary {
+    color: #c3c9d4;
+  }
+
+  .dark .student-glass-content .text-light-text-muted {
+    color: #9aa3b2;
   }
 
   /* --------------------------------------------------- */
@@ -1047,7 +1094,7 @@
 /* ── Lois Ask panel ────────────────────────────────────────────── */
 .lois-panel {
   --lois-title: 0.8125rem;
-  --lois-greeting: 0.9375rem;
+  --lois-greeting: 1.25rem;
   --lois-body: 0.75rem;
   --lois-small: 0.6875rem;
   --lois-tiny: 0.625rem;
@@ -1433,6 +1480,79 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--agora-blue) 26%, transparent);
 }
 
+/* Minimal Lois refresh: flat surfaces, hairline borders, no glow */
+.lois-shell:not(.lois-shell--max) {
+  background-image: none;
+  background-color: var(--light-bg);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 24px 60px -24px rgba(15, 23, 42, 0.22), 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.dark .lois-shell:not(.lois-shell--max) {
+  background-image: none;
+  background-color: var(--dark-bg);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.6);
+}
+
+.lois-composer {
+  border-radius: 1.25rem;
+  background: var(--input-field-bg);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dark .lois-composer {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.lois-composer:focus-within {
+  background: var(--input-field-bg);
+  border-color: color-mix(in srgb, var(--agora-blue) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--agora-blue) 10%, transparent);
+}
+
+/* Compact input in the floating (non-expanded) panel; the expanded view keeps its size */
+.lois-shell:not(.lois-shell--max) .lois-composer {
+  max-width: 22rem;
+  margin-inline: auto;
+  border-radius: 1rem;
+}
+
+.lois-shell:not(.lois-shell--max) .lois-composer > div {
+  padding: 0.25rem 0.375rem 0.25rem 0.75rem;
+  border-radius: 0.9rem;
+}
+
+.lois-shell:not(.lois-shell--max) .lois-composer button {
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.lois-prompt-chip,
+.dark .lois-prompt-chip {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+.lois-prompt-chip {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.dark .lois-prompt-chip {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.lois-prompt-chip:hover,
+.dark .lois-prompt-chip:hover {
+  background: color-mix(in srgb, var(--agora-blue) 6%, transparent);
+  border-color: color-mix(in srgb, var(--agora-blue) 35%, transparent);
+  box-shadow: none;
+}
+
 .lois-history {
   background: color-mix(in srgb, var(--light-bg) 92%, white);
   backdrop-filter: blur(18px);
@@ -1594,4 +1714,19 @@
   .lois-shell-float {
     transition: none;
   }
+}
+/* Selected sidebar route uses the accent blue (overrides per-dashboard themes) */
+html body .desktop-sidebar a.sidebar-link-active.sidebar-link-item,
+html body .mobile-sidebar-drawer a.sidebar-link-active.sidebar-link-item {
+  background-color: var(--agora-blue) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+
+html body .desktop-sidebar a.sidebar-link-active.sidebar-link-item span,
+html body .desktop-sidebar a.sidebar-link-active.sidebar-link-item svg,
+html body .mobile-sidebar-drawer a.sidebar-link-active.sidebar-link-item span,
+html body .mobile-sidebar-drawer a.sidebar-link-active.sidebar-link-item svg {
+  color: #fff !important;
 }

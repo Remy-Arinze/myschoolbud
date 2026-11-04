@@ -555,7 +555,7 @@ export default function StudentOverviewPage() {
             {/* Quick Shortcuts - More Visual */}
             <section className="space-y-4">
               <h2 className=" px-2" style={{ fontSize: 'var(--text-body)' }}>Shortcuts</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'Classes', icon: BookOpen, color: 'blue', link: '/dashboard/student/classes' },
                   { label: 'Results', icon: FileText, color: 'green', link: '/dashboard/student/results' },
@@ -563,9 +563,9 @@ export default function StudentOverviewPage() {
                   { label: 'Calendar', icon: Calendar, color: 'orange', link: '/dashboard/student/calendar' }
                 ].map((action, i) => (
                   <Link key={i} href={action.link}>
-                    <button className="w-full group p-4 rounded-2xl bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border hover:border-blue-500 transition-all text-center space-y-3">
-                      <action.icon className="h-6 w-6 mx-auto group-hover:scale-110 transition-transform text-black dark:text-white" />
-                      <span className="text-sm font-bold text-light-text-primary dark:text-dark-text-primary group-hover:text-blue-600 transition-colors">
+                    <button className="w-full group px-2.5 py-2 rounded-xl bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border hover:border-blue-500 transition-all text-center space-y-1">
+                      <action.icon className="h-4 w-4 mx-auto group-hover:scale-110 transition-transform text-black dark:text-white" />
+                      <span className="text-xs font-semibold text-light-text-primary dark:text-dark-text-primary group-hover:text-blue-600 transition-colors">
                         {action.label}
                       </span>
                     </button>

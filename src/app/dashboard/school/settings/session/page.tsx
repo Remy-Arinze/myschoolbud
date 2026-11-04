@@ -1,5 +1,6 @@
 'use client';
 
+import { HelpVideoButton } from '@/components/ui/HelpVideoButton';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -530,9 +531,12 @@ export default function SessionWizardPage() {
           duration={0.5}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold text-light-text-primary dark:text-dark-text-primary mb-2">
-            {wizardTitle}
-          </h1>
+          <div className="mb-2 flex items-center gap-3">
+            <h1 className="text-4xl font-bold text-light-text-primary dark:text-dark-text-primary">
+              {wizardTitle}
+            </h1>
+            <HelpVideoButton tutorial="session-management" />
+          </div>
           <p className="text-light-text-secondary dark:text-dark-text-secondary">
             {wizardSubtitle}
           </p>

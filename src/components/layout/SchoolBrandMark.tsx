@@ -15,7 +15,7 @@ import { getRoleBasedRedirect } from '@/utils/security/redirect-validator';
 
 const FALLBACK_LOGO = '/assets/logos/agora_main.png';
 
-export function SchoolBrandMark({ size = 'md' }: { size?: 'sm' | 'md' }) {
+export function SchoolBrandMark({ size = 'md', iconOnly = false }: { size?: 'sm' | 'md'; iconOnly?: boolean }) {
   const userRole = useSelector((state: RootState) => state.auth.user?.role);
   const { branding } = usePortal();
   const { data: adminSchool } = useGetMySchoolQuery(undefined, { skip: userRole !== 'SCHOOL_ADMIN' });
@@ -28,6 +28,18 @@ export function SchoolBrandMark({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const homeHref = userRole && userRole !== 'SUPER_ADMIN' ? getRoleBasedRedirect(userRole) : '/';
   const iconPx = size === 'sm' ? 24 : 32;
   const iconClass = size === 'sm' ? 'h-6 w-6' : 'h-8 w-8';
+
+  if (iconOnly) {
+    return (
+      <Link href={homeHref} title={name ?? undefined} className="flex items-center justify-center py-1 relative z-20">
+        {logo ? (
+          <img src={logo} alt={name ?? ''} className="h-8 w-8 object-contain rounded flex-shrink-0" />
+        ) : (
+          <Image src={FALLBACK_LOGO} alt="" width={32} height={32} className="h-8 w-8 object-contain flex-shrink-0" priority aria-hidden />
+        )}
+      </Link>
+    );
+  }
 
   if (userRole === 'SUPER_ADMIN' || !name) {
     return (

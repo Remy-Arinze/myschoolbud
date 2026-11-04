@@ -22,7 +22,10 @@ const typeConfig = {
   },
 } as const;
 
-export function SchoolTypeSwitcher() {
+export function SchoolTypeSwitcher({
+  collapsed = false,
+  variant = 'sidebar',
+}: { collapsed?: boolean; variant?: 'sidebar' | 'appbar' } = {}) {
   const { isMixed, availableTypes, currentType, setCurrentType, isLocked } = useSchoolType();
   const { data: schoolResponse } = useGetMySchoolQuery();
   const schoolId = schoolResponse?.data?.id;
@@ -106,6 +109,94 @@ export function SchoolTypeSwitcher() {
   const activeType = currentType ?? availableTypes[0];
   const config = typeConfig[activeType];
   const Icon = config.icon;
+
+  if (variant === 'appbar') {
+    return (
+      <div ref={containerRef} className="relative flex-shrink-0">
+        <button
+          type="button"
+          disabled={isLocked}
+          onClick={() => setIsExpanded((prev) => !prev)}
+          aria-haspopup="listbox"
+          aria-expanded={isExpanded}
+          title={isLocked ? 'School type (locked)' : 'Switch school type'}
+          className="flex h-10 items-center gap-2 rounded-full bg-black/[0.04] px-3.5 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-black/[0.08] disabled:cursor-default dark:bg-white/5 dark:text-slate-100 dark:hover:bg-white/10"
+        >
+          <Icon className="h-4 w-4 text-[var(--agora-blue)]" />
+          <span className="hidden sm:inline">{config.label}</span>
+          {isLocked ? (
+            <Lock className="h-3 w-3 opacity-60" />
+          ) : (
+            <ChevronDown className={cn('h-3.5 w-3.5 opacity-60 transition-transform', isExpanded && 'rotate-180')} />
+          )}
+        </button>
+        {isExpanded && !isLocked && (
+          <div
+            role="listbox"
+            className="absolute right-0 top-12 z-50 w-48 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10 dark:border-white/10 dark:bg-[#0f1520]"
+          >
+            {availableTypes.map((type) => {
+              const TypeIcon = typeConfig[type].icon;
+              const isSelected = activeType === type;
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    setCurrentType(type);
+                    setIsExpanded(false);
+                  }}
+                  className={cn(
+                    'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-semibold transition-colors',
+                    isSelected
+                      ? 'bg-[var(--agora-blue)]/10 text-[var(--agora-blue)]'
+                      : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5'
+                  )}
+                >
+                  <TypeIcon className="h-4 w-4" />
+                  <span className="flex-1 text-left">{typeConfig[type].label}</span>
+                  {isSelected && <Check className="h-3.5 w-3.5" strokeWidth={2.5} />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Collapsed rail: one icon button per type, same state as the full switcher
+  if (collapsed) {
+    const railTypes = isLocked ? [activeType] : availableTypes;
+    return (
+      <div className="flex flex-col items-center gap-1" role="group" aria-label="School type">
+        {railTypes.map((type) => {
+          const TypeIcon = typeConfig[type].icon;
+          const isSelected = activeType === type;
+          return (
+            <button
+              key={type}
+              type="button"
+              disabled={isLocked}
+              title={`${typeConfig[type].label}${isLocked ? ' (locked)' : ''}`}
+              aria-pressed={isSelected}
+              onClick={() => setCurrentType(type)}
+              className={cn(
+                'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+                isSelected
+                  ? 'bg-[var(--light-sidebar-active)] dark:bg-[var(--dark-sidebar-active)] text-[var(--agora-blue)] ring-1 ring-[var(--agora-blue)]/35'
+                  : 'text-[var(--light-text-secondary)] dark:text-[var(--dark-text-secondary)] hover:bg-gray-100 dark:hover:bg-[#1a202e]'
+              )}
+            >
+              <TypeIcon className="h-4 w-4" />
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   // Locked admin: show static indicator (no dropdown)
   if (isLocked) {
@@ -217,3 +308,4 @@ export function SchoolTypeSwitcher() {
     </div>
   );
 }
+

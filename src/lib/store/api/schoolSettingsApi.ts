@@ -143,11 +143,11 @@ export const schoolSettingsApi = apiSlice.injectEndpoints({
       query: (id) => ({ url: `/school-admin/settings/calendar/holidays/${id}/apply`, method: 'POST' }),
       invalidatesTags: ['SchoolSettings', 'Event', 'School'],
     }),
-    createRoleTemplate: builder.mutation<ResponseDto<unknown>, Record<string, unknown>>({
+    createSettingsRoleTemplate: builder.mutation<ResponseDto<unknown>, Record<string, unknown>>({
       query: (body) => ({ url: '/school-admin/settings/permissions/role-templates', method: 'POST', body }),
       invalidatesTags: ['SchoolSettings', 'School'],
     }),
-    deleteRoleTemplate: builder.mutation<void, string>({
+    deleteSettingsRoleTemplate: builder.mutation<void, string>({
       query: (id) => ({ url: `/school-admin/settings/permissions/role-templates/${id}`, method: 'DELETE' }),
       invalidatesTags: ['SchoolSettings', 'School'],
     }),
@@ -207,8 +207,8 @@ export const {
   useCreateHolidayPresetMutation,
   useDeleteHolidayPresetMutation,
   useApplyHolidayPresetMutation,
-  useCreateRoleTemplateMutation,
-  useDeleteRoleTemplateMutation,
+  useCreateSettingsRoleTemplateMutation,
+  useDeleteSettingsRoleTemplateMutation,
   useApplyRoleTemplateMutation,
   useCreateAssessmentTemplateMutation,
   useUpdateAssessmentTemplateMutation,

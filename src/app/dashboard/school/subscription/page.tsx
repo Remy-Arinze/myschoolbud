@@ -1,5 +1,6 @@
 'use client';
 
+import { HelpVideoButton } from '@/components/ui/HelpVideoButton';
 import { useSubscription, SubscriptionTier } from '@/hooks/useSubscription';
 import { useToolAccess } from '@/hooks/useToolAccess';
 import { PricingTable } from '@/components/subscriptions/PricingTable';
@@ -117,9 +118,12 @@ export default function SubscriptionPage() {
                     </div>
                   );
                 })()}
-                <h1 className="font-extrabold tracking-tight text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
-                  Billing & Plans
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-extrabold tracking-tight text-light-text-primary dark:text-dark-text-primary" style={{ fontSize: 'var(--text-page-title)' }}>
+                    Billing & Plans
+                  </h1>
+                  <HelpVideoButton tutorial="subscription" />
+                </div>
                 <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed" style={{ fontSize: 'var(--text-body)' }}>
                   Manage your subscription, track your AI token consumption, and unlock the full potential of Myschoolbud.
                 </p>

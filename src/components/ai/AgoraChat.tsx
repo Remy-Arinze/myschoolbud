@@ -378,13 +378,8 @@ function LoisPromptSuggestions({
           transition={{ duration: 0.28, delay: 0.05 * i, ease: 'easeOut' }}
           onClick={() => onSelect(card.prompt)}
           title={card.description}
-          className="lois-prompt-chip group inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1.5 text-left"
+          className="lois-prompt-chip group inline-flex max-w-full items-center rounded-full px-3 py-1.5 text-left"
         >
-          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[var(--agora-blue)] bg-[var(--agora-blue)]/10">
-            {React.cloneElement(card.icon as React.ReactElement<{ className?: string }>, {
-              className: 'h-3 w-3',
-            })}
-          </span>
           <span
             className="min-w-0 font-semibold text-light-text-primary dark:text-dark-text-primary leading-tight transition-colors group-hover:text-[var(--agora-blue)]"
             style={{ fontSize: typeScale.body }}
@@ -1625,12 +1620,6 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
               >
                 Lois
               </h2>
-              {isMinimal && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--agora-blue)]/10 px-1.5 py-0.5 text-[var(--agora-blue)]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--agora-blue)] shadow-[0_0_8px_var(--agora-blue)]" />
-                  <span className="font-medium leading-none" style={{ fontSize: typeScale.tiny }}>Live</span>
-                </span>
-              )}
             </div>
             {!collapsed && (
             isPage && teacherWorkspace?.loading ? (
@@ -1960,9 +1949,9 @@ export const AgoraChat: React.FC<AgoraChatProps> = ({
       </>
       )}
 
-
       <LoisChatHistory
         isOpen={!collapsed && isHistoryOpen}
+        docked={false}
         contained={isMinimal}
         chats={historyChats}
         activeId={currentConversationId}

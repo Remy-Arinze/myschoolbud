@@ -106,15 +106,6 @@ export const AiChatDrawer: React.FC<AiChatDrawerProps> = ({
           theme === 'dark' ? 'dark' : '',
         )}
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-24 -right-16 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(125,82,255,0.22),transparent_68%)] lois-mesh-blob blur-2xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute top-32 -left-10 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(0,127,255,0.16),transparent_70%)] lois-mesh-blob blur-2xl"
-          style={{ animationDelay: '2.4s' }}
-        />
         <AgoraChat
           schoolId={schoolId}
           variant="minimal"
